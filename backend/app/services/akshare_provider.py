@@ -35,6 +35,7 @@ class AkshareMarketDataProvider:
         self._default_watchlist = self._fallback._default_watchlist
         self._watchlist_symbols = self._state_store.load_watchlist(self._default_watchlist)
         self._stock_cache: list[StockSummary] | None = None
+        self._snapshot_cache: dict[str, StockSnapshot] = {}
         self._last_error: str | None = None
 
     def list_stocks(self) -> list[StockSummary]:
@@ -94,13 +95,18 @@ class AkshareMarketDataProvider:
         return self.get_watchlist()
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
-        fallback_snapshot = self._fallback.get_snapshot(symbol)
+        normalized = symbol.strip().upper()
+        if normalized in self._snapshot_cache:
+            return self._snapshot_cache[normalized]
+        fallback_snapshot = self._fallback.get_snapshot(normalized)
         if fallback_snapshot is not None:
             return fallback_snapshot
-        summary = next((stock for stock in self.list_stocks() if stock.symbol == symbol.strip().upper()), None)
+        summary = next((stock for stock in self.list_stocks() if stock.symbol == normalized), None)
         if summary is None or summary.last_price <= 0:
             return None
-        return self._summary_to_conservative_snapshot(summary)
+        snapshot = self._summary_to_conservative_snapshot(summary)
+        self._snapshot_cache[normalized] = snapshot
+        return snapshot
 
     def _load_a_share_list(self) -> list[StockSummary]:
         rows = self._call_stock_rows("stock_zh_a_spot_em")

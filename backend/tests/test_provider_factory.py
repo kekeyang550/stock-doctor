@@ -35,12 +35,16 @@ class FakeAkshareWithRemoteStock:
 
 
 class FakeAkshareWithHistory:
+    def __init__(self):
+        self.history_calls = 0
+
     def stock_zh_a_spot_em(self):
         return [
             {"代码": "688002", "名称": "睿创微纳", "行业": "半导体", "最新价": "12.3", "涨跌幅": "2.1"},
         ]
 
     def stock_zh_a_hist(self, symbol: str, period: str, adjust: str):
+        self.history_calls += 1
         start = date(2026, 4, 1)
         return [
             {
@@ -145,7 +149,8 @@ def test_akshare_provider_enriches_capital_snapshot_from_fund_flow():
 
 
 def test_akshare_provider_enriches_technical_snapshot_from_history():
-    provider = AkshareMarketDataProvider(ak_module=FakeAkshareWithHistory())
+    akshare = FakeAkshareWithHistory()
+    provider = AkshareMarketDataProvider(ak_module=akshare)
 
     snapshot = provider.get_snapshot("688002")
 
@@ -159,6 +164,18 @@ def test_akshare_provider_enriches_technical_snapshot_from_history():
     assert snapshot.technical.macd > 0
     assert snapshot.technical.volume_ratio == 1.02
     assert snapshot.fundamental.pe_ttm == 0
+    assert akshare.history_calls == 1
+
+
+def test_akshare_provider_caches_remote_snapshot_enrichment():
+    akshare = FakeAkshareWithHistory()
+    provider = AkshareMarketDataProvider(ak_module=akshare)
+
+    first = provider.get_snapshot("688002")
+    second = provider.get_snapshot("688002")
+
+    assert first is second
+    assert akshare.history_calls == 1
 
 
 def test_akshare_provider_marks_basic_risk_flags_from_summary():
