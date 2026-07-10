@@ -20,6 +20,7 @@ from app.schemas.diagnosis import (
     PriceAlertRequest,
     ResearchNote,
     ResearchNoteRequest,
+    ReviewActionPlan,
     RiskExposureItem,
     RankedDiagnosis,
     ReportRecord,
@@ -53,6 +54,7 @@ from app.services.price_alerts import PriceAlertService
 from app.services.provider_factory import create_market_data_provider
 from app.services.reports import ReportService
 from app.services.refresh_jobs import DataRefreshJobService
+from app.services.review_actions import ReviewActionService
 from app.services.risk_exposure import RiskExposureService
 from app.services.screener import ScreenerService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
@@ -79,6 +81,7 @@ data_connector_health_service = DataConnectorHealthService()
 refresh_job_service = DataRefreshJobService()
 data_quality_service = DataQualityService()
 thesis_service = ThesisService()
+review_action_service = ReviewActionService()
 
 
 @router.get("/health")
@@ -508,6 +511,29 @@ async def diagnosis_thesis(
         raise HTTPException(status_code=404, detail="Stock symbol not found")
     diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
     return thesis_service.build_thesis(snapshot=snapshot, diagnosis=diagnosis)
+
+
+@router.get("/review-actions/{symbol}", response_model=ReviewActionPlan)
+async def review_actions(
+    symbol: str,
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+) -> ReviewActionPlan:
+    snapshot = data_provider.get_snapshot(symbol)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Stock symbol not found")
+    diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
+    thesis = thesis_service.build_thesis(snapshot=snapshot, diagnosis=diagnosis)
+    quality = data_quality_service.build_report(snapshot)
+    previous = diagnosis_change_service.latest_for_symbol(report_service.list_reports(limit=100), symbol)
+    change = diagnosis_change_service.build_change(current=diagnosis, previous=previous)
+    alerts = alert_engine.build_alerts(snapshot, diagnosis)
+    return review_action_service.build_plan(
+        diagnosis=diagnosis,
+        thesis=thesis,
+        quality=quality,
+        change=change,
+        alerts=alerts,
+    )
 
 
 def _all_snapshots() -> list[StockSnapshot]:

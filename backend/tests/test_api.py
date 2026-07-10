@@ -48,6 +48,18 @@ def test_thesis_endpoint_returns_structured_argument():
     assert payload["next_checks"]
 
 
+def test_review_actions_endpoint_returns_prioritized_plan():
+    response = client.get("/api/v1/review-actions/600519?horizon=swing")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600519"
+    assert payload["horizon"] == "swing"
+    assert payload["items"]
+    assert payload["high_count"] + payload["medium_count"] + payload["low_count"] == len(payload["items"])
+    assert {"title", "priority", "category", "detail", "source", "status"}.issubset(payload["items"][0].keys())
+
+
 def test_market_overview_endpoint():
     response = client.get("/api/v1/market/overview")
 

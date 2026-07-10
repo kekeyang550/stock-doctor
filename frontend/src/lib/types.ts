@@ -222,6 +222,27 @@ export type DiagnosisChangeReport = {
   changes: DiagnosisChangeItem[]
 }
 
+export type ReviewActionItem = {
+  id: string
+  title: string
+  priority: 'high' | 'medium' | 'low'
+  category: string
+  detail: string
+  source: string
+  status: 'pending' | 'watching' | 'done'
+}
+
+export type ReviewActionPlan = {
+  symbol: string
+  name: string
+  horizon: string
+  generated_at: string
+  high_count: number
+  medium_count: number
+  low_count: number
+  items: ReviewActionItem[]
+}
+
 export type ChecklistItem = {
   id: string
   title: string

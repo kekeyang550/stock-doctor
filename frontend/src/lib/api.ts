@@ -16,6 +16,7 @@ import type {
   RankedDiagnosis,
   ResearchNote,
   ReportRecord,
+  ReviewActionPlan,
   RiskExposureItem,
   ScreenCandidate,
   StockSummary,
@@ -160,6 +161,10 @@ export function fetchDiagnosisChange(symbol: string, horizon: string): Promise<D
 
 export function fetchDiagnosisThesis(symbol: string, horizon: string): Promise<DiagnosisThesis> {
   return getJson<DiagnosisThesis>(`/api/v1/thesis/${symbol}?horizon=${horizon}`)
+}
+
+export function fetchReviewActions(symbol: string, horizon: string): Promise<ReviewActionPlan> {
+  return getJson<ReviewActionPlan>(`/api/v1/review-actions/${symbol}?horizon=${horizon}`)
 }
 
 export function fetchReports(): Promise<ReportRecord[]> {

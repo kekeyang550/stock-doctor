@@ -194,6 +194,36 @@ const diagnosisChange = {
   ],
 }
 
+const reviewActions = {
+  symbol: '600519',
+  name: '贵州茅台',
+  horizon: 'swing',
+  generated_at: '2026-07-10T06:01:00Z',
+  high_count: 1,
+  medium_count: 1,
+  low_count: 0,
+  items: [
+    {
+      id: 'alerts-资金-主力资金流出',
+      title: '主力资金流出',
+      priority: 'high',
+      category: '风险预警 · 资金',
+      detail: '主力资金净流出较明显，观察弱势是否延续。',
+      source: 'alerts',
+      status: 'pending',
+    },
+    {
+      id: 'thesis-1',
+      title: '验证论证假设 1',
+      priority: 'medium',
+      category: '论证验证',
+      detail: '确认主力资金与北向资金是否连续两日同向。',
+      source: 'thesis',
+      status: 'pending',
+    },
+  ],
+}
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -449,6 +479,9 @@ describe('App', () => {
       if (url.includes('/diagnosis-change')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(diagnosisChange) })
       }
+      if (url.includes('/review-actions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActions) })
+      }
       if (url.includes('/thesis')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(thesis) })
       }
@@ -550,6 +583,10 @@ describe('App', () => {
     const changePanel = screen.getByRole('heading', { name: '诊断变化' }).closest('section')!
     expect(within(changePanel).getByText('复盘基线')).toBeInTheDocument()
     expect(within(changePanel).getByText('当前为首份复盘基线')).toBeInTheDocument()
+    const reviewPanel = screen.getByRole('heading', { name: '复盘行动' }).closest('section')!
+    expect(within(reviewPanel).getAllByText('高优先').length).toBeGreaterThan(0)
+    expect(within(reviewPanel).getByText('主力资金流出')).toBeInTheDocument()
+    expect(within(reviewPanel).getByText('验证论证假设 1')).toBeInTheDocument()
     const qualityPanel = screen.getByRole('heading', { name: '数据质量' }).closest('section')!
     expect(within(qualityPanel).getAllByText('可靠').length).toBeGreaterThan(0)
     expect(within(qualityPanel).getByText('行情字段')).toBeInTheDocument()

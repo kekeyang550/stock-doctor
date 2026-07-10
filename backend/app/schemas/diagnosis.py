@@ -239,6 +239,27 @@ class DiagnosisChangeReport(BaseModel):
     changes: list[DiagnosisChangeItem]
 
 
+class ReviewActionItem(BaseModel):
+    id: str
+    title: str
+    priority: str = Field(pattern="^(high|medium|low)$")
+    category: str
+    detail: str
+    source: str
+    status: str = Field(default="pending", pattern="^(pending|watching|done)$")
+
+
+class ReviewActionPlan(BaseModel):
+    symbol: str
+    name: str
+    horizon: str
+    generated_at: str
+    high_count: int
+    medium_count: int
+    low_count: int
+    items: list[ReviewActionItem]
+
+
 class ChecklistItem(BaseModel):
     id: str
     title: str

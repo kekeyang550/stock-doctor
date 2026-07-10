@@ -27,6 +27,7 @@ import {
   fetchRankings,
   fetchRefreshJobs,
   fetchReports,
+  fetchReviewActions,
   fetchRiskExposure,
   fetchScreener,
   fetchStocks,
@@ -66,6 +67,8 @@ import type {
   RankedDiagnosis,
   ResearchNote,
   ReportRecord,
+  ReviewActionItem,
+  ReviewActionPlan,
   RiskExposureItem,
   ScreenCandidate,
   StockSummary,
@@ -136,6 +139,7 @@ export default function App() {
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null)
   const [diagnosisChange, setDiagnosisChange] = useState<DiagnosisChangeReport | null>(null)
   const [thesis, setThesis] = useState<DiagnosisThesis | null>(null)
+  const [reviewActions, setReviewActions] = useState<ReviewActionPlan | null>(null)
   const [dataQuality, setDataQuality] = useState<DataQualityReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -174,16 +178,18 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const [result, quality, thesisResult, changeResult] = await Promise.all([
+      const [result, quality, thesisResult, changeResult, actionPlan] = await Promise.all([
         fetchDiagnosis(selectedSymbol, horizon),
         fetchDataQuality(selectedSymbol),
         fetchDiagnosisThesis(selectedSymbol, horizon),
         fetchDiagnosisChange(selectedSymbol, horizon),
+        fetchReviewActions(selectedSymbol, horizon),
       ])
       setDiagnosis(result)
       setDataQuality(quality)
       setThesis(thesisResult)
       setDiagnosisChange(changeResult)
+      setReviewActions(actionPlan)
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误')
     } finally {
@@ -513,6 +519,7 @@ export default function App() {
             dataQuality={dataQuality}
             thesis={thesis}
             diagnosisChange={diagnosisChange}
+            reviewActions={reviewActions}
           />
         )}
         <PriceAlertsPanel
@@ -1405,6 +1412,7 @@ function DiagnosisWorkspace({
   dataQuality,
   thesis,
   diagnosisChange,
+  reviewActions,
 }: {
   diagnosis: Diagnosis
   overview: MarketOverview | null
@@ -1414,6 +1422,7 @@ function DiagnosisWorkspace({
   dataQuality: DataQualityReport | null
   thesis: DiagnosisThesis | null
   diagnosisChange: DiagnosisChangeReport | null
+  reviewActions: ReviewActionPlan | null
 }) {
   return (
     <div className="diagnosis-layout">
@@ -1460,6 +1469,8 @@ function DiagnosisWorkspace({
       <PeerPanel peers={peers} />
 
       <DiagnosisChangePanel report={diagnosisChange} />
+
+      <ReviewActionsPanel plan={reviewActions} />
 
       <DataQualityPanel report={dataQuality} />
 
@@ -1527,6 +1538,59 @@ function DiagnosisWorkspace({
         </div>
       </section>
     </div>
+  )
+}
+
+function ReviewActionsPanel({ plan }: { plan: ReviewActionPlan | null }) {
+  const visibleItems = plan ? plan.items.slice(0, 8) : []
+  return (
+    <section className="panel review-actions-panel">
+      <div className="panel-title split-title">
+        <span>
+          <ListChecks size={18} />
+          <h3>复盘行动</h3>
+        </span>
+        <small>{plan ? `${plan.items.length} 项` : '加载中'}</small>
+      </div>
+      {plan ? (
+        <>
+          <div className="review-action-stats">
+            <ActionStat label="高优先" value={plan.high_count} priority="high" />
+            <ActionStat label="待观察" value={plan.medium_count} priority="medium" />
+            <ActionStat label="低优先" value={plan.low_count} priority="low" />
+          </div>
+          <div className="review-action-list">
+            {visibleItems.map((item) => (
+              <ReviewActionRow key={item.id} item={item} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="empty-text">正在生成复盘行动...</p>
+      )}
+    </section>
+  )
+}
+
+function ActionStat({ label, value, priority }: { label: string; value: number; priority: ReviewActionItem['priority'] }) {
+  return (
+    <span className={priority}>
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  )
+}
+
+function ReviewActionRow({ item }: { item: ReviewActionItem }) {
+  return (
+    <article className={`review-action ${item.priority}`}>
+      <div>
+        <span>{item.category}</span>
+        <em>{priorityLabel(item.priority)}</em>
+      </div>
+      <strong>{item.title}</strong>
+      <p>{item.detail}</p>
+    </article>
   )
 }
 
