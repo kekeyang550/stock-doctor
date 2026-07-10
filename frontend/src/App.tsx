@@ -12,6 +12,7 @@ import {
   deleteReport,
   fetchAlerts,
   fetchDataConnectorHealth,
+  fetchDataFreshness,
   fetchDataSources,
   fetchDiagnosis,
   fetchIndustryHeat,
@@ -41,6 +42,7 @@ import type {
   ChecklistItem,
   DataConnectorHealth,
   DataConnectorStatus,
+  DataFreshnessStatus,
   DataRefreshJob,
   DataSource,
   Diagnosis,
@@ -91,6 +93,7 @@ export default function App() {
   const [overview, setOverview] = useState<MarketOverview | null>(null)
   const [dataSources, setDataSources] = useState<DataSource[]>([])
   const [connectorHealth, setConnectorHealth] = useState<DataConnectorHealth | null>(null)
+  const [freshness, setFreshness] = useState<DataFreshnessStatus | null>(null)
   const [refreshJobs, setRefreshJobs] = useState<DataRefreshJob[]>([])
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
   const [storageImportPayload, setStorageImportPayload] = useState<StorageImportPayload | null>(null)
@@ -120,12 +123,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, jobs, storage, savedReports] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, savedReports] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
       fetchDataSources(),
       fetchDataConnectorHealth(),
+      fetchDataFreshness(),
       fetchRefreshJobs(),
       fetchStorageStatus(),
       fetchReports(),
@@ -135,6 +139,7 @@ export default function App() {
     setOverview(market)
     setDataSources(sources)
     setConnectorHealth(connectors)
+    setFreshness(fresh)
     setRefreshJobs(jobs)
     setStorageStatus(storage)
     setReports(savedReports)
@@ -378,7 +383,9 @@ export default function App() {
     setError(null)
     try {
       const job = await runRefreshJob(scope)
+      const fresh = await fetchDataFreshness()
       setRefreshJobs((items) => [job, ...items.filter((item) => item.id !== job.id)].slice(0, 5))
+      setFreshness(fresh)
       await loadStocks()
     } catch (err) {
       setError(err instanceof Error ? err.message : '刷新任务失败')
@@ -452,7 +459,7 @@ export default function App() {
           onApplyImport={applyStorageImport}
         />
 
-        <DataConnectorPanel health={connectorHealth} jobs={refreshJobs} onRun={triggerRefreshJob} />
+        <DataConnectorPanel health={connectorHealth} freshness={freshness} jobs={refreshJobs} onRun={triggerRefreshJob} />
 
         {loading || !diagnosis ? (
           <div className="state-panel">
@@ -610,10 +617,12 @@ function SystemStoragePanel({
 
 function DataConnectorPanel({
   health,
+  freshness,
   jobs,
   onRun,
 }: {
   health: DataConnectorHealth | null
+  freshness: DataFreshnessStatus | null
   jobs: DataRefreshJob[]
   onRun: (scope: 'all' | 'watchlist') => void
 }) {
@@ -645,6 +654,7 @@ function DataConnectorPanel({
               <ConnectorRow key={connector.name} connector={connector} />
             ))}
           </div>
+          <FreshnessPanel freshness={freshness} />
           <RefreshJobList jobs={jobs} />
         </>
       ) : (
@@ -652,6 +662,48 @@ function DataConnectorPanel({
       )}
     </section>
   )
+}
+
+function FreshnessPanel({ freshness }: { freshness: DataFreshnessStatus | null }) {
+  return (
+    <div className="freshness-panel">
+      <div className="freshness-title">
+        <strong>数据新鲜度</strong>
+        <em className={freshness ? freshness.status : 'unknown'}>
+          {freshness ? freshnessStatusLabel(freshness.status) : '加载中'}
+        </em>
+      </div>
+      {freshness ? (
+        <>
+          <div className="freshness-metrics">
+            <span>
+              <small>覆盖率</small>
+              <b>{freshness.coverage_pct.toFixed(1)}%</b>
+            </span>
+            <span>
+              <small>刷新年龄</small>
+              <b>{freshness.age_minutes === null ? '--' : `${freshness.age_minutes} 分钟`}</b>
+            </span>
+            <span>
+              <small>覆盖标的</small>
+              <b>{freshness.last_stock_count}/{freshness.expected_stock_count}</b>
+            </span>
+          </div>
+          <p>{freshness.message}</p>
+          <small>{freshness.next_action}</small>
+        </>
+      ) : (
+        <p className="empty-text">正在计算数据新鲜度...</p>
+      )}
+    </div>
+  )
+}
+
+function freshnessStatusLabel(status: DataFreshnessStatus['status']) {
+  if (status === 'fresh') return '新鲜'
+  if (status === 'stale') return '偏旧'
+  if (status === 'expired') return '过期'
+  return '未知'
 }
 
 function RefreshJobList({ jobs }: { jobs: DataRefreshJob[] }) {

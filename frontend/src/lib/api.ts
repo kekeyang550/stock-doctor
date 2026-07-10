@@ -1,6 +1,7 @@
 import type {
   AlertItem,
   DataConnectorHealth,
+  DataFreshnessStatus,
   DataRefreshJob,
   DataSource,
   Diagnosis,
@@ -54,6 +55,10 @@ export function fetchDataConnectorHealth(): Promise<DataConnectorHealth> {
 
 export function fetchRefreshJobs(): Promise<DataRefreshJob[]> {
   return getJson<DataRefreshJob[]>('/api/v1/system/refresh-jobs?limit=5')
+}
+
+export function fetchDataFreshness(): Promise<DataFreshnessStatus> {
+  return getJson<DataFreshnessStatus>('/api/v1/system/freshness')
 }
 
 export async function runRefreshJob(scope: 'all' | 'watchlist'): Promise<DataRefreshJob> {

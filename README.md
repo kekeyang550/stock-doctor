@@ -62,3 +62,5 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 The AKShare adapter keeps the mock provider as a fallback while real A-share fields are normalized.
 
 The workspace also includes a manual refresh job panel. Refresh jobs record provider, scope, status, duration, and covered stock counts so the same history can later back scheduled real-data updates.
+
+The connector panel also shows data freshness: latest successful refresh time, refresh age, covered stock count, coverage rate, and the recommended next action.

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app.schemas.diagnosis import (
     AlertItem,
     DataConnectorHealth,
+    DataFreshnessStatus,
     DataRefreshJob,
     DataRefreshJobRequest,
     DiagnosisResponse,
@@ -96,6 +97,11 @@ async def system_data_connectors() -> DataConnectorHealth:
 @router.get("/system/refresh-jobs", response_model=list[DataRefreshJob])
 async def list_refresh_jobs(limit: int = Query(default=10, ge=1, le=50)) -> list[DataRefreshJob]:
     return refresh_job_service.list_jobs(limit=limit)
+
+
+@router.get("/system/freshness", response_model=DataFreshnessStatus)
+async def data_freshness() -> DataFreshnessStatus:
+    return refresh_job_service.build_freshness(provider=data_provider)
 
 
 @router.post("/system/refresh-jobs", response_model=DataRefreshJob, status_code=status.HTTP_201_CREATED)

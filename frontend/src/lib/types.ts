@@ -56,6 +56,19 @@ export type DataRefreshJob = {
   message: string
 }
 
+export type DataFreshnessStatus = {
+  status: 'unknown' | 'fresh' | 'stale' | 'expired'
+  provider: string
+  last_success_at: string | null
+  age_minutes: number | null
+  stale_after_minutes: number
+  expected_stock_count: number
+  last_stock_count: number
+  coverage_pct: number
+  message: string
+  next_action: string
+}
+
 export type StorageCollectionStat = {
   key: string
   label: string

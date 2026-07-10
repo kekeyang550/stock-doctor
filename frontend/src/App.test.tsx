@@ -94,6 +94,19 @@ const refreshJobs = [
   },
 ]
 
+const freshness = {
+  status: 'fresh',
+  provider: 'mock',
+  last_success_at: '2026-07-10T06:00:01Z',
+  age_minutes: 2,
+  stale_after_minutes: 30,
+  expected_stock_count: 4,
+  last_stock_count: 4,
+  coverage_pct: 100,
+  message: '最近刷新距今 2 分钟，覆盖率 100.0%。',
+  next_action: '可以继续使用当前诊断数据。',
+}
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -334,6 +347,9 @@ describe('App', () => {
       if (url.includes('/system/refresh-jobs')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(refreshJobs) })
       }
+      if (url.includes('/system/freshness')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(freshness) })
+      }
       if (url.includes('/system/storage')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(storageStatus) })
       }
@@ -358,6 +374,9 @@ describe('App', () => {
     expect(screen.getByText('AKShare')).toBeInTheDocument()
     expect(screen.getByText('缺包')).toBeInTheDocument()
     expect(screen.getByText('刷新全部')).toBeInTheDocument()
+    expect(screen.getByText('数据新鲜度')).toBeInTheDocument()
+    expect(screen.getByText('新鲜')).toBeInTheDocument()
+    expect(screen.getByText('100.0%')).toBeInTheDocument()
     expect(screen.getByText('刷新记录')).toBeInTheDocument()
     expect(screen.getByText('系统存储')).toBeInTheDocument()
     expect(screen.getByText('JSON')).toBeInTheDocument()

@@ -80,6 +80,19 @@ class DataRefreshJobRequest(BaseModel):
     scope: str = Field(default="all", pattern="^(all|watchlist)$")
 
 
+class DataFreshnessStatus(BaseModel):
+    status: str = Field(pattern="^(unknown|fresh|stale|expired)$")
+    provider: str
+    last_success_at: str | None
+    age_minutes: int | None
+    stale_after_minutes: int
+    expected_stock_count: int
+    last_stock_count: int
+    coverage_pct: float
+    message: str
+    next_action: str
+
+
 class TechnicalSnapshot(BaseModel):
     ma5: float
     ma20: float
