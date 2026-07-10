@@ -484,6 +484,7 @@ class HotspotCandidate(BaseModel):
     main_inflow_million: float
     reason: str
     risk_note: str
+    next_action: str
 
 
 class RiskExposureItem(BaseModel):

@@ -21,6 +21,7 @@ def test_hotspot_candidates_rank_actionable_hot_stocks():
     assert candidates[0].heat_score >= candidates[-1].heat_score
     assert any(item.symbol == "002594" and item.concept == "新能源汽车" for item in candidates)
     assert all(item.reason for item in candidates)
+    assert all(item.next_action for item in candidates)
 
 
 def test_hotspot_candidates_support_capital_and_momentum_modes():

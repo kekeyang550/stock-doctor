@@ -477,6 +477,7 @@ export type HotspotCandidate = {
   main_inflow_million: number
   reason: string
   risk_note: string
+  next_action: string
 }
 
 export type TrendPoint = {

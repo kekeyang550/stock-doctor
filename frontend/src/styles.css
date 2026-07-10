@@ -1977,6 +1977,13 @@ button {
   line-height: 1.5;
 }
 
+.hotspot-candidate-row .next-action {
+  border-top: 1px solid #e0e8db;
+  color: #31553f;
+  padding-top: 7px;
+  font-weight: 700;
+}
+
 .portfolio-details {
   margin-top: 10px;
   display: grid;

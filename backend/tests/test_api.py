@@ -82,7 +82,7 @@ def test_hotspot_candidates_endpoint_returns_ranked_candidates():
     assert response.status_code == 200
     payload = response.json()
     assert payload
-    assert {"concept", "heat_score", "signal_score", "reason"}.issubset(payload[0].keys())
+    assert {"concept", "heat_score", "signal_score", "reason", "next_action"}.issubset(payload[0].keys())
 
 
 def test_thesis_endpoint_returns_structured_argument():

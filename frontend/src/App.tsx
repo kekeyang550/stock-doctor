@@ -1213,6 +1213,7 @@ function HotspotCandidatesPanel({
               </em>
               <small>诊断 {item.diagnosis_score} · 异动 {item.signal_score}</small>
               <p>{item.reason}</p>
+              <p className="next-action">{item.next_action}</p>
             </button>
           ))}
         </div>

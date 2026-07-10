@@ -518,6 +518,7 @@ const hotspotCandidates = [
     main_inflow_million: 638.9,
     reason: '新能源汽车题材；诊断分 84；强势异动，量比放大。',
     risk_note: '18 天内存在解禁窗口，需关注供给冲击。',
+    next_action: '短线热度存在，但需同步跟踪解禁窗口和成交承接。',
   },
 ]
 
@@ -702,6 +703,7 @@ describe('App', () => {
     expect(within(hotspotPanel).getByText('新能源汽车')).toBeInTheDocument()
     const hotspotPool = screen.getByRole('heading', { name: '热点选股池' }).closest('section')!
     expect(within(hotspotPool).getByText('比亚迪')).toBeInTheDocument()
+    expect(within(hotspotPool).getByText(/成交承接/)).toBeInTheDocument()
     expect(within(hotspotPool).getByText('资金')).toBeInTheDocument()
     expect(within(hotspotPool).getByText('异动')).toBeInTheDocument()
     expect(screen.getByText('报告历史')).toBeInTheDocument()
