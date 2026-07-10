@@ -188,10 +188,14 @@ class AkshareMarketDataProvider:
             risk=RiskSnapshot(
                 pledge_ratio=0,
                 unlock_days=None,
-                st_flag=False,
-                limit_up_streak=0,
+                st_flag=self._is_st_stock(summary.name),
+                limit_up_streak=1 if summary.change_pct >= 9.8 else 0,
             ),
         )
+
+    def _is_st_stock(self, name: str) -> bool:
+        normalized = name.strip().upper()
+        return normalized.startswith("ST") or normalized.startswith("*ST") or "退" in normalized
 
     def _conservative_technical(self, price: float) -> dict:
         return {

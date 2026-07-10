@@ -87,6 +87,13 @@ class FakeAkshareWithCapital:
         ]
 
 
+class FakeAkshareWithRiskNames:
+    def stock_zh_a_spot_em(self):
+        return [
+            {"代码": "688005", "名称": "ST测试", "行业": "风险警示", "最新价": "2.1", "涨跌幅": "9.92"},
+        ]
+
+
 def test_akshare_provider_normalizes_spot_list():
     provider = AkshareMarketDataProvider(ak_module=FakeAkshare())
 
@@ -152,6 +159,16 @@ def test_akshare_provider_enriches_technical_snapshot_from_history():
     assert snapshot.technical.macd > 0
     assert snapshot.technical.volume_ratio == 1.02
     assert snapshot.fundamental.pe_ttm == 0
+
+
+def test_akshare_provider_marks_basic_risk_flags_from_summary():
+    provider = AkshareMarketDataProvider(ak_module=FakeAkshareWithRiskNames())
+
+    snapshot = provider.get_snapshot("688005")
+
+    assert snapshot is not None
+    assert snapshot.risk.st_flag is True
+    assert snapshot.risk.limit_up_streak == 1
 
 
 def test_akshare_provider_enriches_fundamental_snapshot_from_remote_indicator():
