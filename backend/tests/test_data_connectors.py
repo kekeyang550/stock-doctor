@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.config import settings
 from app.services.data_connectors import DataConnectorHealthService
 
 
@@ -15,6 +16,29 @@ def test_data_connector_health_reports_mock_and_planned_sources():
     names = {connector.name for connector in health.connectors}
     assert {"Mock A股样例库", "AKShare", "Tushare Pro"}.issubset(names)
     assert all(connector.last_checked_at for connector in health.connectors)
+
+
+class FallbackAkshareProvider:
+    def get_data_sources(self):
+        return [
+            {
+                "name": "AKShare",
+                "status": "fallback",
+                "role": "行情、指数、板块、资金流；network unavailable",
+            },
+            {"name": "Mock A股样例库", "status": "fallback", "role": "稳定回退"},
+        ]
+
+
+def test_data_connector_health_uses_provider_source_status(monkeypatch):
+    monkeypatch.setattr(settings, "data_provider", "akshare")
+
+    health = DataConnectorHealthService().build_health(provider=FallbackAkshareProvider())
+    akshare = next(connector for connector in health.connectors if connector.name == "AKShare")
+
+    assert akshare.status == "fallback"
+    assert "network unavailable" in akshare.message
+    assert "确认网络" in akshare.next_action
 
 
 def test_data_connector_health_endpoint():

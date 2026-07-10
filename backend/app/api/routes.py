@@ -172,7 +172,7 @@ async def data_quality(symbol: str) -> DataQualityReport:
 
 @router.get("/system/data-connectors", response_model=DataConnectorHealth)
 async def system_data_connectors() -> DataConnectorHealth:
-    return data_connector_health_service.build_health()
+    return data_connector_health_service.build_health(provider=data_provider)
 
 
 @router.get("/system/refresh-jobs", response_model=list[DataRefreshJob])
@@ -199,7 +199,7 @@ async def system_storage() -> StorageStatus:
 async def system_readiness() -> SystemReadiness:
     store = create_state_store()
     storage = _storage_status(store)
-    health = data_connector_health_service.build_health()
+    health = data_connector_health_service.build_health(provider=data_provider)
     freshness = refresh_job_service.build_freshness(provider=data_provider)
     jobs = refresh_job_service.list_jobs(limit=5)
     return _build_system_readiness(storage=storage, health=health, freshness=freshness, jobs=jobs)

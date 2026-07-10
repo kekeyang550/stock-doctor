@@ -3,13 +3,16 @@ from importlib.util import find_spec
 
 from app.config import settings
 from app.schemas.diagnosis import DataConnectorHealth, DataConnectorStatus
+from app.services.providers import MarketDataProvider
 
 
 class DataConnectorHealthService:
-    def build_health(self) -> DataConnectorHealth:
+    def build_health(self, provider: MarketDataProvider | None = None) -> DataConnectorHealth:
         checked_at = datetime.now(timezone.utc).isoformat()
         akshare_installed = find_spec("akshare") is not None
         active_provider = settings.data_provider
+        source_by_name = self._source_by_name(provider)
+        akshare_source = source_by_name.get("AKShare")
 
         connectors = [
             DataConnectorStatus(
@@ -27,7 +30,7 @@ class DataConnectorHealthService:
             ),
             DataConnectorStatus(
                 name="AKShare",
-                status=self._akshare_status(akshare_installed, active_provider),
+                status=self._akshare_status(akshare_installed, active_provider, akshare_source),
                 active=active_provider == "akshare" and akshare_installed,
                 role="A 股行情、指数、板块和资金流数据适配",
                 package="akshare",
@@ -35,8 +38,8 @@ class DataConnectorHealthService:
                 configured_provider=active_provider,
                 latency_ms=None,
                 last_checked_at=checked_at,
-                message=self._akshare_message(akshare_installed, active_provider),
-                next_action=self._akshare_next_action(akshare_installed, active_provider),
+                message=self._akshare_message(akshare_installed, active_provider, akshare_source),
+                next_action=self._akshare_next_action(akshare_installed, active_provider, akshare_source),
             ),
             DataConnectorStatus(
                 name="Tushare Pro",
@@ -58,19 +61,55 @@ class DataConnectorHealthService:
             connectors=connectors,
         )
 
-    def _akshare_status(self, installed: bool, active_provider: str) -> str:
+    def _source_by_name(self, provider: MarketDataProvider | None) -> dict[str, dict[str, str]]:
+        if provider is None:
+            return {}
+        try:
+            sources = provider.get_data_sources()
+        except Exception:
+            return {}
+        return {
+            str(source.get("name")): source
+            for source in sources
+            if source.get("name") is not None
+        }
+
+    def _akshare_status(
+        self,
+        installed: bool,
+        active_provider: str,
+        source: dict[str, str] | None,
+    ) -> str:
+        if source is not None and active_provider == "akshare":
+            status = source.get("status", "")
+            if status in {"online", "fallback", "missing-package", "planned", "error"}:
+                return status
         if not installed:
             return "missing-package"
         return "online" if active_provider == "akshare" else "fallback"
 
-    def _akshare_message(self, installed: bool, active_provider: str) -> str:
+    def _akshare_message(
+        self,
+        installed: bool,
+        active_provider: str,
+        source: dict[str, str] | None,
+    ) -> str:
+        if source is not None and active_provider == "akshare":
+            return f"适配器报告：{source.get('role', '未返回状态详情')}"
         if not installed:
             return "当前环境未安装 akshare，系统继续使用 Mock 数据。"
         if active_provider != "akshare":
             return "akshare 已安装，但当前配置仍使用 Mock 数据。"
         return "akshare 包已安装，当前作为主数据源；适配器仍保留 Mock 回退。"
 
-    def _akshare_next_action(self, installed: bool, active_provider: str) -> str:
+    def _akshare_next_action(
+        self,
+        installed: bool,
+        active_provider: str,
+        source: dict[str, str] | None,
+    ) -> str:
+        if source is not None and active_provider == "akshare" and source.get("status") == "fallback":
+            return "查看 AKShare 适配器返回的错误信息，确认网络、字段名和接口可用性。"
         if not installed:
             return "在后端环境执行 pip install akshare 后，再设置 STOCK_DOCTOR_DATA_PROVIDER=akshare。"
         if active_provider != "akshare":
