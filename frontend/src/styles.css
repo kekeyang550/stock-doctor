@@ -1830,6 +1830,96 @@ button {
   font-size: 24px;
 }
 
+.hotspot-brief-panel {
+  border-left: 5px solid #2e6b4f;
+}
+
+.hotspot-brief-panel.hot {
+  border-left-color: #b94a48;
+}
+
+.hotspot-brief-panel.warm {
+  border-left-color: #b6812d;
+}
+
+.hotspot-brief-panel.cool {
+  border-left-color: #1465a8;
+}
+
+.hotspot-brief-panel .split-title small {
+  border-radius: 6px;
+  background: #e8efe3;
+  color: #31553f;
+  padding: 4px 7px;
+}
+
+.hotspot-brief-panel.hot .split-title small {
+  background: #fff0ed;
+  color: #7a3d3d;
+}
+
+.hotspot-brief-panel.warm .split-title small {
+  background: #fff4d5;
+  color: #7a5a2e;
+}
+
+.hotspot-brief-panel p {
+  margin: 0 0 12px;
+  color: #394a40;
+  line-height: 1.6;
+}
+
+.hotspot-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.hotspot-brief-grid span {
+  border: 1px solid #e0e8db;
+  border-radius: 8px;
+  background: #f7faf5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 4px 8px;
+  padding: 10px;
+}
+
+.hotspot-brief-grid small {
+  color: #6a7a70;
+  grid-column: 1 / -1;
+}
+
+.hotspot-brief-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.hotspot-brief-grid em {
+  justify-self: end;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #26372f;
+  font-style: normal;
+  font-weight: 800;
+  padding: 4px 7px;
+}
+
+.hotspot-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.hotspot-focus button {
+  border: 1px solid #d2dbcc;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #344239;
+  padding: 6px 8px;
+  font-weight: 800;
+}
+
 .portfolio-details {
   margin-top: 10px;
   display: grid;
@@ -2838,6 +2928,10 @@ button {
 
   .storage-grid.compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hotspot-brief-grid {
+    grid-template-columns: 1fr;
   }
 
   .freshness-metrics {

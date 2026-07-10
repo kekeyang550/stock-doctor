@@ -14,6 +14,7 @@ from app.schemas.diagnosis import (
     DiagnosisChangeReport,
     DiagnosisResponse,
     DiagnosisThesis,
+    HotspotBrief,
     IndustryHeatItem,
     MarketOverview,
     MomentumSignalItem,
@@ -53,6 +54,7 @@ from app.services.data_connectors import DataConnectorHealthService
 from app.services.data_quality import DataQualityService
 from app.services.diagnosis import DiagnosisEngine
 from app.services.diagnosis_change import DiagnosisChangeService
+from app.services.hotspot_brief import HotspotBriefService
 from app.services.industry_heat import IndustryHeatService
 from app.services.momentum_signals import MomentumSignalService
 from app.services.notes import ResearchNoteService
@@ -83,6 +85,7 @@ note_service = ResearchNoteService()
 industry_heat_service = IndustryHeatService()
 concept_heat_service = ConceptHeatService()
 momentum_signal_service = MomentumSignalService()
+hotspot_brief_service = HotspotBriefService()
 risk_exposure_service = RiskExposureService()
 screener_service = ScreenerService()
 price_alert_service = PriceAlertService()
@@ -434,6 +437,22 @@ async def concept_heat(
 @router.get("/momentum/signals", response_model=list[MomentumSignalItem])
 async def momentum_signals(limit: int = Query(default=12, ge=1, le=50)) -> list[MomentumSignalItem]:
     return momentum_signal_service.build_signals(snapshots=_all_snapshots(), limit=limit)
+
+
+@router.get("/hotspots/brief", response_model=HotspotBrief)
+async def hotspot_brief(
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+) -> HotspotBrief:
+    snapshots = _all_snapshots()
+    ranked = _ranked_diagnoses(horizon)
+    alerts: list[AlertItem] = []
+    for snapshot in snapshots:
+        diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
+        alerts.extend(alert_engine.build_alerts(snapshot, diagnosis))
+    industries = industry_heat_service.build_heatmap(snapshots=snapshots, ranked=ranked, alerts=alerts)
+    concepts = concept_heat_service.build_heatmap(snapshots=snapshots, ranked=ranked)
+    signals = momentum_signal_service.build_signals(snapshots=snapshots, limit=12)
+    return hotspot_brief_service.build_brief(industries=industries, concepts=concepts, signals=signals)
 
 
 @router.get("/alerts", response_model=list[AlertItem])

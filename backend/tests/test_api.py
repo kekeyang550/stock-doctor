@@ -66,6 +66,16 @@ def test_momentum_signals_endpoint_returns_activity_items():
     assert {"signal_score", "signal_level", "reason", "volume_ratio"}.issubset(payload[0].keys())
 
 
+def test_hotspot_brief_endpoint_returns_market_focus():
+    response = client.get("/api/v1/hotspots/brief")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] in {"hot", "warm", "neutral", "cool"}
+    assert payload["summary"]
+    assert "focus_symbols" in payload
+
+
 def test_thesis_endpoint_returns_structured_argument():
     response = client.get("/api/v1/thesis/600519?horizon=swing")
 

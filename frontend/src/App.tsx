@@ -20,6 +20,7 @@ import {
   fetchDiagnosis,
   fetchDiagnosisChange,
   fetchDiagnosisThesis,
+  fetchHotspotBrief,
   fetchIndustryHeat,
   fetchMarketOverview,
   fetchMomentumSignals,
@@ -65,6 +66,7 @@ import type {
   DiagnosisChangeReport,
   DiagnosisThesis,
   EvidenceItem,
+  HotspotBrief,
   IndustryHeatItem,
   MarketOverview,
   MomentumSignalItem,
@@ -136,6 +138,7 @@ export default function App() {
   const [watchlistSummary, setWatchlistSummary] = useState<WatchlistSummary | null>(null)
   const [reviewActionOverview, setReviewActionOverview] = useState<ReviewActionOverview | null>(null)
   const [dataQualityOverview, setDataQualityOverview] = useState<DataQualityOverview | null>(null)
+  const [hotspotBrief, setHotspotBrief] = useState<HotspotBrief | null>(null)
   const [industryHeat, setIndustryHeat] = useState<IndustryHeatItem[]>([])
   const [conceptHeat, setConceptHeat] = useState<ConceptHeatItem[]>([])
   const [momentumSignals, setMomentumSignals] = useState<MomentumSignalItem[]>([])
@@ -159,7 +162,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
@@ -172,6 +175,7 @@ export default function App() {
       fetchDataQualityOverview(),
       fetchReports(),
       fetchMomentumSignals(),
+      fetchHotspotBrief(horizon),
     ])
     setStocks(items)
     setWatchlist(watchItems)
@@ -185,10 +189,11 @@ export default function App() {
     setDataQualityOverview(qualityOverview)
     setReports(savedReports)
     setMomentumSignals(momentum)
+    setHotspotBrief(brief)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
       setSelectedSymbol(items[0].symbol)
     }
-  }, [selectedSymbol])
+  }, [selectedSymbol, horizon])
 
   const loadDiagnosis = useCallback(async () => {
     setLoading(true)
@@ -540,6 +545,8 @@ export default function App() {
             <span>{error}</span>
           </div>
         ) : null}
+
+        <HotspotBriefPanel brief={hotspotBrief} onSelect={setSelectedSymbol} />
 
         <WatchlistSummaryPanel summary={watchlistSummary} onSelect={setSelectedSymbol} />
 
@@ -1092,6 +1099,51 @@ function SummaryMetric({ label, value }: { label: string; value: number | string
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  )
+}
+
+function HotspotBriefPanel({ brief, onSelect }: { brief: HotspotBrief | null; onSelect: (symbol: string) => void }) {
+  return (
+    <section className={`panel hotspot-brief-panel ${brief?.status ?? 'neutral'}`}>
+      <div className="panel-title split-title">
+        <span>
+          <BellRing size={18} />
+          <h3>热点总览</h3>
+        </span>
+        <small>{brief ? hotspotStatusLabel(brief.status) : '加载中'}</small>
+      </div>
+      {brief ? (
+        <>
+          <p>{brief.summary}</p>
+          <div className="hotspot-brief-grid">
+            <HotspotBriefMetric label="行业主线" value={brief.top_industry?.industry ?? '--'} score={brief.top_industry?.heat_score} />
+            <HotspotBriefMetric label="题材焦点" value={brief.top_concept?.concept ?? '--'} score={brief.top_concept?.heat_score} />
+            <HotspotBriefMetric label="异动代表" value={brief.top_signal?.name ?? '--'} score={brief.top_signal?.signal_score} />
+          </div>
+          {brief.focus_symbols.length ? (
+            <div className="hotspot-focus">
+              {brief.focus_symbols.map((symbol) => (
+                <button type="button" key={symbol} onClick={() => onSelect(symbol)}>
+                  {symbol}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p className="empty-text">正在提炼热点主线...</p>
+      )}
+    </section>
+  )
+}
+
+function HotspotBriefMetric({ label, value, score }: { label: string; value: string; score?: number }) {
+  return (
+    <span>
+      <small>{label}</small>
+      <strong>{value}</strong>
+      <em>{score ?? '--'}</em>
+    </span>
   )
 }
 
@@ -2157,6 +2209,16 @@ function buildSparklinePath(values: number[]) {
 
 function formatSignedNumber(value: number) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(0)}`
+}
+
+function hotspotStatusLabel(status: HotspotBrief['status']) {
+  const labels: Record<HotspotBrief['status'], string> = {
+    hot: '热点强',
+    warm: '温和扩散',
+    neutral: '分化观察',
+    cool: '动能偏弱',
+  }
+  return labels[status]
 }
 
 function Level({ label, value }: { label: string; value: number }) {

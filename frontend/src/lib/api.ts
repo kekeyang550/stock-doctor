@@ -10,6 +10,7 @@ import type {
   Diagnosis,
   DiagnosisChangeReport,
   DiagnosisThesis,
+  HotspotBrief,
   IndustryHeatItem,
   MarketOverview,
   MomentumSignalItem,
@@ -65,6 +66,10 @@ export function fetchConceptHeat(horizon: string): Promise<ConceptHeatItem[]> {
 
 export function fetchMomentumSignals(): Promise<MomentumSignalItem[]> {
   return getJson<MomentumSignalItem[]>('/api/v1/momentum/signals?limit=12')
+}
+
+export function fetchHotspotBrief(horizon: string): Promise<HotspotBrief> {
+  return getJson<HotspotBrief>(`/api/v1/hotspots/brief?horizon=${horizon}`)
 }
 
 export function fetchDataSources(): Promise<DataSource[]> {

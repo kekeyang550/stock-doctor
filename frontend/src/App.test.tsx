@@ -496,6 +496,15 @@ const momentumSignals = [
   },
 ]
 
+const hotspotBrief = {
+  status: 'hot',
+  summary: '热点强度较高，行业主线为汽车整车，题材焦点为新能源汽车，异动代表为比亚迪。',
+  top_industry: industryHeat[0],
+  top_concept: conceptHeat[0],
+  top_signal: momentumSignals[0],
+  focus_symbols: ['600519', '002594'],
+}
+
 const trend = {
   symbol: '600519',
   name: '贵州茅台',
@@ -601,6 +610,9 @@ describe('App', () => {
       if (url.includes('/momentum/signals')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(momentumSignals) })
       }
+      if (url.includes('/hotspots/brief')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotBrief) })
+      }
       if (url.includes('/data-sources')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) })
       }
@@ -666,6 +678,9 @@ describe('App', () => {
     const qualityOverviewPanel = screen.getByRole('heading', { name: '数据质量总览' }).closest('section')!
     expect(within(qualityOverviewPanel).getByText('平均质量')).toBeInTheDocument()
     expect(within(qualityOverviewPanel).getByText('贵州茅台')).toBeInTheDocument()
+    const hotspotPanel = screen.getByRole('heading', { name: '热点总览' }).closest('section')!
+    expect(within(hotspotPanel).getByText('热点强')).toBeInTheDocument()
+    expect(within(hotspotPanel).getByText('新能源汽车')).toBeInTheDocument()
     expect(screen.getByText('报告历史')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研究笔记' })).toBeInTheDocument()
     expect(screen.getByText('观察量能是否继续温和放大')).toBeInTheDocument()
@@ -679,8 +694,8 @@ describe('App', () => {
     expect(screen.getByText('自选股体检')).toBeInTheDocument()
     expect(screen.getByText('行业热力')).toBeInTheDocument()
     expect(screen.getByText(/价量共振/)).toBeInTheDocument()
-    expect(screen.getByText('题材热榜')).toBeInTheDocument()
-    expect(screen.getByText('新能源汽车')).toBeInTheDocument()
+    const conceptPanel = screen.getByRole('heading', { name: '题材热榜' }).closest('section')!
+    expect(within(conceptPanel).getByText('新能源汽车')).toBeInTheDocument()
     expect(screen.getByText('异动雷达')).toBeInTheDocument()
     const actionOverviewPanel = screen.getByRole('heading', { name: '行动总览' }).closest('section')!
     expect(within(actionOverviewPanel).getByText('主力资金流出')).toBeInTheDocument()

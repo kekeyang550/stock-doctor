@@ -463,6 +463,15 @@ class MomentumSignalItem(BaseModel):
     reason: str
 
 
+class HotspotBrief(BaseModel):
+    status: str = Field(pattern="^(hot|warm|neutral|cool)$")
+    summary: str
+    top_industry: IndustryHeatItem | None
+    top_concept: ConceptHeatItem | None
+    top_signal: MomentumSignalItem | None
+    focus_symbols: list[str]
+
+
 class RiskExposureItem(BaseModel):
     category: str
     event_count: int

@@ -456,6 +456,15 @@ export type MomentumSignalItem = {
   reason: string
 }
 
+export type HotspotBrief = {
+  status: 'hot' | 'warm' | 'neutral' | 'cool'
+  summary: string
+  top_industry: IndustryHeatItem | null
+  top_concept: ConceptHeatItem | null
+  top_signal: MomentumSignalItem | null
+  focus_symbols: string[]
+}
+
 export type TrendPoint = {
   date: string
   close: number
