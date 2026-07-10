@@ -1,0 +1,232 @@
+from fastapi.testclient import TestClient
+
+from app.main import create_app
+
+
+client = TestClient(create_app())
+
+
+def test_health_endpoint():
+    response = client.get("/api/v1/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_stock_diagnosis_endpoint():
+    response = client.get("/api/v1/diagnosis/600519")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600519"
+    assert "score" in payload
+    assert len(payload["evidence"]) > 0
+
+
+def test_market_overview_endpoint():
+    response = client.get("/api/v1/market/overview")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["index_name"] == "沪深 300"
+    assert len(payload["hot_industries"]) == 3
+
+
+def test_system_storage_endpoint_returns_persistence_status():
+    response = client.get("/api/v1/system/storage")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["backend"] in {"json", "sqlite"}
+    assert payload["status"] == "online"
+    assert payload["path"]
+    assert {"collections", "total_records", "migration_hint"}.issubset(payload.keys())
+    assert {item["key"] for item in payload["collections"]} == {
+        "watchlist",
+        "reports",
+        "notes",
+        "price_alerts",
+    }
+
+
+def test_system_export_endpoint_returns_state_snapshot():
+    response = client.get("/api/v1/system/export")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["backend"] in {"json", "sqlite"}
+    assert payload["exported_at"]
+    assert {"watchlist", "reports", "notes", "price_alerts"}.issubset(payload.keys())
+    assert isinstance(payload["watchlist"], list)
+    assert isinstance(payload["reports"], list)
+
+
+def test_watchlist_add_and_remove():
+    add_response = client.post("/api/v1/watchlist", json={"symbol": "000001"})
+
+    assert add_response.status_code == 201
+    assert any(item["symbol"] == "000001" for item in add_response.json())
+
+    remove_response = client.delete("/api/v1/watchlist/000001")
+
+    assert remove_response.status_code == 200
+    assert all(item["symbol"] != "000001" for item in remove_response.json())
+
+
+def test_watchlist_summary_endpoint():
+    response = client.get("/api/v1/watchlist/summary")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["stock_count"] >= 1
+    assert payload["average_score"] > 0
+    assert "industry_exposure" in payload
+    assert payload["top_stock"]["symbol"]
+    assert payload["highest_risk_alert"]["severity"] in {"high", "medium", "low"}
+
+
+def test_report_create_list_and_delete():
+    create_response = client.post("/api/v1/reports", json={"symbol": "600519", "horizon": "swing"})
+
+    assert create_response.status_code == 201
+    report = create_response.json()
+    assert report["diagnosis"]["symbol"] == "600519"
+
+    list_response = client.get("/api/v1/reports")
+
+    assert list_response.status_code == 200
+    assert any(item["id"] == report["id"] for item in list_response.json())
+
+    delete_response = client.delete(f"/api/v1/reports/{report['id']}")
+
+    assert delete_response.status_code == 204
+
+
+def test_note_create_list_and_delete():
+    create_response = client.post("/api/v1/notes", json={"symbol": "600519", "body": "观察量能是否继续温和放大"})
+
+    assert create_response.status_code == 201
+    note = create_response.json()
+    assert note["symbol"] == "600519"
+
+    list_response = client.get("/api/v1/notes?symbol=600519")
+
+    assert list_response.status_code == 200
+    assert any(item["id"] == note["id"] for item in list_response.json())
+
+    delete_response = client.delete(f"/api/v1/notes/{note['id']}")
+
+    assert delete_response.status_code == 204
+
+
+def test_price_alert_create_list_and_delete():
+    create_response = client.post(
+        "/api/v1/price-alerts",
+        json={"symbol": "600519", "target_price": 1500, "direction": "above", "label": "突破观察"},
+    )
+
+    assert create_response.status_code == 201
+    alert = create_response.json()
+    assert alert["symbol"] == "600519"
+    assert alert["status"] in {"triggered", "watching"}
+
+    list_response = client.get("/api/v1/price-alerts?symbol=600519")
+
+    assert list_response.status_code == 200
+    assert any(item["id"] == alert["id"] for item in list_response.json())
+
+    delete_response = client.delete(f"/api/v1/price-alerts/{alert['id']}")
+
+    assert delete_response.status_code == 204
+
+
+def test_rankings_endpoint_returns_sorted_candidates():
+    response = client.get("/api/v1/rankings?sort=total&limit=3")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 3
+    assert payload[0]["total_score"] >= payload[1]["total_score"]
+    assert {"symbol", "rating", "primary_risk"}.issubset(payload[0].keys())
+
+
+def test_industry_heat_endpoint_returns_grouped_heatmap():
+    response = client.get("/api/v1/industries/heat")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) > 0
+    assert {"industry", "average_score", "heat_level", "top_symbol"}.issubset(payload[0].keys())
+    assert payload[0]["heat_level"] in {"hot", "warm", "neutral", "cool"}
+
+
+def test_alerts_endpoint_returns_prioritized_items():
+    response = client.get("/api/v1/alerts?scope=all")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) > 0
+    assert {"symbol", "severity", "title", "evidence"}.issubset(payload[0].keys())
+    assert payload[0]["severity"] in {"high", "medium", "low"}
+
+
+def test_risk_exposure_endpoint_returns_grouped_risk_categories():
+    response = client.get("/api/v1/risk/exposure?scope=all")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) > 0
+    assert {"category", "event_count", "severity_score", "top_symbol"}.issubset(payload[0].keys())
+
+
+def test_screener_endpoint_returns_preset_candidates():
+    response = client.get("/api/v1/screeners/strong")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) > 0
+    assert {"symbol", "preset", "reason", "risk_note"}.issubset(payload[0].keys())
+
+
+def test_unknown_screener_preset_returns_404():
+    response = client.get("/api/v1/screeners/unknown")
+
+    assert response.status_code == 404
+
+
+def test_timeline_endpoint_returns_tracking_events():
+    response = client.get("/api/v1/timeline?scope=all&limit=8")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) > 0
+    assert {"symbol", "due_date", "severity", "trigger", "status"}.issubset(payload[0].keys())
+    assert payload[0]["severity"] in {"high", "medium", "low"}
+
+
+def test_trend_endpoint_returns_series():
+    response = client.get("/api/v1/trend/600519?days=30")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600519"
+    assert len(payload["points"]) == 30
+    assert {"date", "close", "ma5", "ma20", "volume_ratio"}.issubset(payload["points"][0].keys())
+
+
+def test_peer_comparison_endpoint_returns_ranked_sample():
+    response = client.get("/api/v1/peers/600519?limit=4")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600519"
+    assert payload["sample_size"] >= 1
+    assert any(item["relative_label"] == "当前标的" for item in payload["items"])
+    assert payload["items"][0]["total_score"] >= payload["items"][-1]["total_score"]
+    assert {"pe_ttm", "roe", "main_inflow_million"}.issubset(payload["items"][0].keys())
+
+
+def test_unknown_symbol_returns_404():
+    response = client.get("/api/v1/diagnosis/UNKNOWN")
+
+    assert response.status_code == 404

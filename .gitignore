@@ -1,0 +1,36 @@
+.playwright-cli/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Backend runtime data and logs
+backend/data/state.json
+backend/data/state.sqlite3
+backend/data/*.sqlite3
+backend/uvicorn.log
+backend/uvicorn.err.log
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/vite.log
+frontend/*.tsbuildinfo
+
+# Local environment and editor files
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
