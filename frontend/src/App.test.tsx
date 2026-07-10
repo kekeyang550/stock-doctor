@@ -4,6 +4,28 @@ import App from './App'
 
 const stocks = [
   { symbol: '600519', name: '贵州茅台', industry: '白酒', last_price: 1518.3, change_pct: 1.18 },
+  { symbol: '000001', name: '平安银行', industry: '股份制银行', last_price: 10.62, change_pct: 0.19 },
+]
+
+const stockSearchResults = [
+  {
+    symbol: '600519',
+    name: '贵州茅台',
+    industry: '白酒',
+    last_price: 1518.3,
+    change_pct: 1.18,
+    in_watchlist: true,
+    match_reason: '默认候选',
+  },
+  {
+    symbol: '000001',
+    name: '平安银行',
+    industry: '股份制银行',
+    last_price: 10.62,
+    change_pct: 0.19,
+    in_watchlist: false,
+    match_reason: '行业匹配',
+  },
 ]
 
 const diagnosis = {
@@ -475,6 +497,9 @@ const peers = {
 describe('App', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('/stocks/search')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(stockSearchResults) })
+      }
       if (url.includes('/stocks')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(stocks) })
       }
@@ -569,6 +594,9 @@ describe('App', () => {
 
     await waitFor(() => expect(screen.getByText('强势关注')).toBeInTheDocument())
     expect(screen.getByRole('heading', { name: /贵州茅台 600519/ })).toBeInTheDocument()
+    const searchResults = screen.getByText('搜索结果').closest('div')!
+    expect(within(searchResults).getByText('平安银行')).toBeInTheDocument()
+    expect(within(searchResults).getByLabelText('加入自选 平安银行')).toBeInTheDocument()
     expect(screen.getByText('AI 诊断摘要')).toBeInTheDocument()
     expect(screen.getByText('证据链')).toBeInTheDocument()
     expect(screen.getByText('市场概览')).toBeInTheDocument()

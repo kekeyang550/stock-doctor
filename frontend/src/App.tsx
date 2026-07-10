@@ -31,6 +31,7 @@ import {
   fetchReviewActions,
   fetchRiskExposure,
   fetchScreener,
+  fetchStockSearch,
   fetchStocks,
   fetchStorageExport,
   fetchStorageStatus,
@@ -75,6 +76,7 @@ import type {
   ReviewActionStockSummary,
   RiskExposureItem,
   ScreenCandidate,
+  StockSearchResult,
   StockSummary,
   StorageImportPayload,
   StorageImportPreview,
@@ -109,6 +111,7 @@ const screenerPresets = [
 
 export default function App() {
   const [stocks, setStocks] = useState<StockSummary[]>([])
+  const [stockSearchResults, setStockSearchResults] = useState<StockSearchResult[]>([])
   const [watchlist, setWatchlist] = useState<StockSummary[]>([])
   const [overview, setOverview] = useState<MarketOverview | null>(null)
   const [dataSources, setDataSources] = useState<DataSource[]>([])
@@ -211,6 +214,13 @@ export default function App() {
   }, [loadDiagnosis])
 
   useEffect(() => {
+    const queryValue = query.trim()
+    fetchStockSearch(queryValue)
+      .then(setStockSearchResults)
+      .catch((err) => setError(err instanceof Error ? err.message : '股票搜索失败'))
+  }, [query, watchlist])
+
+  useEffect(() => {
     fetchRankings(horizon, rankingSort)
       .then(setRankings)
       .catch((err) => setError(err instanceof Error ? err.message : '排行加载失败'))
@@ -300,6 +310,16 @@ export default function App() {
       setError(err instanceof Error ? err.message : '自选股更新失败')
     }
   }, [isInWatchlist, selectedSymbol])
+
+  const addSearchResultToWatchlist = useCallback(async (symbol: string) => {
+    setError(null)
+    try {
+      const nextWatchlist = await addWatchlistSymbol(symbol)
+      setWatchlist(nextWatchlist)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '自选股更新失败')
+    }
+  }, [])
 
   const saveCurrentReport = useCallback(async () => {
     setError(null)
@@ -459,11 +479,13 @@ export default function App() {
     <main className="app-shell">
       <StockList
         stocks={stocks}
+        searchResults={stockSearchResults}
         watchlist={watchlist}
         selectedSymbol={selectedSymbol}
         query={query}
         onQueryChange={setQuery}
         onSelect={setSelectedSymbol}
+        onAddToWatchlist={addSearchResultToWatchlist}
       />
       <section className="workspace">
         <header className="topbar">

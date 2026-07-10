@@ -6,6 +6,11 @@ export type StockSummary = {
   change_pct: number
 }
 
+export type StockSearchResult = StockSummary & {
+  in_watchlist: boolean
+  match_reason: string
+}
+
 export type MarketOverview = {
   as_of: string
   index_name: string

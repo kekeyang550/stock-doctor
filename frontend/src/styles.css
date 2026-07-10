@@ -95,6 +95,65 @@ button {
   gap: 4px;
 }
 
+.search-results-block {
+  display: grid;
+  gap: 6px;
+}
+
+.search-results {
+  display: grid;
+  gap: 7px;
+}
+
+.search-result {
+  border: 1px solid #385044;
+  border-radius: 8px;
+  background: #203029;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 6px;
+  align-items: stretch;
+  padding: 6px;
+}
+
+.search-result.active {
+  border-color: #eef5e8;
+}
+
+.search-result > button:first-child {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 4px;
+  text-align: left;
+}
+
+.search-result small {
+  color: #b8c6bd;
+}
+
+.search-result em,
+.search-add {
+  border: 1px solid #385044;
+  border-radius: 6px;
+  background: #eef5e8;
+  color: #17211b;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.search-results p {
+  margin: 0;
+  color: #b8c6bd;
+  font-size: 13px;
+}
+
 .watchlist-chips,
 .tag-row {
   display: flex;

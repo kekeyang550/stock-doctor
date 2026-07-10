@@ -20,6 +20,7 @@ import type {
   ReviewActionPlan,
   RiskExposureItem,
   ScreenCandidate,
+  StockSearchResult,
   StockSummary,
   StorageExport,
   StorageImportPayload,
@@ -42,6 +43,10 @@ async function getJson<T>(url: string): Promise<T> {
 
 export function fetchStocks(): Promise<StockSummary[]> {
   return getJson<StockSummary[]>('/api/v1/stocks')
+}
+
+export function fetchStockSearch(query: string): Promise<StockSearchResult[]> {
+  return getJson<StockSearchResult[]>(`/api/v1/stocks/search?q=${encodeURIComponent(query)}&limit=12`)
 }
 
 export function fetchMarketOverview(): Promise<MarketOverview> {

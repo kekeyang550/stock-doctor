@@ -29,6 +29,7 @@ from app.schemas.diagnosis import (
     ReportRequest,
     ScreenCandidate,
     StockSummary,
+    StockSearchResult,
     StockSnapshot,
     StorageCollectionStat,
     StorageExport,
@@ -94,6 +95,31 @@ async def health() -> dict[str, str]:
 @router.get("/stocks", response_model=list[StockSummary])
 async def list_stocks() -> list[StockSummary]:
     return data_provider.list_stocks()
+
+
+@router.get("/stocks/search", response_model=list[StockSearchResult])
+async def search_stocks(
+    q: str = Query(default="", max_length=40),
+    limit: int = Query(default=12, ge=1, le=30),
+) -> list[StockSearchResult]:
+    query = q.strip().lower()
+    watchlist_symbols = {stock.symbol for stock in data_provider.get_watchlist()}
+    candidates = data_provider.list_stocks()
+    if query:
+        candidates = [
+            stock
+            for stock in candidates
+            if query in stock.symbol.lower() or query in stock.name.lower() or query in stock.industry.lower()
+        ]
+    candidates = sorted(candidates, key=lambda stock: (stock.symbol not in watchlist_symbols, stock.symbol))
+    return [
+        StockSearchResult(
+            **stock.model_dump(),
+            in_watchlist=stock.symbol in watchlist_symbols,
+            match_reason=_stock_match_reason(stock, query),
+        )
+        for stock in candidates[:limit]
+    ]
 
 
 @router.get("/market/overview", response_model=MarketOverview)
@@ -625,6 +651,16 @@ def _ranked_diagnoses(horizon: str) -> list[RankedDiagnosis]:
             )
         )
     return ranked
+
+
+def _stock_match_reason(stock: StockSummary, query: str) -> str:
+    if not query:
+        return "默认候选"
+    if query in stock.symbol.lower():
+        return "代码匹配"
+    if query in stock.name.lower():
+        return "名称匹配"
+    return "行业匹配"
 
 
 def _storage_status(store: StateStore) -> StorageStatus:

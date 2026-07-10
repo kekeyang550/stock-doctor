@@ -11,6 +11,11 @@ class StockSummary(BaseModel):
     change_pct: float
 
 
+class StockSearchResult(StockSummary):
+    in_watchlist: bool
+    match_reason: str
+
+
 class WatchlistRequest(BaseModel):
     symbol: str = Field(min_length=1, max_length=12)
 

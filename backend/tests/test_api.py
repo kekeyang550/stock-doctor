@@ -23,6 +23,17 @@ def test_stock_diagnosis_endpoint():
     assert len(payload["evidence"]) > 0
 
 
+def test_stock_search_endpoint_returns_match_context():
+    response = client.get("/api/v1/stocks/search?q=银行")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert payload[0]["symbol"] == "000001"
+    assert payload[0]["match_reason"] == "名称匹配"
+    assert "in_watchlist" in payload[0]
+
+
 def test_diagnosis_change_endpoint_returns_baseline_or_change():
     response = client.get("/api/v1/diagnosis-change/600519?horizon=swing")
 
