@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.schemas.diagnosis import (
     AlertItem,
+    ConceptHeatItem,
     DataConnectorHealth,
     DataFreshnessStatus,
     DataQualityOverview,
@@ -46,6 +47,7 @@ from app.schemas.diagnosis import (
     IndustryExposure,
 )
 from app.services.alerts import AlertEngine
+from app.services.concept_heat import ConceptHeatService
 from app.services.data_connectors import DataConnectorHealthService
 from app.services.data_quality import DataQualityService
 from app.services.diagnosis import DiagnosisEngine
@@ -77,6 +79,7 @@ peer_service = PeerComparisonService(diagnosis_engine)
 timeline_service = TimelineService()
 note_service = ResearchNoteService()
 industry_heat_service = IndustryHeatService()
+concept_heat_service = ConceptHeatService()
 risk_exposure_service = RiskExposureService()
 screener_service = ScreenerService()
 price_alert_service = PriceAlertService()
@@ -416,6 +419,13 @@ async def industry_heat(
         diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
         alerts.extend(alert_engine.build_alerts(snapshot, diagnosis))
     return industry_heat_service.build_heatmap(snapshots=snapshots, ranked=ranked, alerts=alerts)
+
+
+@router.get("/concepts/heat", response_model=list[ConceptHeatItem])
+async def concept_heat(
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+) -> list[ConceptHeatItem]:
+    return concept_heat_service.build_heatmap(snapshots=_all_snapshots(), ranked=_ranked_diagnoses(horizon))
 
 
 @router.get("/alerts", response_model=list[AlertItem])

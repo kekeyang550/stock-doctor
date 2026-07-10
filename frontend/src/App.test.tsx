@@ -467,6 +467,20 @@ const industryHeat = [
   },
 ]
 
+const conceptHeat = [
+  {
+    concept: '新能源汽车',
+    stock_count: 1,
+    heat_score: 92,
+    average_change_pct: 2.85,
+    average_main_inflow_million: 638.9,
+    top_symbol: '002594',
+    top_name: '比亚迪',
+    reason: '比亚迪领涨，价格与资金同步增强。',
+    heat_level: 'hot',
+  },
+]
+
 const trend = {
   symbol: '600519',
   name: '贵州茅台',
@@ -566,6 +580,9 @@ describe('App', () => {
       if (url.includes('/industries/heat')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(industryHeat) })
       }
+      if (url.includes('/concepts/heat')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(conceptHeat) })
+      }
       if (url.includes('/data-sources')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) })
       }
@@ -644,6 +661,8 @@ describe('App', () => {
     expect(screen.getByText('自选股体检')).toBeInTheDocument()
     expect(screen.getByText('行业热力')).toBeInTheDocument()
     expect(screen.getByText(/价量共振/)).toBeInTheDocument()
+    expect(screen.getByText('题材热榜')).toBeInTheDocument()
+    expect(screen.getByText('新能源汽车')).toBeInTheDocument()
     const actionOverviewPanel = screen.getByRole('heading', { name: '行动总览' }).closest('section')!
     expect(within(actionOverviewPanel).getByText('主力资金流出')).toBeInTheDocument()
     expect(within(actionOverviewPanel).getByText(/600519/)).toBeInTheDocument()

@@ -431,6 +431,18 @@ export type IndustryHeatItem = {
   momentum_label: string
 }
 
+export type ConceptHeatItem = {
+  concept: string
+  stock_count: number
+  heat_score: number
+  average_change_pct: number
+  average_main_inflow_million: number
+  top_symbol: string
+  top_name: string
+  reason: string
+  heat_level: 'hot' | 'warm' | 'neutral' | 'cool'
+}
+
 export type TrendPoint = {
   date: string
   close: number

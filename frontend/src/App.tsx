@@ -11,6 +11,7 @@ import {
   deletePriceAlert,
   deleteReport,
   fetchAlerts,
+  fetchConceptHeat,
   fetchDataConnectorHealth,
   fetchDataFreshness,
   fetchDataQuality,
@@ -49,6 +50,7 @@ import {
 import type {
   AlertItem,
   ChecklistItem,
+  ConceptHeatItem,
   DataConnectorHealth,
   DataConnectorStatus,
   DataFreshnessStatus,
@@ -133,6 +135,7 @@ export default function App() {
   const [reviewActionOverview, setReviewActionOverview] = useState<ReviewActionOverview | null>(null)
   const [dataQualityOverview, setDataQualityOverview] = useState<DataQualityOverview | null>(null)
   const [industryHeat, setIndustryHeat] = useState<IndustryHeatItem[]>([])
+  const [conceptHeat, setConceptHeat] = useState<ConceptHeatItem[]>([])
   const [riskExposure, setRiskExposure] = useState<RiskExposureItem[]>([])
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
   const [trend, setTrend] = useState<TrendSeries | null>(null)
@@ -254,6 +257,12 @@ export default function App() {
     fetchIndustryHeat(horizon)
       .then(setIndustryHeat)
       .catch((err) => setError(err instanceof Error ? err.message : '行业热力加载失败'))
+  }, [horizon])
+
+  useEffect(() => {
+    fetchConceptHeat(horizon)
+      .then(setConceptHeat)
+      .catch((err) => setError(err instanceof Error ? err.message : '题材热榜加载失败'))
   }, [horizon])
 
   useEffect(() => {
@@ -534,6 +543,8 @@ export default function App() {
         <DataQualityOverviewPanel overview={dataQualityOverview} onSelect={setSelectedSymbol} />
 
         <IndustryHeatPanel items={industryHeat} onSelect={setSelectedSymbol} />
+
+        <ConceptHeatPanel items={conceptHeat} onSelect={setSelectedSymbol} />
 
         <TimelinePanel events={timeline} onSelect={setSelectedSymbol} />
 
@@ -1105,6 +1116,39 @@ function IndustryHeatPanel({ items, onSelect }: { items: IndustryHeatItem[]; onS
                 {item.average_change_pct >= 0 ? '+' : ''}{item.average_change_pct.toFixed(2)}%
               </em>
               <small>{item.top_name} {item.top_score} · 资金 {formatSignedNumber(item.average_main_inflow_million)}</small>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ConceptHeatPanel({ items, onSelect }: { items: ConceptHeatItem[]; onSelect: (symbol: string) => void }) {
+  return (
+    <section className="panel concept-heat-panel">
+      <div className="panel-title split-title">
+        <span>
+          <Star size={18} />
+          <h3>题材热榜</h3>
+        </span>
+        <small>{items.length ? `${items.length} 个题材` : '加载中'}</small>
+      </div>
+      {items.length === 0 ? (
+        <p className="empty-text">正在归因题材热度...</p>
+      ) : (
+        <div className="concept-heat-list">
+          {items.map((item) => (
+            <button type="button" key={item.concept} className={`concept-heat-row ${item.heat_level}`} onClick={() => onSelect(item.top_symbol)}>
+              <strong>{item.heat_score}</strong>
+              <span>
+                <b>{item.concept}</b>
+                <small>{item.stock_count} 只 · {item.top_name} · {item.reason}</small>
+              </span>
+              <em className={item.average_change_pct >= 0 ? 'up' : 'down'}>
+                {item.average_change_pct >= 0 ? '+' : ''}{item.average_change_pct.toFixed(2)}%
+              </em>
+              <small>资金 {formatSignedNumber(item.average_main_inflow_million)}</small>
             </button>
           ))}
         </div>

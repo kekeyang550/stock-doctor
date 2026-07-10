@@ -48,6 +48,15 @@ def test_diagnosis_change_endpoint_returns_baseline_or_change():
     assert payload["changes"]
 
 
+def test_concept_heat_endpoint_returns_theme_scores():
+    response = client.get("/api/v1/concepts/heat")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert {"concept", "heat_score", "reason", "top_symbol"}.issubset(payload[0].keys())
+
+
 def test_thesis_endpoint_returns_structured_argument():
     response = client.get("/api/v1/thesis/600519?horizon=swing")
 

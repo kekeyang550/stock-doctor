@@ -438,6 +438,18 @@ class IndustryHeatItem(BaseModel):
     momentum_label: str
 
 
+class ConceptHeatItem(BaseModel):
+    concept: str
+    stock_count: int
+    heat_score: int = Field(ge=0, le=100)
+    average_change_pct: float
+    average_main_inflow_million: float
+    top_symbol: str
+    top_name: str
+    reason: str
+    heat_level: str = Field(pattern="^(hot|warm|neutral|cool)$")
+
+
 class RiskExposureItem(BaseModel):
     category: str
     event_count: int

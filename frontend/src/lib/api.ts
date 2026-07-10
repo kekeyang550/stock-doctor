@@ -1,5 +1,6 @@
 import type {
   AlertItem,
+  ConceptHeatItem,
   DataConnectorHealth,
   DataFreshnessStatus,
   DataQualityOverview,
@@ -55,6 +56,10 @@ export function fetchMarketOverview(): Promise<MarketOverview> {
 
 export function fetchIndustryHeat(horizon: string): Promise<IndustryHeatItem[]> {
   return getJson<IndustryHeatItem[]>(`/api/v1/industries/heat?horizon=${horizon}`)
+}
+
+export function fetchConceptHeat(horizon: string): Promise<ConceptHeatItem[]> {
+  return getJson<ConceptHeatItem[]>(`/api/v1/concepts/heat?horizon=${horizon}`)
 }
 
 export function fetchDataSources(): Promise<DataSource[]> {
