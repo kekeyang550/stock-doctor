@@ -22,8 +22,29 @@ class HotspotReviewActionService:
             high_count=len([item for item in actions if item.priority == "high"]),
             medium_count=len([item for item in actions if item.priority == "medium"]),
             low_count=len([item for item in actions if item.priority == "low"]),
+            pending_count=len([item for item in actions if item.status == "pending"]),
+            watching_count=len([item for item in actions if item.status == "watching"]),
+            done_count=len([item for item in actions if item.status == "done"]),
             actions=actions,
         )
+
+    def apply_statuses(self, plan: HotspotReviewPlan, statuses: list[dict]) -> HotspotReviewPlan:
+        status_by_key = {
+            str(record.get("key")): str(record.get("status"))
+            for record in statuses
+            if record.get("status") in {"pending", "watching", "done"}
+        }
+        for item in plan.actions:
+            status_value = status_by_key.get(self.status_key(plan.horizon, plan.mode, item.id))
+            if status_value is not None:
+                item.status = status_value
+        plan.pending_count = len([item for item in plan.actions if item.status == "pending"])
+        plan.watching_count = len([item for item in plan.actions if item.status == "watching"])
+        plan.done_count = len([item for item in plan.actions if item.status == "done"])
+        return plan
+
+    def status_key(self, horizon: str, mode: str, action_id: str) -> str:
+        return f"HOTSPOT:{horizon}:{mode}:{action_id}"
 
     def _action(self, candidate: HotspotCandidate) -> HotspotReviewAction:
         priority = self._priority(candidate)

@@ -12,6 +12,7 @@ import type {
   DiagnosisThesis,
   HotspotBrief,
   HotspotCandidate,
+  HotspotReviewAction,
   HotspotReviewPlan,
   IndustryHeatItem,
   MarketOverview,
@@ -80,6 +81,23 @@ export function fetchHotspotCandidates(horizon: string, mode = 'balanced'): Prom
 
 export function fetchHotspotReviewActions(horizon: string, mode = 'balanced'): Promise<HotspotReviewPlan> {
   return getJson<HotspotReviewPlan>(`/api/v1/hotspots/review-actions?horizon=${horizon}&mode=${mode}&limit=8`)
+}
+
+export async function updateHotspotReviewActionStatus(
+  horizon: string,
+  mode: string,
+  actionId: string,
+  status: HotspotReviewAction['status'],
+): Promise<HotspotReviewPlan> {
+  const response = await fetch(`/api/v1/hotspots/review-actions/${encodeURIComponent(actionId)}?horizon=${horizon}&mode=${mode}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+  if (!response.ok) {
+    throw new Error(`更新热点动作状态失败：${response.status}`)
+  }
+  return response.json() as Promise<HotspotReviewPlan>
 }
 
 export function fetchDataSources(): Promise<DataSource[]> {

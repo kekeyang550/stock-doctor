@@ -93,7 +93,22 @@ def test_hotspot_review_actions_endpoint_returns_candidate_followups():
     assert payload["mode"] == "momentum"
     assert payload["candidate_count"] >= len(payload["actions"])
     assert payload["high_count"] + payload["medium_count"] + payload["low_count"] == len(payload["actions"])
-    assert {"symbol", "concept", "title", "trigger", "check_window"}.issubset(payload["actions"][0].keys())
+    assert payload["pending_count"] + payload["watching_count"] + payload["done_count"] == len(payload["actions"])
+    assert {"symbol", "concept", "title", "trigger", "check_window", "status"}.issubset(payload["actions"][0].keys())
+
+
+def test_hotspot_review_action_status_update_persists():
+    plan = client.get("/api/v1/hotspots/review-actions?mode=balanced").json()
+    action_id = plan["actions"][0]["id"]
+
+    response = client.patch(f"/api/v1/hotspots/review-actions/{action_id}?mode=balanced", json={"status": "watching"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    updated = next(item for item in payload["actions"] if item["id"] == action_id)
+    assert updated["status"] == "watching"
+
+    client.patch(f"/api/v1/hotspots/review-actions/{action_id}?mode=balanced", json={"status": "pending"})
 
 
 def test_thesis_endpoint_returns_structured_argument():

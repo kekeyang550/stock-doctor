@@ -497,6 +497,7 @@ class HotspotReviewAction(BaseModel):
     detail: str
     trigger: str
     check_window: str
+    status: str = Field(default="pending", pattern="^(pending|watching|done)$")
 
 
 class HotspotReviewPlan(BaseModel):
@@ -507,6 +508,9 @@ class HotspotReviewPlan(BaseModel):
     high_count: int
     medium_count: int
     low_count: int
+    pending_count: int
+    watching_count: int
+    done_count: int
     actions: list[HotspotReviewAction]
 
 

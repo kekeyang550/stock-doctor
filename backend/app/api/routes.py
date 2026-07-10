@@ -485,6 +485,43 @@ async def hotspot_review_actions(
     mode: str = Query(default="balanced", pattern="^(balanced|capital|momentum)$"),
     limit: int = Query(default=8, ge=1, le=20),
 ) -> HotspotReviewPlan:
+    return _build_hotspot_review_action_plan(horizon=horizon, mode=mode, limit=limit)
+
+
+@router.patch("/hotspots/review-actions/{action_id}", response_model=HotspotReviewPlan)
+async def update_hotspot_review_action_status(
+    action_id: str,
+    request: ReviewActionStatusUpdate,
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    mode: str = Query(default="balanced", pattern="^(balanced|capital|momentum)$"),
+) -> HotspotReviewPlan:
+    plan = _build_hotspot_review_action_plan(horizon=horizon, mode=mode)
+    if not any(item.id == action_id for item in plan.actions):
+        raise HTTPException(status_code=404, detail="Hotspot review action not found")
+    store = create_state_store()
+    key = hotspot_review_action_service.status_key(horizon, mode, action_id)
+    statuses = [record for record in store.load_review_action_statuses() if record.get("key") != key]
+    statuses.insert(
+        0,
+        {
+            "key": key,
+            "symbol": "HOTSPOT",
+            "horizon": horizon,
+            "mode": mode,
+            "action_id": action_id,
+            "status": request.status,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    store.save_review_action_statuses(statuses[:500])
+    return _build_hotspot_review_action_plan(horizon=horizon, mode=mode)
+
+
+def _build_hotspot_review_action_plan(
+    horizon: str,
+    mode: str,
+    limit: int = 8,
+) -> HotspotReviewPlan:
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
     signals = momentum_signal_service.build_signals(snapshots=snapshots, limit=50)
@@ -495,12 +532,13 @@ async def hotspot_review_actions(
         mode=mode,
         limit=max(limit, 10),
     )
-    return hotspot_review_action_service.build_plan(
+    plan = hotspot_review_action_service.build_plan(
         candidates=candidates,
         horizon=horizon,
         mode=mode,
         limit=limit,
     )
+    return hotspot_review_action_service.apply_statuses(plan, create_state_store().load_review_action_statuses())
 
 
 @router.get("/alerts", response_model=list[AlertItem])

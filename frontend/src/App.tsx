@@ -49,6 +49,7 @@ import {
   previewStorageImport,
   removeWatchlistSymbol,
   runRefreshJob,
+  updateHotspotReviewActionStatus,
   updateReviewActionStatus,
 } from './lib/api'
 import type {
@@ -70,6 +71,7 @@ import type {
   EvidenceItem,
   HotspotBrief,
   HotspotCandidate,
+  HotspotReviewAction,
   HotspotReviewPlan,
   IndustryHeatItem,
   MarketOverview,
@@ -440,6 +442,16 @@ export default function App() {
     }
   }, [horizon, selectedSymbol])
 
+  const setHotspotActionStatus = useCallback(async (actionId: string, status: HotspotReviewAction['status']) => {
+    setError(null)
+    try {
+      const nextPlan = await updateHotspotReviewActionStatus(horizon, hotspotMode, actionId, status)
+      setHotspotReviewPlan(nextPlan)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '热点动作状态更新失败')
+    }
+  }, [horizon, hotspotMode])
+
   const exportStorage = useCallback(async () => {
     setError(null)
     try {
@@ -572,7 +584,11 @@ export default function App() {
           onSelect={setSelectedSymbol}
         />
 
-        <HotspotReviewActionsPanel plan={hotspotReviewPlan} onSelect={setSelectedSymbol} />
+        <HotspotReviewActionsPanel
+          plan={hotspotReviewPlan}
+          onSelect={setSelectedSymbol}
+          onStatusChange={setHotspotActionStatus}
+        />
 
         <WatchlistSummaryPanel summary={watchlistSummary} onSelect={setSelectedSymbol} />
 
@@ -1232,9 +1248,11 @@ function HotspotCandidatesPanel({
 function HotspotReviewActionsPanel({
   plan,
   onSelect,
+  onStatusChange,
 }: {
   plan: HotspotReviewPlan | null
   onSelect: (symbol: string) => void
+  onStatusChange: (actionId: string, status: HotspotReviewAction['status']) => void
 }) {
   const visibleActions = plan ? plan.actions.slice(0, 6) : []
   return (
@@ -1262,23 +1280,49 @@ function HotspotReviewActionsPanel({
               <strong>{plan.low_count}</strong>
             </span>
           </div>
+          <div className="review-progress-stats hotspot-progress-stats">
+            <span>
+              <small>待处理</small>
+              <strong>{plan.pending_count}</strong>
+            </span>
+            <span>
+              <small>观察中</small>
+              <strong>{plan.watching_count}</strong>
+            </span>
+            <span>
+              <small>已完成</small>
+              <strong>{plan.done_count}</strong>
+            </span>
+          </div>
           <div className="hotspot-review-list">
             {visibleActions.map((item) => (
-              <button
-                type="button"
+              <article
                 key={item.id}
                 className={`hotspot-review-action ${item.priority}`}
-                onClick={() => onSelect(item.symbol)}
               >
-                <div>
-                  <span>{item.concept}</span>
-                  <em>{priorityLabel(item.priority)}</em>
+                <button type="button" className="hotspot-review-main" onClick={() => onSelect(item.symbol)}>
+                  <div>
+                    <span>{item.concept}</span>
+                    <em>{priorityLabel(item.priority)}</em>
+                  </div>
+                  <strong>{item.title}</strong>
+                  <p>{item.detail}</p>
+                  <small>{item.trigger}</small>
+                  <b>{item.check_window}</b>
+                </button>
+                <div className="hotspot-review-controls">
+                  {(['pending', 'watching', 'done'] as HotspotReviewAction['status'][]).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      className={item.status === status ? 'selected' : ''}
+                      onClick={() => onStatusChange(item.id, status)}
+                    >
+                      {reviewStatusLabel(status)}
+                    </button>
+                  ))}
                 </div>
-                <strong>{item.title}</strong>
-                <p>{item.detail}</p>
-                <small>{item.trigger}</small>
-                <b>{item.check_window}</b>
-              </button>
+              </article>
             ))}
           </div>
         </>

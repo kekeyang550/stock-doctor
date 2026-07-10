@@ -2035,11 +2035,9 @@ button {
   border-radius: 8px;
   background: #ffffff;
   color: inherit;
-  cursor: pointer;
   display: grid;
   gap: 7px;
   padding: 11px 12px;
-  text-align: left;
 }
 
 .hotspot-review-action.high {
@@ -2050,7 +2048,19 @@ button {
   border-left-color: #c48b19;
 }
 
-.hotspot-review-action div {
+.hotspot-review-main {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 7px;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.hotspot-review-main div {
   align-items: center;
   display: flex;
   justify-content: space-between;
@@ -2085,6 +2095,32 @@ button {
 .hotspot-review-action b {
   color: #1f3a2b;
   font-size: 12px;
+}
+
+.hotspot-progress-stats {
+  margin-bottom: 10px;
+}
+
+.hotspot-review-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.hotspot-review-controls button {
+  border: 1px solid #d6e2d5;
+  border-radius: 999px;
+  background: #f8fbf6;
+  color: #445449;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 9px;
+}
+
+.hotspot-review-controls button.selected {
+  background: #1f3a2b;
+  border-color: #1f3a2b;
+  color: #ffffff;
 }
 
 .portfolio-details {

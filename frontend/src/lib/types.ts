@@ -490,6 +490,7 @@ export type HotspotReviewAction = {
   detail: string
   trigger: string
   check_window: string
+  status: 'pending' | 'watching' | 'done'
 }
 
 export type HotspotReviewPlan = {
@@ -500,6 +501,9 @@ export type HotspotReviewPlan = {
   high_count: number
   medium_count: number
   low_count: number
+  pending_count: number
+  watching_count: number
+  done_count: number
   actions: HotspotReviewAction[]
 }
 
