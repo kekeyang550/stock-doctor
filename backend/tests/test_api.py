@@ -32,6 +32,25 @@ def test_market_overview_endpoint():
     assert len(payload["hot_industries"]) == 3
 
 
+def test_data_quality_endpoint_returns_field_checks():
+    response = client.get("/api/v1/data-quality/600519")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600519"
+    assert payload["status"] in {"pass", "warn", "fail"}
+    assert 0 <= payload["score"] <= 100
+    assert {"coverage_pct", "issue_count", "checks"}.issubset(payload.keys())
+    assert {item["key"] for item in payload["checks"]} == {
+        "market",
+        "technical",
+        "fundamental",
+        "capital",
+        "risk",
+        "as_of",
+    }
+
+
 def test_system_storage_endpoint_returns_persistence_status():
     response = client.get("/api/v1/system/storage")
 

@@ -6,6 +6,7 @@ from app.schemas.diagnosis import (
     AlertItem,
     DataConnectorHealth,
     DataFreshnessStatus,
+    DataQualityReport,
     DataRefreshJob,
     DataRefreshJobRequest,
     DiagnosisResponse,
@@ -39,6 +40,7 @@ from app.schemas.diagnosis import (
 )
 from app.services.alerts import AlertEngine
 from app.services.data_connectors import DataConnectorHealthService
+from app.services.data_quality import DataQualityService
 from app.services.diagnosis import DiagnosisEngine
 from app.services.industry_heat import IndustryHeatService
 from app.services.notes import ResearchNoteService
@@ -69,6 +71,7 @@ screener_service = ScreenerService()
 price_alert_service = PriceAlertService()
 data_connector_health_service = DataConnectorHealthService()
 refresh_job_service = DataRefreshJobService()
+data_quality_service = DataQualityService()
 
 
 @router.get("/health")
@@ -89,6 +92,14 @@ async def market_overview() -> MarketOverview:
 @router.get("/data-sources")
 async def data_sources() -> list[dict[str, str]]:
     return data_provider.get_data_sources()
+
+
+@router.get("/data-quality/{symbol}", response_model=DataQualityReport)
+async def data_quality(symbol: str) -> DataQualityReport:
+    snapshot = data_provider.get_snapshot(symbol)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Stock symbol not found")
+    return data_quality_service.build_report(snapshot)
 
 
 @router.get("/system/data-connectors", response_model=DataConnectorHealth)

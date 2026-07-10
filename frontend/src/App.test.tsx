@@ -107,6 +107,40 @@ const freshness = {
   next_action: '可以继续使用当前诊断数据。',
 }
 
+const dataQuality = {
+  symbol: '600519',
+  name: '贵州茅台',
+  as_of: '2026-07-10',
+  status: 'pass',
+  score: 100,
+  coverage_pct: 100,
+  issue_count: 0,
+  summary: '数据质量 100 分，当前诊断字段完整。',
+  checks: [
+    {
+      key: 'market',
+      label: '行情字段',
+      status: 'pass',
+      detail: '最新价与涨跌幅字段完整。',
+      impact: '直接影响关键价位、涨跌幅排序和短线热度判断。',
+    },
+    {
+      key: 'technical',
+      label: '技术指标',
+      status: 'pass',
+      detail: '均线、RSI、MACD 和量比字段可用于技术评分。',
+      impact: '影响技术分、趋势证据和操作清单。',
+    },
+    {
+      key: 'fundamental',
+      label: '估值财务',
+      status: 'pass',
+      detail: '估值、盈利质量与成长性字段完整。',
+      impact: '影响估值分、成长性证据和策略股票池。',
+    },
+  ],
+}
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -377,6 +411,9 @@ describe('App', () => {
       if (url.includes('/data-sources')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) })
       }
+      if (url.includes('/data-quality')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(dataQuality) })
+      }
       if (url.includes('/system/data-connectors')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(connectorHealth) })
       }
@@ -415,7 +452,7 @@ describe('App', () => {
     expect(screen.getByText('刷新全部')).toBeInTheDocument()
     expect(screen.getAllByText('数据新鲜度').length).toBeGreaterThan(0)
     expect(screen.getByText('新鲜')).toBeInTheDocument()
-    expect(screen.getByText('100.0%')).toBeInTheDocument()
+    expect(screen.getAllByText('100.0%').length).toBeGreaterThan(0)
     expect(screen.getByText('刷新记录')).toBeInTheDocument()
     expect(screen.getByText('系统存储')).toBeInTheDocument()
     expect(screen.getByText('JSON')).toBeInTheDocument()
@@ -445,6 +482,10 @@ describe('App', () => {
     expect(screen.getByText('操作清单')).toBeInTheDocument()
     expect(screen.getByText('观察关键价位')).toBeInTheDocument()
     expect(screen.getByText('同业对比')).toBeInTheDocument()
+    const qualityPanel = screen.getByRole('heading', { name: '数据质量' }).closest('section')!
+    expect(within(qualityPanel).getAllByText('可靠').length).toBeGreaterThan(0)
+    expect(within(qualityPanel).getByText('行情字段')).toBeInTheDocument()
+    expect(within(qualityPanel).getByText('技术指标')).toBeInTheDocument()
     expect(screen.getByText(/当前标的/)).toBeInTheDocument()
     expect(screen.getAllByText('临近解禁窗口').length).toBeGreaterThan(0)
     const alertsPanel = screen.getByRole('heading', { name: '预警中心' }).closest('section')!

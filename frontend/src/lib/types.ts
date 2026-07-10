@@ -99,6 +99,26 @@ export type SystemReadiness = {
   checks: SystemReadinessCheck[]
 }
 
+export type DataQualityCheck = {
+  key: string
+  label: string
+  status: 'pass' | 'warn' | 'fail'
+  detail: string
+  impact: string
+}
+
+export type DataQualityReport = {
+  symbol: string
+  name: string
+  as_of: string
+  status: 'pass' | 'warn' | 'fail'
+  score: number
+  coverage_pct: number
+  issue_count: number
+  summary: string
+  checks: DataQualityCheck[]
+}
+
 export type StorageExport = {
   exported_at: string
   backend: string

@@ -589,6 +589,120 @@ button {
   grid-column: 2 / -1;
 }
 
+.data-quality-panel {
+  grid-column: 1 / -1;
+}
+
+.data-quality-panel .split-title small {
+  border-radius: 6px;
+  padding: 4px 7px;
+}
+
+.data-quality-panel .split-title small.pass,
+.quality-check.pass em {
+  color: #31553f;
+  background: #e8efe3;
+}
+
+.data-quality-panel .split-title small.warn,
+.quality-check.warn em {
+  color: #7a5a2e;
+  background: #fff4d5;
+}
+
+.data-quality-panel .split-title small.fail,
+.quality-check.fail em {
+  color: #7a3d3d;
+  background: #fff0ed;
+}
+
+.quality-head {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e0e8db;
+  border-radius: 8px;
+  background: #f7faf5;
+  padding: 12px;
+}
+
+.quality-head strong {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  background: #26372f;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+
+.quality-head span {
+  display: grid;
+  gap: 4px;
+}
+
+.quality-head b {
+  font-size: 18px;
+}
+
+.quality-head small {
+  color: #394a40;
+  line-height: 1.5;
+}
+
+.quality-checks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.quality-check {
+  border: 1px solid #e0e8db;
+  border-left: 5px solid #2e6b4f;
+  border-radius: 8px;
+  background: #fbfdf9;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.quality-check.warn {
+  border-left-color: #b6812d;
+}
+
+.quality-check.fail {
+  border-left-color: #b94a48;
+}
+
+.quality-check div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quality-check em {
+  border-radius: 6px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 7px;
+}
+
+.quality-check p {
+  margin: 0;
+  color: #394a40;
+  line-height: 1.5;
+}
+
+.quality-check small {
+  color: #6a7a70;
+  line-height: 1.45;
+}
+
 .peer-panel .split-title small {
   color: #6a7a70;
 }
@@ -1913,6 +2027,10 @@ button {
     grid-column: 1 / -1;
   }
 
+  .data-quality-panel {
+    grid-column: 1 / -1;
+  }
+
   .ranking-list {
     grid-template-columns: 1fr;
   }
@@ -1939,6 +2057,7 @@ button {
 
   .portfolio-metrics,
   .portfolio-details,
+  .quality-checks,
   .readiness-checks,
   .storage-grid {
     grid-template-columns: 1fr;
@@ -1994,6 +2113,10 @@ button {
   }
 
   .peer-panel {
+    grid-column: auto;
+  }
+
+  .data-quality-panel {
     grid-column: auto;
   }
 }

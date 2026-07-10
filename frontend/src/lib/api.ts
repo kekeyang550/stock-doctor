@@ -2,6 +2,7 @@ import type {
   AlertItem,
   DataConnectorHealth,
   DataFreshnessStatus,
+  DataQualityReport,
   DataRefreshJob,
   DataSource,
   Diagnosis,
@@ -48,6 +49,10 @@ export function fetchIndustryHeat(horizon: string): Promise<IndustryHeatItem[]> 
 
 export function fetchDataSources(): Promise<DataSource[]> {
   return getJson<DataSource[]>('/api/v1/data-sources')
+}
+
+export function fetchDataQuality(symbol: string): Promise<DataQualityReport> {
+  return getJson<DataQualityReport>(`/api/v1/data-quality/${symbol}`)
 }
 
 export function fetchDataConnectorHealth(): Promise<DataConnectorHealth> {

@@ -108,6 +108,26 @@ class SystemReadiness(BaseModel):
     checks: list[SystemReadinessCheck]
 
 
+class DataQualityCheck(BaseModel):
+    key: str
+    label: str
+    status: str = Field(pattern="^(pass|warn|fail)$")
+    detail: str
+    impact: str
+
+
+class DataQualityReport(BaseModel):
+    symbol: str
+    name: str
+    as_of: str
+    status: str = Field(pattern="^(pass|warn|fail)$")
+    score: int = Field(ge=0, le=100)
+    coverage_pct: float
+    issue_count: int
+    summary: str
+    checks: list[DataQualityCheck]
+
+
 class TechnicalSnapshot(BaseModel):
     ma5: float
     ma20: float

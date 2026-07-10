@@ -13,6 +13,7 @@ import {
   fetchAlerts,
   fetchDataConnectorHealth,
   fetchDataFreshness,
+  fetchDataQuality,
   fetchDataSources,
   fetchDiagnosis,
   fetchIndustryHeat,
@@ -44,6 +45,8 @@ import type {
   DataConnectorHealth,
   DataConnectorStatus,
   DataFreshnessStatus,
+  DataQualityCheck,
+  DataQualityReport,
   DataRefreshJob,
   DataSource,
   Diagnosis,
@@ -123,6 +126,7 @@ export default function App() {
   const [noteDraft, setNoteDraft] = useState('')
   const [priceAlertDraft, setPriceAlertDraft] = useState('')
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null)
+  const [dataQuality, setDataQuality] = useState<DataQualityReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -158,8 +162,12 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const result = await fetchDiagnosis(selectedSymbol, horizon)
+      const [result, quality] = await Promise.all([
+        fetchDiagnosis(selectedSymbol, horizon),
+        fetchDataQuality(selectedSymbol),
+      ])
       setDiagnosis(result)
+      setDataQuality(quality)
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误')
     } finally {
@@ -478,7 +486,14 @@ export default function App() {
             <span>正在生成诊断...</span>
           </div>
         ) : (
-          <DiagnosisWorkspace diagnosis={diagnosis} overview={overview} dataSources={dataSources} trend={trend} peers={peers} />
+          <DiagnosisWorkspace
+            diagnosis={diagnosis}
+            overview={overview}
+            dataSources={dataSources}
+            trend={trend}
+            peers={peers}
+            dataQuality={dataQuality}
+          />
         )}
         <PriceAlertsPanel
           alerts={priceAlerts}
@@ -1320,12 +1335,14 @@ function DiagnosisWorkspace({
   dataSources,
   trend,
   peers,
+  dataQuality,
 }: {
   diagnosis: Diagnosis
   overview: MarketOverview | null
   dataSources: DataSource[]
   trend: TrendSeries | null
   peers: PeerComparison | null
+  dataQuality: DataQualityReport | null
 }) {
   return (
     <div className="diagnosis-layout">
@@ -1370,6 +1387,8 @@ function DiagnosisWorkspace({
       <ChecklistPanel items={diagnosis.checklist} />
 
       <PeerPanel peers={peers} />
+
+      <DataQualityPanel report={dataQuality} />
 
       <section className="panel report-panel">
         <div className="panel-title">
@@ -1456,6 +1475,59 @@ function ChecklistPanel({ items }: { items: ChecklistItem[] }) {
       </div>
     </section>
   )
+}
+
+function DataQualityPanel({ report }: { report: DataQualityReport | null }) {
+  return (
+    <section className="panel data-quality-panel">
+      <div className="panel-title split-title">
+        <span>
+          <CheckCircle2 size={18} />
+          <h3>数据质量</h3>
+        </span>
+        <small className={report ? report.status : 'warn'}>
+          {report ? qualityStatusLabel(report.status) : '加载中'}
+        </small>
+      </div>
+      {report ? (
+        <>
+          <div className="quality-head">
+            <strong>{report.score}</strong>
+            <span>
+              <b>{report.coverage_pct.toFixed(1)}%</b>
+              <small>{report.summary}</small>
+            </span>
+          </div>
+          <div className="quality-checks">
+            {report.checks.map((check) => (
+              <DataQualityCheckRow key={check.key} check={check} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="empty-text">正在检查诊断数据质量...</p>
+      )}
+    </section>
+  )
+}
+
+function DataQualityCheckRow({ check }: { check: DataQualityCheck }) {
+  return (
+    <article className={`quality-check ${check.status}`}>
+      <div>
+        <strong>{check.label}</strong>
+        <em>{qualityStatusLabel(check.status)}</em>
+      </div>
+      <p>{check.detail}</p>
+      <small>{check.impact}</small>
+    </article>
+  )
+}
+
+function qualityStatusLabel(status: DataQualityReport['status']) {
+  if (status === 'pass') return '可靠'
+  if (status === 'warn') return '关注'
+  return '异常'
 }
 
 function priorityLabel(priority: ChecklistItem['priority']) {
