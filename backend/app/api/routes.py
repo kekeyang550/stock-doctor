@@ -20,6 +20,7 @@ from app.schemas.diagnosis import (
     PriceAlertRequest,
     ResearchNote,
     ResearchNoteRequest,
+    ReviewActionOverview,
     ReviewActionPlan,
     RiskExposureItem,
     RankedDiagnosis,
@@ -497,7 +498,7 @@ async def diagnosis_change(
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
     current = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
-    previous = diagnosis_change_service.latest_for_symbol(report_service.list_reports(limit=100), symbol)
+    previous = diagnosis_change_service.latest_for_symbol(report_service.list_reports(limit=100), snapshot.symbol)
     return diagnosis_change_service.build_change(current=current, previous=previous)
 
 
@@ -513,6 +514,27 @@ async def diagnosis_thesis(
     return thesis_service.build_thesis(snapshot=snapshot, diagnosis=diagnosis)
 
 
+@router.get("/review-actions", response_model=ReviewActionOverview)
+async def review_actions_overview(
+    scope: str = Query(default="watchlist", pattern="^(watchlist|all)$"),
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+) -> ReviewActionOverview:
+    stocks = data_provider.get_watchlist() if scope == "watchlist" else data_provider.list_stocks()
+    plans = []
+    for stock in stocks:
+        snapshot = data_provider.get_snapshot(stock.symbol)
+        if snapshot is None:
+            continue
+        plans.append(_build_review_action_plan(snapshot=snapshot, horizon=horizon))
+    overview = review_action_service.build_overview(scope=scope, horizon=horizon, plans=plans)
+    stock_by_symbol = {stock.symbol: stock for stock in stocks}
+    for summary in overview.summaries:
+        stock = stock_by_symbol.get(summary.symbol)
+        if stock is not None:
+            summary.industry = stock.industry
+    return overview
+
+
 @router.get("/review-actions/{symbol}", response_model=ReviewActionPlan)
 async def review_actions(
     symbol: str,
@@ -521,10 +543,14 @@ async def review_actions(
     snapshot = data_provider.get_snapshot(symbol)
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
+    return _build_review_action_plan(snapshot=snapshot, horizon=horizon)
+
+
+def _build_review_action_plan(snapshot: StockSnapshot, horizon: str) -> ReviewActionPlan:
     diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
     thesis = thesis_service.build_thesis(snapshot=snapshot, diagnosis=diagnosis)
     quality = data_quality_service.build_report(snapshot)
-    previous = diagnosis_change_service.latest_for_symbol(report_service.list_reports(limit=100), symbol)
+    previous = diagnosis_change_service.latest_for_symbol(report_service.list_reports(limit=100), snapshot.symbol)
     change = diagnosis_change_service.build_change(current=diagnosis, previous=previous)
     alerts = alert_engine.build_alerts(snapshot, diagnosis)
     return review_action_service.build_plan(

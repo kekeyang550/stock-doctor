@@ -27,6 +27,7 @@ import {
   fetchRankings,
   fetchRefreshJobs,
   fetchReports,
+  fetchReviewActionOverview,
   fetchReviewActions,
   fetchRiskExposure,
   fetchScreener,
@@ -68,7 +69,9 @@ import type {
   ResearchNote,
   ReportRecord,
   ReviewActionItem,
+  ReviewActionOverview,
   ReviewActionPlan,
+  ReviewActionStockSummary,
   RiskExposureItem,
   ScreenCandidate,
   StockSummary,
@@ -123,6 +126,7 @@ export default function App() {
   const [screenCandidates, setScreenCandidates] = useState<ScreenCandidate[]>([])
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [watchlistSummary, setWatchlistSummary] = useState<WatchlistSummary | null>(null)
+  const [reviewActionOverview, setReviewActionOverview] = useState<ReviewActionOverview | null>(null)
   const [dataQualityOverview, setDataQualityOverview] = useState<DataQualityOverview | null>(null)
   const [industryHeat, setIndustryHeat] = useState<IndustryHeatItem[]>([])
   const [riskExposure, setRiskExposure] = useState<RiskExposureItem[]>([])
@@ -227,6 +231,12 @@ export default function App() {
     fetchWatchlistSummary(horizon)
       .then(setWatchlistSummary)
       .catch((err) => setError(err instanceof Error ? err.message : '组合体检加载失败'))
+  }, [horizon, watchlist])
+
+  useEffect(() => {
+    fetchReviewActionOverview(horizon)
+      .then(setReviewActionOverview)
+      .catch((err) => setError(err instanceof Error ? err.message : '行动总览加载失败'))
   }, [horizon, watchlist])
 
   useEffect(() => {
@@ -482,6 +492,8 @@ export default function App() {
         ) : null}
 
         <WatchlistSummaryPanel summary={watchlistSummary} onSelect={setSelectedSymbol} />
+
+        <ReviewActionOverviewPanel overview={reviewActionOverview} onSelect={setSelectedSymbol} />
 
         <DataQualityOverviewPanel overview={dataQualityOverview} onSelect={setSelectedSymbol} />
 
@@ -906,6 +918,68 @@ function WatchlistSummaryPanel({
         <p className="empty-text">正在汇总自选股...</p>
       )}
     </section>
+  )
+}
+
+function ReviewActionOverviewPanel({
+  overview,
+  onSelect,
+}: {
+  overview: ReviewActionOverview | null
+  onSelect: (symbol: string) => void
+}) {
+  return (
+    <section className="panel action-overview-panel">
+      <div className="panel-title split-title">
+        <span>
+          <ListChecks size={18} />
+          <h3>行动总览</h3>
+        </span>
+        <small>{overview ? `${overview.stock_count} 只` : '加载中'}</small>
+      </div>
+      {overview ? (
+        <>
+          <div className="action-overview-metrics">
+            <SummaryMetric label="高优先" value={overview.high_count} />
+            <SummaryMetric label="待观察" value={overview.medium_count} />
+            <SummaryMetric label="低优先" value={overview.low_count} />
+          </div>
+          {overview.summaries.length ? (
+            <div className="action-overview-list">
+              {overview.summaries.slice(0, 5).map((item) => (
+                <ActionOverviewRow key={item.symbol} item={item} onSelect={onSelect} />
+              ))}
+            </div>
+          ) : (
+            <p className="empty-text">当前自选股暂无复盘动作</p>
+          )}
+        </>
+      ) : (
+        <p className="empty-text">正在汇总自选股行动...</p>
+      )}
+    </section>
+  )
+}
+
+function ActionOverviewRow({
+  item,
+  onSelect,
+}: {
+  item: ReviewActionStockSummary
+  onSelect: (symbol: string) => void
+}) {
+  return (
+    <button type="button" className={`action-overview-row ${item.top_priority}`} onClick={() => onSelect(item.symbol)}>
+      <span>
+        <strong>{item.name}</strong>
+        <small>{item.symbol} · {item.industry || '自选股'} · {item.item_count} 项</small>
+      </span>
+      <span>
+        <b>{item.top_action}</b>
+        <small>{item.top_detail}</small>
+      </span>
+      <em>{priorityLabel(item.top_priority)}</em>
+    </button>
   )
 }
 

@@ -243,6 +243,29 @@ export type ReviewActionPlan = {
   items: ReviewActionItem[]
 }
 
+export type ReviewActionStockSummary = {
+  symbol: string
+  name: string
+  industry: string
+  item_count: number
+  high_count: number
+  medium_count: number
+  low_count: number
+  top_priority: 'high' | 'medium' | 'low'
+  top_action: string
+  top_detail: string
+}
+
+export type ReviewActionOverview = {
+  scope: 'watchlist' | 'all'
+  horizon: string
+  stock_count: number
+  high_count: number
+  medium_count: number
+  low_count: number
+  summaries: ReviewActionStockSummary[]
+}
+
 export type ChecklistItem = {
   id: string
   title: string

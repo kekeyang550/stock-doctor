@@ -51,3 +51,21 @@ def test_review_action_plan_merges_diagnosis_context():
         [item.priority for item in plan.items],
         key={"high": 0, "medium": 1, "low": 2}.get,
     )
+
+
+def test_review_action_overview_summarizes_multiple_plans():
+    snapshot = make_snapshot()
+    diagnosis = DiagnosisEngine().diagnose(snapshot, horizon="swing")
+    thesis = ThesisService().build_thesis(snapshot=snapshot, diagnosis=diagnosis)
+    quality = DataQualityService().build_report(snapshot)
+    change = DiagnosisChangeService().build_change(current=diagnosis, previous=None)
+    alerts = AlertEngine().build_alerts(snapshot, diagnosis)
+    service = ReviewActionService()
+    plan = service.build_plan(diagnosis=diagnosis, thesis=thesis, quality=quality, change=change, alerts=alerts)
+
+    overview = service.build_overview(scope="watchlist", horizon="swing", plans=[plan])
+
+    assert overview.stock_count == 1
+    assert overview.high_count == plan.high_count
+    assert overview.summaries[0].symbol == "TEST"
+    assert overview.summaries[0].top_action == plan.items[0].title

@@ -224,6 +224,29 @@ const reviewActions = {
   ],
 }
 
+const reviewActionOverview = {
+  scope: 'watchlist',
+  horizon: 'swing',
+  stock_count: 3,
+  high_count: 1,
+  medium_count: 5,
+  low_count: 1,
+  summaries: [
+    {
+      symbol: '600519',
+      name: '贵州茅台',
+      industry: '白酒',
+      item_count: 7,
+      high_count: 1,
+      medium_count: 5,
+      low_count: 1,
+      top_priority: 'high',
+      top_action: '主力资金流出',
+      top_detail: '主力资金净流出较明显，观察弱势是否延续。',
+    },
+  ],
+}
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -479,7 +502,10 @@ describe('App', () => {
       if (url.includes('/diagnosis-change')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(diagnosisChange) })
       }
-      if (url.includes('/review-actions')) {
+      if (url.includes('/review-actions?')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActionOverview) })
+      }
+      if (url.includes('/review-actions/')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActions) })
       }
       if (url.includes('/thesis')) {
@@ -573,6 +599,9 @@ describe('App', () => {
     expect(screen.getByText('预警中心')).toBeInTheDocument()
     expect(screen.getByText('自选股体检')).toBeInTheDocument()
     expect(screen.getByText('行业热力')).toBeInTheDocument()
+    const actionOverviewPanel = screen.getByRole('heading', { name: '行动总览' }).closest('section')!
+    expect(within(actionOverviewPanel).getByText('主力资金流出')).toBeInTheDocument()
+    expect(within(actionOverviewPanel).getByText(/600519/)).toBeInTheDocument()
     expect(screen.getByText('跟踪时间线')).toBeInTheDocument()
     expect(screen.getByText('风险敞口')).toBeInTheDocument()
     expect(screen.getByText('平均评分')).toBeInTheDocument()

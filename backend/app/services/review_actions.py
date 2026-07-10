@@ -7,7 +7,9 @@ from app.schemas.diagnosis import (
     DiagnosisResponse,
     DiagnosisThesis,
     ReviewActionItem,
+    ReviewActionOverview,
     ReviewActionPlan,
+    ReviewActionStockSummary,
 )
 
 
@@ -91,6 +93,26 @@ class ReviewActionService:
             items=deduped,
         )
 
+    def build_overview(self, scope: str, horizon: str, plans: list[ReviewActionPlan]) -> ReviewActionOverview:
+        summaries = [self._summary(plan) for plan in plans if plan.items]
+        summaries.sort(
+            key=lambda item: (
+                -item.high_count,
+                -item.medium_count,
+                -item.low_count,
+                item.symbol,
+            )
+        )
+        return ReviewActionOverview(
+            scope=scope,
+            horizon=horizon,
+            stock_count=len(plans),
+            high_count=sum(plan.high_count for plan in plans),
+            medium_count=sum(plan.medium_count for plan in plans),
+            low_count=sum(plan.low_count for plan in plans),
+            summaries=summaries,
+        )
+
     def _change_actions(self, change: DiagnosisChangeReport) -> list[ReviewActionItem]:
         if change.status == "weakened":
             return [
@@ -156,3 +178,18 @@ class ReviewActionService:
             seen.add(key)
             deduped.append(item)
         return deduped
+
+    def _summary(self, plan: ReviewActionPlan) -> ReviewActionStockSummary:
+        top = plan.items[0]
+        return ReviewActionStockSummary(
+            symbol=plan.symbol,
+            name=plan.name,
+            industry="",
+            item_count=len(plan.items),
+            high_count=plan.high_count,
+            medium_count=plan.medium_count,
+            low_count=plan.low_count,
+            top_priority=top.priority,
+            top_action=top.title,
+            top_detail=top.detail,
+        )

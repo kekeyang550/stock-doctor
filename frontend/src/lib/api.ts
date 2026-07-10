@@ -16,6 +16,7 @@ import type {
   RankedDiagnosis,
   ResearchNote,
   ReportRecord,
+  ReviewActionOverview,
   ReviewActionPlan,
   RiskExposureItem,
   ScreenCandidate,
@@ -165,6 +166,10 @@ export function fetchDiagnosisThesis(symbol: string, horizon: string): Promise<D
 
 export function fetchReviewActions(symbol: string, horizon: string): Promise<ReviewActionPlan> {
   return getJson<ReviewActionPlan>(`/api/v1/review-actions/${symbol}?horizon=${horizon}`)
+}
+
+export function fetchReviewActionOverview(horizon: string, scope = 'watchlist'): Promise<ReviewActionOverview> {
+  return getJson<ReviewActionOverview>(`/api/v1/review-actions?horizon=${horizon}&scope=${scope}`)
 }
 
 export function fetchReports(): Promise<ReportRecord[]> {

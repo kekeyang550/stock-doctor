@@ -60,6 +60,21 @@ def test_review_actions_endpoint_returns_prioritized_plan():
     assert {"title", "priority", "category", "detail", "source", "status"}.issubset(payload["items"][0].keys())
 
 
+def test_review_actions_overview_endpoint_summarizes_watchlist():
+    response = client.get("/api/v1/review-actions?horizon=swing&scope=watchlist")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["scope"] == "watchlist"
+    assert payload["horizon"] == "swing"
+    assert payload["stock_count"] >= 1
+    assert payload["high_count"] + payload["medium_count"] + payload["low_count"] >= len(payload["summaries"])
+    assert payload["summaries"]
+    assert {"symbol", "name", "item_count", "top_priority", "top_action", "top_detail"}.issubset(
+        payload["summaries"][0].keys()
+    )
+
+
 def test_market_overview_endpoint():
     response = client.get("/api/v1/market/overview")
 

@@ -260,6 +260,29 @@ class ReviewActionPlan(BaseModel):
     items: list[ReviewActionItem]
 
 
+class ReviewActionStockSummary(BaseModel):
+    symbol: str
+    name: str
+    industry: str
+    item_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    top_priority: str = Field(pattern="^(high|medium|low)$")
+    top_action: str
+    top_detail: str
+
+
+class ReviewActionOverview(BaseModel):
+    scope: str = Field(pattern="^(watchlist|all)$")
+    horizon: str
+    stock_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    summaries: list[ReviewActionStockSummary]
+
+
 class ChecklistItem(BaseModel):
     id: str
     title: str

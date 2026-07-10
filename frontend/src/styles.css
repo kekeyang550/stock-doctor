@@ -1610,9 +1610,19 @@ button {
   color: #6a7a70;
 }
 
+.action-overview-panel .split-title small {
+  color: #6a7a70;
+}
+
 .quality-overview-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.action-overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -1729,6 +1739,62 @@ button {
   color: #344239;
   padding: 6px 8px;
   font-size: 13px;
+}
+
+.action-overview-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.action-overview-row {
+  width: 100%;
+  border: 1px solid #e0e8db;
+  border-left: 5px solid #2e6b4f;
+  border-radius: 8px;
+  background: #fbfdf9;
+  color: inherit;
+  display: grid;
+  grid-template-columns: minmax(140px, 0.8fr) minmax(0, 1.4fr) 70px;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  padding: 10px;
+}
+
+.action-overview-row.high {
+  border-left-color: #b94a48;
+}
+
+.action-overview-row.medium {
+  border-left-color: #b6812d;
+}
+
+.action-overview-row span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.action-overview-row small {
+  color: #6a7a70;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.action-overview-row b {
+  overflow-wrap: anywhere;
+}
+
+.action-overview-row em {
+  justify-self: end;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #526258;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  padding: 4px 7px;
 }
 
 .timeline-panel .split-title small {
@@ -2492,6 +2558,8 @@ button {
 
   .portfolio-metrics,
   .portfolio-details,
+  .action-overview-metrics,
+  .action-overview-row,
   .quality-overview-metrics,
   .quality-checks,
   .readiness-checks,
