@@ -137,6 +137,7 @@ export type StorageExport = {
   reports: ReportRecord[]
   notes: ResearchNote[]
   price_alerts: PriceAlert[]
+  review_action_statuses: Record<string, unknown>[]
 }
 
 export type StorageImportPayload = {
@@ -144,6 +145,7 @@ export type StorageImportPayload = {
   reports: ReportRecord[]
   notes: ResearchNote[]
   price_alerts: PriceAlert[]
+  review_action_statuses: Record<string, unknown>[]
 }
 
 export type StorageImportPreview = {

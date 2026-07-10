@@ -22,6 +22,7 @@ from app.schemas.diagnosis import (
     ResearchNoteRequest,
     ReviewActionOverview,
     ReviewActionPlan,
+    ReviewActionStatusUpdate,
     RiskExposureItem,
     RankedDiagnosis,
     ReportRecord,
@@ -182,6 +183,7 @@ async def system_export() -> StorageExport:
         reports=store.load_reports(),
         notes=store.load_notes(),
         price_alerts=store.load_price_alerts(),
+        review_action_statuses=store.load_review_action_statuses(),
     )
 
 
@@ -202,6 +204,7 @@ async def system_import(request: StorageImportRequest) -> StorageImportResult:
     store.save_reports(request.reports[:100])
     store.save_notes(request.notes[:200])
     store.save_price_alerts(request.price_alerts[:200])
+    store.save_review_action_statuses(request.review_action_statuses[:500])
     data_provider.replace_watchlist(valid_watchlist)
 
     return StorageImportResult(
@@ -546,6 +549,34 @@ async def review_actions(
     return _build_review_action_plan(snapshot=snapshot, horizon=horizon)
 
 
+@router.patch("/review-actions/{symbol}/{action_id}", response_model=ReviewActionPlan)
+async def update_review_action_status(
+    symbol: str,
+    action_id: str,
+    request: ReviewActionStatusUpdate,
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+) -> ReviewActionPlan:
+    snapshot = data_provider.get_snapshot(symbol)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Stock symbol not found")
+    store = create_state_store()
+    key = review_action_service.status_key(snapshot.symbol, horizon, action_id)
+    statuses = [record for record in store.load_review_action_statuses() if record.get("key") != key]
+    statuses.insert(
+        0,
+        {
+            "key": key,
+            "symbol": snapshot.symbol,
+            "horizon": horizon,
+            "action_id": action_id,
+            "status": request.status,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    store.save_review_action_statuses(statuses[:500])
+    return _build_review_action_plan(snapshot=snapshot, horizon=horizon)
+
+
 def _build_review_action_plan(snapshot: StockSnapshot, horizon: str) -> ReviewActionPlan:
     diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
     thesis = thesis_service.build_thesis(snapshot=snapshot, diagnosis=diagnosis)
@@ -553,13 +584,14 @@ def _build_review_action_plan(snapshot: StockSnapshot, horizon: str) -> ReviewAc
     previous = diagnosis_change_service.latest_for_symbol(report_service.list_reports(limit=100), snapshot.symbol)
     change = diagnosis_change_service.build_change(current=diagnosis, previous=previous)
     alerts = alert_engine.build_alerts(snapshot, diagnosis)
-    return review_action_service.build_plan(
+    plan = review_action_service.build_plan(
         diagnosis=diagnosis,
         thesis=thesis,
         quality=quality,
         change=change,
         alerts=alerts,
     )
+    return review_action_service.apply_statuses(plan, create_state_store().load_review_action_statuses())
 
 
 def _all_snapshots() -> list[StockSnapshot]:
@@ -601,6 +633,7 @@ def _storage_status(store: StateStore) -> StorageStatus:
         StorageCollectionStat(key="reports", label="诊断报告", count=len(store.load_reports())),
         StorageCollectionStat(key="notes", label="研究笔记", count=len(store.load_notes())),
         StorageCollectionStat(key="price_alerts", label="价位提醒", count=len(store.load_price_alerts())),
+        StorageCollectionStat(key="review_action_statuses", label="行动状态", count=len(store.load_review_action_statuses())),
     ]
     backend = "sqlite" if isinstance(store, SQLiteStateStore) else "json"
     return StorageStatus(
@@ -718,6 +751,7 @@ def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview
     capped_reports = request.reports[:100]
     capped_notes = request.notes[:200]
     capped_alerts = request.price_alerts[:200]
+    capped_action_statuses = request.review_action_statuses[:500]
     skipped_records = (
         len(request.watchlist)
         - len(valid_watchlist)
@@ -727,6 +761,8 @@ def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview
         - len(capped_notes)
         + len(request.price_alerts)
         - len(capped_alerts)
+        + len(request.review_action_statuses)
+        - len(capped_action_statuses)
     )
     warnings = []
     if unknown_watchlist:
@@ -737,12 +773,15 @@ def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview
         warnings.append("研究笔记超过 200 条，导入时只保留最新 200 条。")
     if len(request.price_alerts) > len(capped_alerts):
         warnings.append("价位提醒超过 200 条，导入时只保留最新 200 条。")
+    if len(request.review_action_statuses) > len(capped_action_statuses):
+        warnings.append("行动状态超过 500 条，导入时只保留最新 500 条。")
 
     collections = [
         StorageCollectionStat(key="watchlist", label="自选股", count=len(valid_watchlist)),
         StorageCollectionStat(key="reports", label="诊断报告", count=len(capped_reports)),
         StorageCollectionStat(key="notes", label="研究笔记", count=len(capped_notes)),
         StorageCollectionStat(key="price_alerts", label="价位提醒", count=len(capped_alerts)),
+        StorageCollectionStat(key="review_action_statuses", label="行动状态", count=len(capped_action_statuses)),
     ]
     total_records = sum(item.count for item in collections)
     return StorageImportPreview(

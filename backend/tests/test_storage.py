@@ -30,3 +30,13 @@ def test_refresh_jobs_persist_in_json_store(tmp_path):
     store.save_refresh_jobs(jobs)
 
     assert JsonStateStore(state_file).load_refresh_jobs() == jobs
+
+
+def test_review_action_statuses_persist_in_json_store(tmp_path):
+    state_file = tmp_path / "state.json"
+    store = JsonStateStore(state_file)
+    statuses = [{"key": "600519:swing:a1", "status": "done"}]
+
+    store.save_review_action_statuses(statuses)
+
+    assert JsonStateStore(state_file).load_review_action_statuses() == statuses

@@ -43,6 +43,7 @@ import {
   previewStorageImport,
   removeWatchlistSymbol,
   runRefreshJob,
+  updateReviewActionStatus,
 } from './lib/api'
 import type {
   AlertItem,
@@ -371,6 +372,18 @@ export default function App() {
     }
   }, [])
 
+  const setReviewActionStatus = useCallback(async (actionId: string, status: ReviewActionItem['status']) => {
+    setError(null)
+    try {
+      const nextPlan = await updateReviewActionStatus(selectedSymbol, horizon, actionId, status)
+      setReviewActions(nextPlan)
+      const overviewResult = await fetchReviewActionOverview(horizon)
+      setReviewActionOverview(overviewResult)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '行动状态更新失败')
+    }
+  }, [horizon, selectedSymbol])
+
   const exportStorage = useCallback(async () => {
     setError(null)
     try {
@@ -419,13 +432,14 @@ export default function App() {
       ])
       setNotes(nextNotes)
       setPriceAlerts(nextPriceAlerts)
+      await loadDiagnosis()
       setStorageImportPreview(null)
       setStorageImportPayload(null)
       setStorageImportName('')
     } catch (err) {
       setError(err instanceof Error ? err.message : '数据导入失败')
     }
-  }, [loadStocks, selectedSymbol, storageImportPayload])
+  }, [loadDiagnosis, loadStocks, selectedSymbol, storageImportPayload])
 
   const triggerRefreshJob = useCallback(async (scope: 'all' | 'watchlist') => {
     setError(null)
@@ -532,6 +546,7 @@ export default function App() {
             thesis={thesis}
             diagnosisChange={diagnosisChange}
             reviewActions={reviewActions}
+            onReviewActionStatus={setReviewActionStatus}
           />
         )}
         <PriceAlertsPanel
@@ -579,6 +594,7 @@ function buildStorageImportPayload(value: unknown): StorageImportPayload {
     reports: Array.isArray(record.reports) ? record.reports : [],
     notes: Array.isArray(record.notes) ? record.notes : [],
     price_alerts: Array.isArray(record.price_alerts) ? record.price_alerts : [],
+    review_action_statuses: Array.isArray(record.review_action_statuses) ? record.review_action_statuses : [],
   }
 }
 
@@ -1487,6 +1503,7 @@ function DiagnosisWorkspace({
   thesis,
   diagnosisChange,
   reviewActions,
+  onReviewActionStatus,
 }: {
   diagnosis: Diagnosis
   overview: MarketOverview | null
@@ -1497,6 +1514,7 @@ function DiagnosisWorkspace({
   thesis: DiagnosisThesis | null
   diagnosisChange: DiagnosisChangeReport | null
   reviewActions: ReviewActionPlan | null
+  onReviewActionStatus: (actionId: string, status: ReviewActionItem['status']) => void
 }) {
   return (
     <div className="diagnosis-layout">
@@ -1544,7 +1562,7 @@ function DiagnosisWorkspace({
 
       <DiagnosisChangePanel report={diagnosisChange} />
 
-      <ReviewActionsPanel plan={reviewActions} />
+      <ReviewActionsPanel plan={reviewActions} onStatusChange={onReviewActionStatus} />
 
       <DataQualityPanel report={dataQuality} />
 
@@ -1615,7 +1633,13 @@ function DiagnosisWorkspace({
   )
 }
 
-function ReviewActionsPanel({ plan }: { plan: ReviewActionPlan | null }) {
+function ReviewActionsPanel({
+  plan,
+  onStatusChange,
+}: {
+  plan: ReviewActionPlan | null
+  onStatusChange: (actionId: string, status: ReviewActionItem['status']) => void
+}) {
   const visibleItems = plan ? plan.items.slice(0, 8) : []
   return (
     <section className="panel review-actions-panel">
@@ -1635,7 +1659,7 @@ function ReviewActionsPanel({ plan }: { plan: ReviewActionPlan | null }) {
           </div>
           <div className="review-action-list">
             {visibleItems.map((item) => (
-              <ReviewActionRow key={item.id} item={item} />
+              <ReviewActionRow key={item.id} item={item} onStatusChange={onStatusChange} />
             ))}
           </div>
         </>
@@ -1655,15 +1679,33 @@ function ActionStat({ label, value, priority }: { label: string; value: number; 
   )
 }
 
-function ReviewActionRow({ item }: { item: ReviewActionItem }) {
+function ReviewActionRow({
+  item,
+  onStatusChange,
+}: {
+  item: ReviewActionItem
+  onStatusChange: (actionId: string, status: ReviewActionItem['status']) => void
+}) {
   return (
-    <article className={`review-action ${item.priority}`}>
+    <article className={`review-action ${item.priority} ${item.status}`}>
       <div>
         <span>{item.category}</span>
-        <em>{priorityLabel(item.priority)}</em>
+        <em>{reviewStatusLabel(item.status)}</em>
       </div>
       <strong>{item.title}</strong>
       <p>{item.detail}</p>
+      <div className="review-action-controls">
+        {(['pending', 'watching', 'done'] as ReviewActionItem['status'][]).map((status) => (
+          <button
+            key={status}
+            type="button"
+            className={item.status === status ? 'selected' : ''}
+            onClick={() => onStatusChange(item.id, status)}
+          >
+            {reviewStatusLabel(status)}
+          </button>
+        ))}
+      </div>
     </article>
   )
 }
@@ -1881,6 +1923,12 @@ function priorityLabel(priority: ChecklistItem['priority']) {
   if (priority === 'high') return '高优先'
   if (priority === 'medium') return '观察'
   return '低优先'
+}
+
+function reviewStatusLabel(status: ReviewActionItem['status']) {
+  if (status === 'done') return '完成'
+  if (status === 'watching') return '观察中'
+  return '待处理'
 }
 
 function PeerPanel({ peers }: { peers: PeerComparison | null }) {

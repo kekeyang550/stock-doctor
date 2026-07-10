@@ -75,6 +75,24 @@ def test_review_actions_overview_endpoint_summarizes_watchlist():
     )
 
 
+def test_review_action_status_update_persists_on_generated_plan():
+    plan = client.get("/api/v1/review-actions/600519?horizon=swing").json()
+    action_id = plan["items"][0]["id"]
+
+    response = client.patch(f"/api/v1/review-actions/600519/{action_id}?horizon=swing", json={"status": "done"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    updated = next(item for item in payload["items"] if item["id"] == action_id)
+    assert updated["status"] == "done"
+
+    follow_up = client.get("/api/v1/review-actions/600519?horizon=swing").json()
+    persisted = next(item for item in follow_up["items"] if item["id"] == action_id)
+    assert persisted["status"] == "done"
+
+    client.patch(f"/api/v1/review-actions/600519/{action_id}?horizon=swing", json={"status": "pending"})
+
+
 def test_market_overview_endpoint():
     response = client.get("/api/v1/market/overview")
 
@@ -130,6 +148,7 @@ def test_system_storage_endpoint_returns_persistence_status():
         "reports",
         "notes",
         "price_alerts",
+        "review_action_statuses",
     }
 
 

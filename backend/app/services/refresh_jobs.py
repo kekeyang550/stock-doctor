@@ -14,7 +14,7 @@ class DataRefreshJobService:
 
     def list_jobs(self, limit: int = 10) -> list[DataRefreshJob]:
         jobs = [DataRefreshJob.model_validate(item) for item in self._state_store.load_refresh_jobs()]
-        return sorted(jobs, key=lambda item: item.started_at, reverse=True)[:limit]
+        return sorted(jobs, key=lambda item: datetime.fromisoformat(item.started_at), reverse=True)[:limit]
 
     def build_freshness(self, provider: MarketDataProvider, stale_after_minutes: int = 30) -> DataFreshnessStatus:
         expected_stock_count = len(provider.list_stocks())

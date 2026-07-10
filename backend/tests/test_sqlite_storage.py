@@ -21,11 +21,13 @@ def test_sqlite_persists_state_collections(tmp_path):
     store.save_notes(payload)
     store.save_price_alerts(payload)
     store.save_refresh_jobs(payload)
+    store.save_review_action_statuses(payload)
 
     assert store.load_reports() == payload
     assert store.load_notes() == payload
     assert store.load_price_alerts() == payload
     assert store.load_refresh_jobs() == payload
+    assert store.load_review_action_statuses() == payload
 
 
 def test_create_state_store_can_select_sqlite(tmp_path, monkeypatch):

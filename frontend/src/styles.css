@@ -921,6 +921,10 @@ button {
   border-left-color: #b6812d;
 }
 
+.review-action.done {
+  opacity: 0.72;
+}
+
 .review-action div {
   display: flex;
   justify-content: space-between;
@@ -947,6 +951,29 @@ button {
   margin: 0;
   color: #394a40;
   line-height: 1.5;
+}
+
+.review-action-controls {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.review-action-controls button {
+  border: 1px solid #d9e2d4;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #526258;
+  min-height: 30px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.review-action-controls button.selected {
+  border-color: #26372f;
+  background: #26372f;
+  color: #ffffff;
 }
 
 .thesis-head {

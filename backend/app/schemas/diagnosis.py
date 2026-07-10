@@ -249,6 +249,10 @@ class ReviewActionItem(BaseModel):
     status: str = Field(default="pending", pattern="^(pending|watching|done)$")
 
 
+class ReviewActionStatusUpdate(BaseModel):
+    status: str = Field(pattern="^(pending|watching|done)$")
+
+
 class ReviewActionPlan(BaseModel):
     symbol: str
     name: str
@@ -489,6 +493,7 @@ class StorageExport(BaseModel):
     reports: list[dict[str, Any]]
     notes: list[dict[str, Any]]
     price_alerts: list[dict[str, Any]]
+    review_action_statuses: list[dict[str, Any]]
 
 
 class StorageImportRequest(BaseModel):
@@ -497,6 +502,7 @@ class StorageImportRequest(BaseModel):
     reports: list[dict[str, Any]] = Field(default_factory=list)
     notes: list[dict[str, Any]] = Field(default_factory=list)
     price_alerts: list[dict[str, Any]] = Field(default_factory=list)
+    review_action_statuses: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class StorageImportPreview(BaseModel):

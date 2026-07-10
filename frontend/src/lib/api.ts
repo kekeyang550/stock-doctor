@@ -172,6 +172,23 @@ export function fetchReviewActionOverview(horizon: string, scope = 'watchlist'):
   return getJson<ReviewActionOverview>(`/api/v1/review-actions?horizon=${horizon}&scope=${scope}`)
 }
 
+export async function updateReviewActionStatus(
+  symbol: string,
+  horizon: string,
+  actionId: string,
+  status: ReviewActionPlan['items'][number]['status'],
+): Promise<ReviewActionPlan> {
+  const response = await fetch(`/api/v1/review-actions/${symbol}/${encodeURIComponent(actionId)}?horizon=${horizon}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+  if (!response.ok) {
+    throw new Error(`更新行动状态失败：${response.status}`)
+  }
+  return response.json() as Promise<ReviewActionPlan>
+}
+
 export function fetchReports(): Promise<ReportRecord[]> {
   return getJson<ReportRecord[]>('/api/v1/reports')
 }

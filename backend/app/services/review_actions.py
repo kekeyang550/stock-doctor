@@ -113,6 +113,21 @@ class ReviewActionService:
             summaries=summaries,
         )
 
+    def apply_statuses(self, plan: ReviewActionPlan, statuses: list[dict]) -> ReviewActionPlan:
+        status_by_key = {
+            str(record.get("key")): str(record.get("status"))
+            for record in statuses
+            if record.get("status") in {"pending", "watching", "done"}
+        }
+        for item in plan.items:
+            status_value = status_by_key.get(self.status_key(plan.symbol, plan.horizon, item.id))
+            if status_value is not None:
+                item.status = status_value
+        return plan
+
+    def status_key(self, symbol: str, horizon: str, action_id: str) -> str:
+        return f"{symbol.strip().upper()}:{horizon}:{action_id}"
+
     def _change_actions(self, change: DiagnosisChangeReport) -> list[ReviewActionItem]:
         if change.status == "weakened":
             return [
