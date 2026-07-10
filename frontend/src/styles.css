@@ -110,7 +110,7 @@ button {
   border-radius: 8px;
   background: #203029;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-columns: minmax(0, 1fr) 62px;
   gap: 6px;
   align-items: stretch;
   padding: 6px;

@@ -15,6 +15,7 @@ const stockSearchResults = [
     last_price: 1518.3,
     change_pct: 1.18,
     in_watchlist: true,
+    diagnosable: true,
     match_reason: '默认候选',
   },
   {
@@ -24,6 +25,7 @@ const stockSearchResults = [
     last_price: 10.62,
     change_pct: 0.19,
     in_watchlist: false,
+    diagnosable: true,
     match_reason: '行业匹配',
   },
 ]

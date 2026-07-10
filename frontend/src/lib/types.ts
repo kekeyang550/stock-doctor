@@ -8,6 +8,7 @@ export type StockSummary = {
 
 export type StockSearchResult = StockSummary & {
   in_watchlist: boolean
+  diagnosable: boolean
   match_reason: string
 }
 

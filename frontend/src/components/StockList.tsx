@@ -53,6 +53,8 @@ export function StockList({
                 </button>
                 {stock.in_watchlist ? (
                   <em>已自选</em>
+                ) : !stock.diagnosable ? (
+                  <em>待接快照</em>
                 ) : (
                   <button
                     type="button"

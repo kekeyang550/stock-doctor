@@ -13,6 +13,7 @@ class StockSummary(BaseModel):
 
 class StockSearchResult(StockSummary):
     in_watchlist: bool
+    diagnosable: bool
     match_reason: str
 
 

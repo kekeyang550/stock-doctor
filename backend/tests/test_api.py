@@ -32,6 +32,7 @@ def test_stock_search_endpoint_returns_match_context():
     assert payload[0]["symbol"] == "000001"
     assert payload[0]["match_reason"] == "名称匹配"
     assert "in_watchlist" in payload[0]
+    assert payload[0]["diagnosable"] is True
 
 
 def test_diagnosis_change_endpoint_returns_baseline_or_change():

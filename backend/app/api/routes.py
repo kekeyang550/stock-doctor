@@ -116,6 +116,7 @@ async def search_stocks(
         StockSearchResult(
             **stock.model_dump(),
             in_watchlist=stock.symbol in watchlist_symbols,
+            diagnosable=data_provider.get_snapshot(stock.symbol) is not None,
             match_reason=_stock_match_reason(stock, query),
         )
         for stock in candidates[:limit]
