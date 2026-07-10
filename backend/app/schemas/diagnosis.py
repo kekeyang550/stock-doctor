@@ -214,6 +214,31 @@ class DiagnosisThesis(BaseModel):
     next_checks: list[str]
 
 
+class DiagnosisChangeItem(BaseModel):
+    key: str
+    label: str
+    direction: str = Field(pattern="^(up|down|flat|changed)$")
+    detail: str
+
+
+class DiagnosisChangeReport(BaseModel):
+    symbol: str
+    name: str
+    status: str = Field(pattern="^(baseline|improved|weakened|changed|flat)$")
+    current_generated_at: str
+    previous_generated_at: str | None
+    score_delta: int
+    technical_delta: int
+    valuation_delta: int
+    capital_delta: int
+    risk_delta: int
+    rating_changed: bool
+    previous_rating: str | None
+    current_rating: str
+    summary: str
+    changes: list[DiagnosisChangeItem]
+
+
 class ChecklistItem(BaseModel):
     id: str
     title: str

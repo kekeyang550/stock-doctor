@@ -7,6 +7,7 @@ import type {
   DataRefreshJob,
   DataSource,
   Diagnosis,
+  DiagnosisChangeReport,
   DiagnosisThesis,
   IndustryHeatItem,
   MarketOverview,
@@ -151,6 +152,10 @@ export async function removeWatchlistSymbol(symbol: string): Promise<StockSummar
 
 export function fetchDiagnosis(symbol: string, horizon: string): Promise<Diagnosis> {
   return getJson<Diagnosis>(`/api/v1/diagnosis/${symbol}?horizon=${horizon}`)
+}
+
+export function fetchDiagnosisChange(symbol: string, horizon: string): Promise<DiagnosisChangeReport> {
+  return getJson<DiagnosisChangeReport>(`/api/v1/diagnosis-change/${symbol}?horizon=${horizon}`)
 }
 
 export function fetchDiagnosisThesis(symbol: string, horizon: string): Promise<DiagnosisThesis> {

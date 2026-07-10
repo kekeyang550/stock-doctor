@@ -197,6 +197,31 @@ export type DiagnosisThesis = {
   next_checks: string[]
 }
 
+export type DiagnosisChangeItem = {
+  key: string
+  label: string
+  direction: 'up' | 'down' | 'flat' | 'changed'
+  detail: string
+}
+
+export type DiagnosisChangeReport = {
+  symbol: string
+  name: string
+  status: 'baseline' | 'improved' | 'weakened' | 'changed' | 'flat'
+  current_generated_at: string
+  previous_generated_at: string | null
+  score_delta: number
+  technical_delta: number
+  valuation_delta: number
+  capital_delta: number
+  risk_delta: number
+  rating_changed: boolean
+  previous_rating: string | null
+  current_rating: string
+  summary: string
+  changes: DiagnosisChangeItem[]
+}
+
 export type ChecklistItem = {
   id: string
   title: string

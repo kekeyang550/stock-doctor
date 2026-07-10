@@ -10,6 +10,7 @@ from app.schemas.diagnosis import (
     DataQualityReport,
     DataRefreshJob,
     DataRefreshJobRequest,
+    DiagnosisChangeReport,
     DiagnosisResponse,
     DiagnosisThesis,
     IndustryHeatItem,
@@ -44,6 +45,7 @@ from app.services.alerts import AlertEngine
 from app.services.data_connectors import DataConnectorHealthService
 from app.services.data_quality import DataQualityService
 from app.services.diagnosis import DiagnosisEngine
+from app.services.diagnosis_change import DiagnosisChangeService
 from app.services.industry_heat import IndustryHeatService
 from app.services.notes import ResearchNoteService
 from app.services.peers import PeerComparisonService
@@ -62,6 +64,7 @@ from app.services.thesis import ThesisService
 router = APIRouter()
 data_provider = create_market_data_provider()
 diagnosis_engine = DiagnosisEngine()
+diagnosis_change_service = DiagnosisChangeService()
 report_service = ReportService()
 alert_engine = AlertEngine()
 trend_service = TrendService()
@@ -480,6 +483,19 @@ async def diagnose_stock(
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
     return diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
+
+
+@router.get("/diagnosis-change/{symbol}", response_model=DiagnosisChangeReport)
+async def diagnosis_change(
+    symbol: str,
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+) -> DiagnosisChangeReport:
+    snapshot = data_provider.get_snapshot(symbol)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Stock symbol not found")
+    current = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
+    previous = diagnosis_change_service.latest_for_symbol(report_service.list_reports(limit=100), symbol)
+    return diagnosis_change_service.build_change(current=current, previous=previous)
 
 
 @router.get("/thesis/{symbol}", response_model=DiagnosisThesis)

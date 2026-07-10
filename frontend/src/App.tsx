@@ -17,6 +17,7 @@ import {
   fetchDataQualityOverview,
   fetchDataSources,
   fetchDiagnosis,
+  fetchDiagnosisChange,
   fetchDiagnosisThesis,
   fetchIndustryHeat,
   fetchMarketOverview,
@@ -53,6 +54,8 @@ import type {
   DataRefreshJob,
   DataSource,
   Diagnosis,
+  DiagnosisChangeItem,
+  DiagnosisChangeReport,
   DiagnosisThesis,
   EvidenceItem,
   IndustryHeatItem,
@@ -131,6 +134,7 @@ export default function App() {
   const [noteDraft, setNoteDraft] = useState('')
   const [priceAlertDraft, setPriceAlertDraft] = useState('')
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null)
+  const [diagnosisChange, setDiagnosisChange] = useState<DiagnosisChangeReport | null>(null)
   const [thesis, setThesis] = useState<DiagnosisThesis | null>(null)
   const [dataQuality, setDataQuality] = useState<DataQualityReport | null>(null)
   const [loading, setLoading] = useState(true)
@@ -170,14 +174,16 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const [result, quality, thesisResult] = await Promise.all([
+      const [result, quality, thesisResult, changeResult] = await Promise.all([
         fetchDiagnosis(selectedSymbol, horizon),
         fetchDataQuality(selectedSymbol),
         fetchDiagnosisThesis(selectedSymbol, horizon),
+        fetchDiagnosisChange(selectedSymbol, horizon),
       ])
       setDiagnosis(result)
       setDataQuality(quality)
       setThesis(thesisResult)
+      setDiagnosisChange(changeResult)
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误')
     } finally {
@@ -506,6 +512,7 @@ export default function App() {
             peers={peers}
             dataQuality={dataQuality}
             thesis={thesis}
+            diagnosisChange={diagnosisChange}
           />
         )}
         <PriceAlertsPanel
@@ -1397,6 +1404,7 @@ function DiagnosisWorkspace({
   peers,
   dataQuality,
   thesis,
+  diagnosisChange,
 }: {
   diagnosis: Diagnosis
   overview: MarketOverview | null
@@ -1405,6 +1413,7 @@ function DiagnosisWorkspace({
   peers: PeerComparison | null
   dataQuality: DataQualityReport | null
   thesis: DiagnosisThesis | null
+  diagnosisChange: DiagnosisChangeReport | null
 }) {
   return (
     <div className="diagnosis-layout">
@@ -1449,6 +1458,8 @@ function DiagnosisWorkspace({
       <ChecklistPanel items={diagnosis.checklist} />
 
       <PeerPanel peers={peers} />
+
+      <DiagnosisChangePanel report={diagnosisChange} />
 
       <DataQualityPanel report={dataQuality} />
 
@@ -1592,6 +1603,79 @@ function qualityStatusLabel(status: DataQualityReport['status']) {
   if (status === 'pass') return '可靠'
   if (status === 'warn') return '关注'
   return '异常'
+}
+
+function DiagnosisChangePanel({ report }: { report: DiagnosisChangeReport | null }) {
+  return (
+    <section className="panel diagnosis-change-panel">
+      <div className="panel-title split-title">
+        <span>
+          <CalendarClock size={18} />
+          <h3>诊断变化</h3>
+        </span>
+        <small className={report ? report.status : 'baseline'}>
+          {report ? changeStatusLabel(report.status) : '加载中'}
+        </small>
+      </div>
+      {report ? (
+        <>
+          <div className="change-head">
+            <strong>{formatDelta(report.score_delta)}</strong>
+            <span>
+              <b>{report.summary}</b>
+              <small>
+                {report.previous_generated_at ? `对比 ${formatReportTime(report.previous_generated_at)}` : '当前为首份复盘基线'}
+              </small>
+            </span>
+          </div>
+          <div className="change-grid">
+            <ChangeMetric label="技术" value={report.technical_delta} />
+            <ChangeMetric label="估值" value={report.valuation_delta} />
+            <ChangeMetric label="资金" value={report.capital_delta} />
+            <ChangeMetric label="风险" value={report.risk_delta} />
+          </div>
+          <div className="change-list">
+            {report.changes.map((item) => (
+              <ChangeItemRow key={item.key} item={item} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="empty-text">正在对比历史诊断...</p>
+      )}
+    </section>
+  )
+}
+
+function ChangeMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <span className={value > 0 ? 'up' : value < 0 ? 'down' : ''}>
+      <small>{label}</small>
+      <strong>{formatDelta(value)}</strong>
+    </span>
+  )
+}
+
+function ChangeItemRow({ item }: { item: DiagnosisChangeItem }) {
+  return (
+    <article className={`change-item ${item.direction}`}>
+      <strong>{item.label}</strong>
+      <span>{item.detail}</span>
+    </article>
+  )
+}
+
+function changeStatusLabel(status: DiagnosisChangeReport['status']) {
+  if (status === 'baseline') return '基线'
+  if (status === 'improved') return '增强'
+  if (status === 'weakened') return '转弱'
+  if (status === 'flat') return '持平'
+  return '变化'
+}
+
+function formatDelta(value: number) {
+  if (value > 0) return `+${value}`
+  return String(value)
 }
 
 function ThesisPanel({ thesis }: { thesis: DiagnosisThesis | null }) {

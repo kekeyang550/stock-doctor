@@ -593,8 +593,38 @@ button {
   grid-column: 1 / -1;
 }
 
+.diagnosis-change-panel {
+  grid-column: 1 / -1;
+}
+
 .thesis-panel {
   grid-column: 1 / -1;
+}
+
+.diagnosis-change-panel .split-title small {
+  border-radius: 6px;
+  padding: 4px 7px;
+}
+
+.diagnosis-change-panel .split-title small.baseline,
+.diagnosis-change-panel .split-title small.flat {
+  color: #526258;
+  background: #eef3ea;
+}
+
+.diagnosis-change-panel .split-title small.improved {
+  color: #31553f;
+  background: #e8efe3;
+}
+
+.diagnosis-change-panel .split-title small.weakened {
+  color: #7a3d3d;
+  background: #fff0ed;
+}
+
+.diagnosis-change-panel .split-title small.changed {
+  color: #7a5a2e;
+  background: #fff4d5;
 }
 
 .data-quality-panel .split-title small {
@@ -724,6 +754,99 @@ button {
 
 .quality-check small {
   color: #6a7a70;
+  line-height: 1.45;
+}
+
+.change-head {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e0e8db;
+  border-radius: 8px;
+  background: #f7faf5;
+  padding: 12px;
+}
+
+.change-head strong {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  background: #26372f;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+
+.change-head span {
+  display: grid;
+  gap: 5px;
+}
+
+.change-head b {
+  line-height: 1.45;
+}
+
+.change-head small {
+  color: #6a7a70;
+}
+
+.change-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.change-grid span {
+  border: 1px solid #e0e8db;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.change-grid small {
+  color: #6a7a70;
+}
+
+.change-grid strong {
+  font-size: 20px;
+}
+
+.change-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.change-item {
+  border: 1px solid #e0e8db;
+  border-left: 5px solid #bac7ba;
+  border-radius: 8px;
+  background: #fbfdf9;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.change-item.up {
+  border-left-color: #2e6b4f;
+}
+
+.change-item.down {
+  border-left-color: #b94a48;
+}
+
+.change-item.changed {
+  border-left-color: #b6812d;
+}
+
+.change-item span {
+  color: #394a40;
   line-height: 1.45;
 }
 
@@ -2232,6 +2355,10 @@ button {
     grid-column: 1 / -1;
   }
 
+  .diagnosis-change-panel {
+    grid-column: 1 / -1;
+  }
+
   .data-quality-panel {
     grid-column: 1 / -1;
   }
@@ -2269,6 +2396,8 @@ button {
   .quality-overview-metrics,
   .quality-checks,
   .readiness-checks,
+  .change-grid,
+  .change-list,
   .thesis-cases,
   .thesis-evidence-list,
   .storage-grid {
@@ -2325,6 +2454,10 @@ button {
   }
 
   .peer-panel {
+    grid-column: auto;
+  }
+
+  .diagnosis-change-panel {
     grid-column: auto;
   }
 

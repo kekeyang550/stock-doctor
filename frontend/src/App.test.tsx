@@ -169,6 +169,31 @@ const thesis = {
   next_checks: ['确认主力资金与北向资金是否连续两日同向。'],
 }
 
+const diagnosisChange = {
+  symbol: '600519',
+  name: '贵州茅台',
+  status: 'baseline',
+  current_generated_at: '2026-07-10T06:00:00Z',
+  previous_generated_at: null,
+  score_delta: 0,
+  technical_delta: 0,
+  valuation_delta: 0,
+  capital_delta: 0,
+  risk_delta: 0,
+  rating_changed: false,
+  previous_rating: null,
+  current_rating: '强势关注',
+  summary: '暂无历史报告，当前诊断作为复盘基线。',
+  changes: [
+    {
+      key: 'baseline',
+      label: '复盘基线',
+      direction: 'flat',
+      detail: '保存当前报告后，后续诊断会自动对比变化。',
+    },
+  ],
+}
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -421,6 +446,9 @@ describe('App', () => {
       if (url.includes('/peers')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(peers) })
       }
+      if (url.includes('/diagnosis-change')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(diagnosisChange) })
+      }
       if (url.includes('/thesis')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(thesis) })
       }
@@ -519,6 +547,9 @@ describe('App', () => {
     expect(screen.getByText('操作清单')).toBeInTheDocument()
     expect(screen.getByText('观察关键价位')).toBeInTheDocument()
     expect(screen.getByText('同业对比')).toBeInTheDocument()
+    const changePanel = screen.getByRole('heading', { name: '诊断变化' }).closest('section')!
+    expect(within(changePanel).getByText('复盘基线')).toBeInTheDocument()
+    expect(within(changePanel).getByText('当前为首份复盘基线')).toBeInTheDocument()
     const qualityPanel = screen.getByRole('heading', { name: '数据质量' }).closest('section')!
     expect(within(qualityPanel).getAllByText('可靠').length).toBeGreaterThan(0)
     expect(within(qualityPanel).getByText('行情字段')).toBeInTheDocument()

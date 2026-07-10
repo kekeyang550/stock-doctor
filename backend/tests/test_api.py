@@ -23,6 +23,17 @@ def test_stock_diagnosis_endpoint():
     assert len(payload["evidence"]) > 0
 
 
+def test_diagnosis_change_endpoint_returns_baseline_or_change():
+    response = client.get("/api/v1/diagnosis-change/600519?horizon=swing")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600519"
+    assert payload["status"] in {"baseline", "improved", "weakened", "changed", "flat"}
+    assert {"score_delta", "summary", "changes", "current_rating"}.issubset(payload.keys())
+    assert payload["changes"]
+
+
 def test_thesis_endpoint_returns_structured_argument():
     response = client.get("/api/v1/thesis/600519?horizon=swing")
 
