@@ -42,5 +42,8 @@ class AkshareMarketDataProvider:
     def remove_from_watchlist(self, symbol: str) -> None:
         self._fallback.remove_from_watchlist(symbol)
 
+    def replace_watchlist(self, symbols: list[str]) -> list[StockSummary]:
+        return self._fallback.replace_watchlist(symbols)
+
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
         return self._fallback.get_snapshot(symbol)

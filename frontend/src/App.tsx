@@ -11,6 +11,7 @@ import {
   deletePriceAlert,
   deleteReport,
   fetchAlerts,
+  fetchDataConnectorHealth,
   fetchDataSources,
   fetchDiagnosis,
   fetchIndustryHeat,
@@ -36,6 +37,8 @@ import {
 import type {
   AlertItem,
   ChecklistItem,
+  DataConnectorHealth,
+  DataConnectorStatus,
   DataSource,
   Diagnosis,
   EvidenceItem,
@@ -84,6 +87,7 @@ export default function App() {
   const [watchlist, setWatchlist] = useState<StockSummary[]>([])
   const [overview, setOverview] = useState<MarketOverview | null>(null)
   const [dataSources, setDataSources] = useState<DataSource[]>([])
+  const [connectorHealth, setConnectorHealth] = useState<DataConnectorHealth | null>(null)
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
   const [storageImportPayload, setStorageImportPayload] = useState<StorageImportPayload | null>(null)
   const [storageImportPreview, setStorageImportPreview] = useState<StorageImportPreview | null>(null)
@@ -112,11 +116,12 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, storage, savedReports] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, storage, savedReports] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
       fetchDataSources(),
+      fetchDataConnectorHealth(),
       fetchStorageStatus(),
       fetchReports(),
     ])
@@ -124,6 +129,7 @@ export default function App() {
     setWatchlist(watchItems)
     setOverview(market)
     setDataSources(sources)
+    setConnectorHealth(connectors)
     setStorageStatus(storage)
     setReports(savedReports)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
@@ -429,6 +435,8 @@ export default function App() {
           onApplyImport={applyStorageImport}
         />
 
+        <DataConnectorPanel health={connectorHealth} />
+
         {loading || !diagnosis ? (
           <div className="state-panel">
             <RefreshCw className="spin" size={20} />
@@ -581,6 +589,57 @@ function SystemStoragePanel({
       )}
     </section>
   )
+}
+
+function DataConnectorPanel({ health }: { health: DataConnectorHealth | null }) {
+  return (
+    <section className="panel connector-panel">
+      <div className="panel-title split-title">
+        <span>
+          <Database size={18} />
+          <h3>数据连接器</h3>
+        </span>
+        <small>{health ? `当前 ${health.active_provider}` : '加载中'}</small>
+      </div>
+      {health ? (
+        <>
+          <div className="connector-summary">
+            <span>回退源</span>
+            <strong>{health.fallback_provider}</strong>
+          </div>
+          <div className="connector-list">
+            {health.connectors.map((connector) => (
+              <ConnectorRow key={connector.name} connector={connector} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="empty-text">正在检查数据连接器...</p>
+      )}
+    </section>
+  )
+}
+
+function ConnectorRow({ connector }: { connector: DataConnectorStatus }) {
+  return (
+    <article className={`connector-row ${connector.status}`}>
+      <div>
+        <strong>{connector.name}</strong>
+        <span>{connector.role}</span>
+      </div>
+      <em>{connector.active ? '启用' : connectorStatusLabel(connector.status)}</em>
+      <p>{connector.message}</p>
+      <small>{connector.next_action}</small>
+    </article>
+  )
+}
+
+function connectorStatusLabel(status: DataConnectorStatus['status']) {
+  if (status === 'online') return '在线'
+  if (status === 'fallback') return '备用'
+  if (status === 'missing-package') return '缺包'
+  if (status === 'planned') return '规划'
+  return '异常'
 }
 
 function WatchlistSummaryPanel({

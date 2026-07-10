@@ -46,6 +46,39 @@ const sources = [
   { name: 'Mock A股样例库', status: 'online', role: 'MVP 诊断回归数据' },
 ]
 
+const connectorHealth = {
+  active_provider: 'mock',
+  fallback_provider: 'mock',
+  connectors: [
+    {
+      name: 'Mock A股样例库',
+      status: 'online',
+      active: true,
+      role: 'MVP 诊断回归数据与离线开发回退',
+      package: null,
+      package_installed: true,
+      configured_provider: 'mock',
+      latency_ms: 0,
+      last_checked_at: '2026-07-10T06:00:00Z',
+      message: '本地样例数据可用。',
+      next_action: '继续作为回归测试和真实数据失败时的兜底数据源。',
+    },
+    {
+      name: 'AKShare',
+      status: 'missing-package',
+      active: false,
+      role: 'A 股行情、指数、板块和资金流数据适配',
+      package: 'akshare',
+      package_installed: false,
+      configured_provider: 'mock',
+      latency_ms: null,
+      last_checked_at: '2026-07-10T06:00:00Z',
+      message: '当前环境未安装 akshare，系统继续使用 Mock 数据。',
+      next_action: '在后端环境执行 pip install akshare 后，再设置 STOCK_DOCTOR_DATA_PROVIDER=akshare。',
+    },
+  ],
+}
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -280,6 +313,9 @@ describe('App', () => {
       if (url.includes('/data-sources')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) })
       }
+      if (url.includes('/system/data-connectors')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(connectorHealth) })
+      }
       if (url.includes('/system/storage')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(storageStatus) })
       }
@@ -300,6 +336,9 @@ describe('App', () => {
     expect(screen.getByText('证据链')).toBeInTheDocument()
     expect(screen.getByText('市场概览')).toBeInTheDocument()
     expect(screen.getByText('数据源状态')).toBeInTheDocument()
+    expect(screen.getByText('数据连接器')).toBeInTheDocument()
+    expect(screen.getByText('AKShare')).toBeInTheDocument()
+    expect(screen.getByText('缺包')).toBeInTheDocument()
     expect(screen.getByText('系统存储')).toBeInTheDocument()
     expect(screen.getByText('JSON')).toBeInTheDocument()
     expect(screen.getByText('诊断报告')).toBeInTheDocument()

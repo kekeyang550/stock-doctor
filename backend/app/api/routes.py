@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.schemas.diagnosis import (
     AlertItem,
+    DataConnectorHealth,
     DiagnosisResponse,
     IndustryHeatItem,
     MarketOverview,
@@ -32,6 +33,7 @@ from app.schemas.diagnosis import (
     IndustryExposure,
 )
 from app.services.alerts import AlertEngine
+from app.services.data_connectors import DataConnectorHealthService
 from app.services.diagnosis import DiagnosisEngine
 from app.services.industry_heat import IndustryHeatService
 from app.services.notes import ResearchNoteService
@@ -59,6 +61,7 @@ industry_heat_service = IndustryHeatService()
 risk_exposure_service = RiskExposureService()
 screener_service = ScreenerService()
 price_alert_service = PriceAlertService()
+data_connector_health_service = DataConnectorHealthService()
 
 
 @router.get("/health")
@@ -79,6 +82,11 @@ async def market_overview() -> MarketOverview:
 @router.get("/data-sources")
 async def data_sources() -> list[dict[str, str]]:
     return data_provider.get_data_sources()
+
+
+@router.get("/system/data-connectors", response_model=DataConnectorHealth)
+async def system_data_connectors() -> DataConnectorHealth:
+    return data_connector_health_service.build_health()
 
 
 @router.get("/system/storage", response_model=StorageStatus)

@@ -23,6 +23,26 @@ export type DataSource = {
   role: string
 }
 
+export type DataConnectorStatus = {
+  name: string
+  status: 'online' | 'fallback' | 'missing-package' | 'planned' | 'error'
+  active: boolean
+  role: string
+  package: string | null
+  package_installed: boolean
+  configured_provider: string
+  latency_ms: number | null
+  last_checked_at: string
+  message: string
+  next_action: string
+}
+
+export type DataConnectorHealth = {
+  active_provider: string
+  fallback_provider: string
+  connectors: DataConnectorStatus[]
+}
+
 export type StorageCollectionStat = {
   key: string
   label: string

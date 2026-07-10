@@ -43,6 +43,26 @@ class MarketOverview(BaseModel):
     risk_notes: list[str]
 
 
+class DataConnectorStatus(BaseModel):
+    name: str
+    status: str = Field(pattern="^(online|fallback|missing-package|planned|error)$")
+    active: bool
+    role: str
+    package: str | None = None
+    package_installed: bool
+    configured_provider: str
+    latency_ms: int | None = None
+    last_checked_at: str
+    message: str
+    next_action: str
+
+
+class DataConnectorHealth(BaseModel):
+    active_provider: str
+    fallback_provider: str
+    connectors: list[DataConnectorStatus]
+
+
 class TechnicalSnapshot(BaseModel):
     ma5: float
     ma20: float

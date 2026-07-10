@@ -1,5 +1,6 @@
 import type {
   AlertItem,
+  DataConnectorHealth,
   DataSource,
   Diagnosis,
   IndustryHeatItem,
@@ -44,6 +45,10 @@ export function fetchIndustryHeat(horizon: string): Promise<IndustryHeatItem[]> 
 
 export function fetchDataSources(): Promise<DataSource[]> {
   return getJson<DataSource[]>('/api/v1/data-sources')
+}
+
+export function fetchDataConnectorHealth(): Promise<DataConnectorHealth> {
+  return getJson<DataConnectorHealth>('/api/v1/system/data-connectors')
 }
 
 export function fetchStorageStatus(): Promise<StorageStatus> {

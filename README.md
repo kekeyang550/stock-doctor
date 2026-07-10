@@ -45,3 +45,18 @@ The default storage backend is JSON. To use SQLite:
 $env:STOCK_DOCTOR_STATE_BACKEND = "sqlite"
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```
+
+## Data Providers
+
+The default market data provider is the built-in mock provider. The app includes a connector health panel for staged real-data rollout.
+
+To trial AKShare after installing the package:
+
+```powershell
+cd backend
+pip install akshare
+$env:STOCK_DOCTOR_DATA_PROVIDER = "akshare"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
+```
+
+The AKShare adapter keeps the mock provider as a fallback while real A-share fields are normalized.
