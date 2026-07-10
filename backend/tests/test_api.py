@@ -85,6 +85,17 @@ def test_hotspot_candidates_endpoint_returns_ranked_candidates():
     assert {"concept", "heat_score", "signal_score", "reason", "next_action"}.issubset(payload[0].keys())
 
 
+def test_hotspot_review_actions_endpoint_returns_candidate_followups():
+    response = client.get("/api/v1/hotspots/review-actions?mode=momentum")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "momentum"
+    assert payload["candidate_count"] >= len(payload["actions"])
+    assert payload["high_count"] + payload["medium_count"] + payload["low_count"] == len(payload["actions"])
+    assert {"symbol", "concept", "title", "trigger", "check_window"}.issubset(payload["actions"][0].keys())
+
+
 def test_thesis_endpoint_returns_structured_argument():
     response = client.get("/api/v1/thesis/600519?horizon=swing")
 

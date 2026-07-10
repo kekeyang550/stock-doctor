@@ -522,6 +522,29 @@ const hotspotCandidates = [
   },
 ]
 
+const hotspotReviewPlan = {
+  horizon: 'swing',
+  mode: 'balanced',
+  generated_at: '2026-07-10T08:00:00Z',
+  candidate_count: 1,
+  high_count: 1,
+  medium_count: 0,
+  low_count: 0,
+  actions: [
+    {
+      id: 'hotspot-002594-新能源汽车',
+      symbol: '002594',
+      name: '比亚迪',
+      concept: '新能源汽车',
+      priority: 'high',
+      title: '盘中复核 比亚迪 热点承接',
+      detail: '短线热度存在，但需同步跟踪解禁窗口和成交承接。',
+      trigger: '解禁窗口叠加热点，若放量滞涨需降低优先级。',
+      check_window: '今日盘中 + 解禁日前后',
+    },
+  ],
+}
+
 const trend = {
   symbol: '600519',
   name: '贵州茅台',
@@ -597,12 +620,6 @@ describe('App', () => {
       if (url.includes('/diagnosis-change')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(diagnosisChange) })
       }
-      if (url.includes('/review-actions?')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActionOverview) })
-      }
-      if (url.includes('/review-actions/')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActions) })
-      }
       if (url.includes('/thesis')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(thesis) })
       }
@@ -630,8 +647,17 @@ describe('App', () => {
       if (url.includes('/hotspots/brief')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotBrief) })
       }
+      if (url.includes('/hotspots/review-actions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotReviewPlan) })
+      }
       if (url.includes('/hotspots/candidates')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotCandidates) })
+      }
+      if (url.includes('/review-actions?')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActionOverview) })
+      }
+      if (url.includes('/review-actions/')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActions) })
       }
       if (url.includes('/data-sources')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) })
@@ -706,6 +732,9 @@ describe('App', () => {
     expect(within(hotspotPool).getByText(/成交承接/)).toBeInTheDocument()
     expect(within(hotspotPool).getByText('资金')).toBeInTheDocument()
     expect(within(hotspotPool).getByText('异动')).toBeInTheDocument()
+    const hotspotReviewPanel = screen.getByRole('heading', { name: '热点跟踪动作' }).closest('section')!
+    expect(within(hotspotReviewPanel).getByText('盘中复核 比亚迪 热点承接')).toBeInTheDocument()
+    expect(within(hotspotReviewPanel).getByText('今日盘中 + 解禁日前后')).toBeInTheDocument()
     expect(screen.getByText('报告历史')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研究笔记' })).toBeInTheDocument()
     expect(screen.getByText('观察量能是否继续温和放大')).toBeInTheDocument()

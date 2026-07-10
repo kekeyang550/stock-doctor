@@ -16,6 +16,7 @@ from app.schemas.diagnosis import (
     DiagnosisThesis,
     HotspotBrief,
     HotspotCandidate,
+    HotspotReviewPlan,
     IndustryHeatItem,
     MarketOverview,
     MomentumSignalItem,
@@ -57,6 +58,7 @@ from app.services.diagnosis import DiagnosisEngine
 from app.services.diagnosis_change import DiagnosisChangeService
 from app.services.hotspot_brief import HotspotBriefService
 from app.services.hotspot_candidates import HotspotCandidateService
+from app.services.hotspot_review_actions import HotspotReviewActionService
 from app.services.industry_heat import IndustryHeatService
 from app.services.momentum_signals import MomentumSignalService
 from app.services.notes import ResearchNoteService
@@ -89,6 +91,7 @@ concept_heat_service = ConceptHeatService()
 momentum_signal_service = MomentumSignalService()
 hotspot_brief_service = HotspotBriefService()
 hotspot_candidate_service = HotspotCandidateService()
+hotspot_review_action_service = HotspotReviewActionService()
 risk_exposure_service = RiskExposureService()
 screener_service = ScreenerService()
 price_alert_service = PriceAlertService()
@@ -471,6 +474,30 @@ async def hotspot_candidates(
         snapshots=snapshots,
         diagnoses=diagnoses,
         signals=signals,
+        mode=mode,
+        limit=limit,
+    )
+
+
+@router.get("/hotspots/review-actions", response_model=HotspotReviewPlan)
+async def hotspot_review_actions(
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    mode: str = Query(default="balanced", pattern="^(balanced|capital|momentum)$"),
+    limit: int = Query(default=8, ge=1, le=20),
+) -> HotspotReviewPlan:
+    snapshots = _all_snapshots()
+    diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    signals = momentum_signal_service.build_signals(snapshots=snapshots, limit=50)
+    candidates = hotspot_candidate_service.build_candidates(
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        signals=signals,
+        mode=mode,
+        limit=max(limit, 10),
+    )
+    return hotspot_review_action_service.build_plan(
+        candidates=candidates,
+        horizon=horizon,
         mode=mode,
         limit=limit,
     )

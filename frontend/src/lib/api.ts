@@ -12,6 +12,7 @@ import type {
   DiagnosisThesis,
   HotspotBrief,
   HotspotCandidate,
+  HotspotReviewPlan,
   IndustryHeatItem,
   MarketOverview,
   MomentumSignalItem,
@@ -75,6 +76,10 @@ export function fetchHotspotBrief(horizon: string): Promise<HotspotBrief> {
 
 export function fetchHotspotCandidates(horizon: string, mode = 'balanced'): Promise<HotspotCandidate[]> {
   return getJson<HotspotCandidate[]>(`/api/v1/hotspots/candidates?horizon=${horizon}&mode=${mode}&limit=10`)
+}
+
+export function fetchHotspotReviewActions(horizon: string, mode = 'balanced'): Promise<HotspotReviewPlan> {
+  return getJson<HotspotReviewPlan>(`/api/v1/hotspots/review-actions?horizon=${horizon}&mode=${mode}&limit=8`)
 }
 
 export function fetchDataSources(): Promise<DataSource[]> {

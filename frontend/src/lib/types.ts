@@ -480,6 +480,29 @@ export type HotspotCandidate = {
   next_action: string
 }
 
+export type HotspotReviewAction = {
+  id: string
+  symbol: string
+  name: string
+  concept: string
+  priority: 'high' | 'medium' | 'low'
+  title: string
+  detail: string
+  trigger: string
+  check_window: string
+}
+
+export type HotspotReviewPlan = {
+  horizon: string
+  mode: 'balanced' | 'capital' | 'momentum'
+  generated_at: string
+  candidate_count: number
+  high_count: number
+  medium_count: number
+  low_count: number
+  actions: HotspotReviewAction[]
+}
+
 export type TrendPoint = {
   date: string
   close: number

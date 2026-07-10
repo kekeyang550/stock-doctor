@@ -22,6 +22,7 @@ import {
   fetchDiagnosisThesis,
   fetchHotspotBrief,
   fetchHotspotCandidates,
+  fetchHotspotReviewActions,
   fetchIndustryHeat,
   fetchMarketOverview,
   fetchMomentumSignals,
@@ -69,6 +70,7 @@ import type {
   EvidenceItem,
   HotspotBrief,
   HotspotCandidate,
+  HotspotReviewPlan,
   IndustryHeatItem,
   MarketOverview,
   MomentumSignalItem,
@@ -148,6 +150,7 @@ export default function App() {
   const [dataQualityOverview, setDataQualityOverview] = useState<DataQualityOverview | null>(null)
   const [hotspotBrief, setHotspotBrief] = useState<HotspotBrief | null>(null)
   const [hotspotCandidates, setHotspotCandidates] = useState<HotspotCandidate[]>([])
+  const [hotspotReviewPlan, setHotspotReviewPlan] = useState<HotspotReviewPlan | null>(null)
   const [industryHeat, setIndustryHeat] = useState<IndustryHeatItem[]>([])
   const [conceptHeat, setConceptHeat] = useState<ConceptHeatItem[]>([])
   const [momentumSignals, setMomentumSignals] = useState<MomentumSignalItem[]>([])
@@ -172,7 +175,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotPool] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotPool, hotspotActions] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
@@ -187,6 +190,7 @@ export default function App() {
       fetchMomentumSignals(),
       fetchHotspotBrief(horizon),
       fetchHotspotCandidates(horizon, hotspotMode),
+      fetchHotspotReviewActions(horizon, hotspotMode),
     ])
     setStocks(items)
     setWatchlist(watchItems)
@@ -202,6 +206,7 @@ export default function App() {
     setMomentumSignals(momentum)
     setHotspotBrief(brief)
     setHotspotCandidates(hotspotPool)
+    setHotspotReviewPlan(hotspotActions)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
       setSelectedSymbol(items[0].symbol)
     }
@@ -566,6 +571,8 @@ export default function App() {
           onModeChange={setHotspotMode}
           onSelect={setSelectedSymbol}
         />
+
+        <HotspotReviewActionsPanel plan={hotspotReviewPlan} onSelect={setSelectedSymbol} />
 
         <WatchlistSummaryPanel summary={watchlistSummary} onSelect={setSelectedSymbol} />
 
@@ -1217,6 +1224,66 @@ function HotspotCandidatesPanel({
             </button>
           ))}
         </div>
+      )}
+    </section>
+  )
+}
+
+function HotspotReviewActionsPanel({
+  plan,
+  onSelect,
+}: {
+  plan: HotspotReviewPlan | null
+  onSelect: (symbol: string) => void
+}) {
+  const visibleActions = plan ? plan.actions.slice(0, 6) : []
+  return (
+    <section className="panel hotspot-review-panel">
+      <div className="panel-title split-title">
+        <span>
+          <CalendarClock size={18} />
+          <h3>热点跟踪动作</h3>
+        </span>
+        <small>{plan ? `${plan.candidate_count} 个候选 · ${plan.actions.length} 项动作` : '加载中'}</small>
+      </div>
+      {plan ? (
+        <>
+          <div className="hotspot-review-stats">
+            <span className="high">
+              <small>高优先</small>
+              <strong>{plan.high_count}</strong>
+            </span>
+            <span className="medium">
+              <small>待观察</small>
+              <strong>{plan.medium_count}</strong>
+            </span>
+            <span className="low">
+              <small>低优先</small>
+              <strong>{plan.low_count}</strong>
+            </span>
+          </div>
+          <div className="hotspot-review-list">
+            {visibleActions.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={`hotspot-review-action ${item.priority}`}
+                onClick={() => onSelect(item.symbol)}
+              >
+                <div>
+                  <span>{item.concept}</span>
+                  <em>{priorityLabel(item.priority)}</em>
+                </div>
+                <strong>{item.title}</strong>
+                <p>{item.detail}</p>
+                <small>{item.trigger}</small>
+                <b>{item.check_window}</b>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="empty-text">正在生成热点跟踪动作...</p>
       )}
     </section>
   )

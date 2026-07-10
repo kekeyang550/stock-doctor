@@ -487,6 +487,29 @@ class HotspotCandidate(BaseModel):
     next_action: str
 
 
+class HotspotReviewAction(BaseModel):
+    id: str
+    symbol: str
+    name: str
+    concept: str
+    priority: str = Field(pattern="^(high|medium|low)$")
+    title: str
+    detail: str
+    trigger: str
+    check_window: str
+
+
+class HotspotReviewPlan(BaseModel):
+    horizon: str
+    mode: str = Field(pattern="^(balanced|capital|momentum)$")
+    generated_at: str
+    candidate_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    actions: list[HotspotReviewAction]
+
+
 class RiskExposureItem(BaseModel):
     category: str
     event_count: int
