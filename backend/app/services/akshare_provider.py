@@ -115,6 +115,23 @@ class AkshareMarketDataProvider:
         if method is None:
             return []
         payload = method()
+        return self._payload_to_rows(payload)
+
+    def _call_history_rows(self, symbol: str) -> list[dict]:
+        if self._ak is None:
+            return []
+        method = getattr(self._ak, "stock_zh_a_hist", None)
+        if method is None:
+            return []
+        try:
+            payload = method(symbol=symbol, period="daily", adjust="qfq")
+        except TypeError:
+            payload = method(symbol)
+        except Exception:
+            return []
+        return self._payload_to_rows(payload)
+
+    def _payload_to_rows(self, payload) -> list[dict]:
         if isinstance(payload, list):
             return [row for row in payload if isinstance(row, dict)]
         if hasattr(payload, "to_dict"):
@@ -154,22 +171,16 @@ class AkshareMarketDataProvider:
         return default
 
     def _summary_to_conservative_snapshot(self, summary: StockSummary) -> StockSnapshot:
-        price = summary.last_price
+        technical = self._technical_from_history(summary.symbol) or self._conservative_technical(summary.last_price)
+        price = technical["last_price"] or summary.last_price
         return StockSnapshot(
             symbol=summary.symbol,
             name=summary.name,
             industry=summary.industry,
             last_price=price,
             change_pct=summary.change_pct,
-            as_of=date.today().isoformat(),
-            technical=TechnicalSnapshot(
-                ma5=price,
-                ma20=price,
-                ma60=price,
-                rsi14=50,
-                macd=0,
-                volume_ratio=1,
-            ),
+            as_of=technical["as_of"],
+            technical=technical["snapshot"],
             fundamental=FundamentalSnapshot(
                 pe_ttm=0,
                 pb=0,
@@ -190,3 +201,83 @@ class AkshareMarketDataProvider:
                 limit_up_streak=0,
             ),
         )
+
+    def _conservative_technical(self, price: float) -> dict:
+        return {
+            "last_price": price,
+            "as_of": date.today().isoformat(),
+            "snapshot": TechnicalSnapshot(
+                ma5=price,
+                ma20=price,
+                ma60=price,
+                rsi14=50,
+                macd=0,
+                volume_ratio=1,
+            ),
+        }
+
+    def _technical_from_history(self, symbol: str) -> dict | None:
+        rows = self._call_history_rows(symbol)
+        points = []
+        for row in rows:
+            close = self._first_float(row, "收盘", "close", "Close", default=0)
+            volume = self._first_float(row, "成交量", "volume", "Volume", default=0)
+            trade_date = self._first_text(row, "日期", "date", "trade_date")
+            if close > 0:
+                points.append({"close": close, "volume": max(0, volume), "date": trade_date})
+        if len(points) < 20:
+            return None
+
+        closes = [point["close"] for point in points]
+        volumes = [point["volume"] for point in points]
+        latest = points[-1]
+        return {
+            "last_price": closes[-1],
+            "as_of": latest["date"] or date.today().isoformat(),
+            "snapshot": TechnicalSnapshot(
+                ma5=self._moving_average(closes, 5),
+                ma20=self._moving_average(closes, 20),
+                ma60=self._moving_average(closes, min(60, len(closes))),
+                rsi14=self._rsi(closes, 14),
+                macd=self._macd(closes),
+                volume_ratio=self._volume_ratio(volumes, 5),
+            ),
+        }
+
+    def _moving_average(self, values: list[float], window: int) -> float:
+        sample = values[-window:] if len(values) >= window else values
+        return round(sum(sample) / len(sample), 2) if sample else 0
+
+    def _rsi(self, closes: list[float], period: int) -> float:
+        if len(closes) <= period:
+            return 50
+        changes = [closes[index] - closes[index - 1] for index in range(1, len(closes))]
+        recent = changes[-period:]
+        gains = sum(change for change in recent if change > 0) / period
+        losses = abs(sum(change for change in recent if change < 0) / period)
+        if losses == 0:
+            return 100
+        rs = gains / losses
+        return round(100 - (100 / (1 + rs)), 1)
+
+    def _macd(self, closes: list[float]) -> float:
+        if len(closes) < 26:
+            return 0
+        ema12 = self._ema(closes, 12)
+        ema26 = self._ema(closes, 26)
+        return round(ema12 - ema26, 2)
+
+    def _ema(self, values: list[float], period: int) -> float:
+        multiplier = 2 / (period + 1)
+        ema = values[0]
+        for value in values[1:]:
+            ema = value * multiplier + ema * (1 - multiplier)
+        return ema
+
+    def _volume_ratio(self, volumes: list[float], window: int) -> float:
+        latest = volumes[-1] if volumes else 0
+        history = volumes[-window - 1:-1] if len(volumes) > window else volumes[:-1]
+        if not history:
+            return 1
+        average = sum(history) / len(history)
+        return round(latest / average, 2) if average > 0 else 1
