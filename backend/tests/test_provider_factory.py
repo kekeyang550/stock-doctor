@@ -71,6 +71,22 @@ class FakeAkshareWithFundamentals:
         ]
 
 
+class FakeAkshareWithCapital:
+    def stock_zh_a_spot_em(self):
+        return [
+            {"代码": "688004", "名称": "博汇科技", "行业": "软件开发", "最新价": "18.6", "涨跌幅": "-0.5"},
+        ]
+
+    def stock_individual_fund_flow(self, symbol: str):
+        return [
+            {
+                "主力净流入-净额": "238000000",
+                "北向资金净流入": "-82000000",
+                "换手率": "3.4",
+            },
+        ]
+
+
 def test_akshare_provider_normalizes_spot_list():
     provider = AkshareMarketDataProvider(ak_module=FakeAkshare())
 
@@ -107,6 +123,18 @@ def test_akshare_provider_builds_conservative_snapshot_for_remote_stock():
     assert snapshot.technical.ma20 == 32.5
     assert snapshot.fundamental.pe_ttm == 0
     assert snapshot.capital.main_inflow_million == 0
+
+
+def test_akshare_provider_enriches_capital_snapshot_from_fund_flow():
+    provider = AkshareMarketDataProvider(ak_module=FakeAkshareWithCapital())
+
+    snapshot = provider.get_snapshot("688004")
+
+    assert snapshot is not None
+    assert snapshot.capital.main_inflow_million == 238
+    assert snapshot.capital.northbound_inflow_million == -82
+    assert snapshot.capital.turnover_rate == 3.4
+    assert snapshot.fundamental.pe_ttm == 0
 
 
 def test_akshare_provider_enriches_technical_snapshot_from_history():

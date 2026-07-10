@@ -173,6 +173,7 @@ class AkshareMarketDataProvider:
     def _summary_to_conservative_snapshot(self, summary: StockSummary) -> StockSnapshot:
         technical = self._technical_from_history(summary.symbol) or self._conservative_technical(summary.last_price)
         fundamental = self._fundamental_from_remote(summary.symbol) or self._conservative_fundamental()
+        capital = self._capital_from_remote(summary.symbol) or self._conservative_capital()
         price = technical["last_price"] or summary.last_price
         return StockSnapshot(
             symbol=summary.symbol,
@@ -183,11 +184,7 @@ class AkshareMarketDataProvider:
             as_of=technical["as_of"],
             technical=technical["snapshot"],
             fundamental=fundamental,
-            capital=CapitalSnapshot(
-                main_inflow_million=0,
-                northbound_inflow_million=0,
-                turnover_rate=0,
-            ),
+            capital=capital,
             risk=RiskSnapshot(
                 pledge_ratio=0,
                 unlock_days=None,
@@ -220,6 +217,13 @@ class AkshareMarketDataProvider:
             industry_pe_percentile=50,
         )
 
+    def _conservative_capital(self) -> CapitalSnapshot:
+        return CapitalSnapshot(
+            main_inflow_million=0,
+            northbound_inflow_million=0,
+            turnover_rate=0,
+        )
+
     def _fundamental_from_remote(self, symbol: str) -> FundamentalSnapshot | None:
         rows = self._call_symbol_rows("stock_a_lg_indicator", symbol)
         if not rows:
@@ -243,6 +247,33 @@ class AkshareMarketDataProvider:
             profit_growth=profit_growth,
             industry_pe_percentile=max(0, min(100, industry_pe_percentile)),
         )
+
+    def _capital_from_remote(self, symbol: str) -> CapitalSnapshot | None:
+        rows = self._call_symbol_rows("stock_individual_fund_flow", symbol)
+        if not rows:
+            rows = self._call_symbol_rows("stock_individual_fund_flow_rank", symbol)
+        if not rows:
+            return None
+        row = rows[-1]
+        main_inflow = self._normalize_money_to_million(
+            self._first_float(row, "主力净流入-净额", "主力净流入", "main_inflow_million", default=0)
+        )
+        northbound_inflow = self._normalize_money_to_million(
+            self._first_float(row, "北向资金净流入", "northbound_inflow_million", default=0)
+        )
+        turnover_rate = self._first_float(row, "换手率", "turnover_rate", default=0)
+        if main_inflow == 0 and northbound_inflow == 0 and turnover_rate == 0:
+            return None
+        return CapitalSnapshot(
+            main_inflow_million=main_inflow,
+            northbound_inflow_million=northbound_inflow,
+            turnover_rate=turnover_rate,
+        )
+
+    def _normalize_money_to_million(self, value: float) -> float:
+        if abs(value) >= 10000:
+            return round(value / 1_000_000, 1)
+        return value
 
     def _technical_from_history(self, symbol: str) -> dict | None:
         rows = self._call_history_rows(symbol)
