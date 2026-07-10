@@ -2101,6 +2101,11 @@ button {
   margin-bottom: 10px;
 }
 
+.hotspot-status-filter {
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
 .hotspot-review-controls {
   display: flex;
   gap: 6px;

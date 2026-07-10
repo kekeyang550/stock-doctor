@@ -739,6 +739,7 @@ describe('App', () => {
     const hotspotReviewPanel = screen.getByRole('heading', { name: '热点跟踪动作' }).closest('section')!
     expect(within(hotspotReviewPanel).getByText('盘中复核 比亚迪 热点承接')).toBeInTheDocument()
     expect(within(hotspotReviewPanel).getByText('今日盘中 + 解禁日前后')).toBeInTheDocument()
+    expect(within(hotspotReviewPanel).getByRole('button', { name: '全部' })).toBeInTheDocument()
     expect(within(hotspotReviewPanel).getAllByText('待处理').length).toBeGreaterThan(0)
     expect(screen.getByText('报告历史')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研究笔记' })).toBeInTheDocument()

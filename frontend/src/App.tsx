@@ -1254,7 +1254,11 @@ function HotspotReviewActionsPanel({
   onSelect: (symbol: string) => void
   onStatusChange: (actionId: string, status: HotspotReviewAction['status']) => void
 }) {
-  const visibleActions = plan ? plan.actions.slice(0, 6) : []
+  const [statusFilter, setStatusFilter] = useState<HotspotReviewAction['status'] | 'all'>('all')
+  const filteredActions = plan
+    ? plan.actions.filter((item) => statusFilter === 'all' || item.status === statusFilter)
+    : []
+  const visibleActions = filteredActions.slice(0, 6)
   return (
     <section className="panel hotspot-review-panel">
       <div className="panel-title split-title">
@@ -1294,8 +1298,27 @@ function HotspotReviewActionsPanel({
               <strong>{plan.done_count}</strong>
             </span>
           </div>
+          <div className="mini-segments hotspot-status-filter" aria-label="热点动作状态筛选">
+            {([
+              ['all', '全部'],
+              ['pending', '待处理'],
+              ['watching', '观察中'],
+              ['done', '已完成'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={statusFilter === value ? 'selected' : ''}
+                onClick={() => setStatusFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="hotspot-review-list">
-            {visibleActions.map((item) => (
+            {visibleActions.length === 0 ? (
+              <p className="empty-text">当前筛选下没有热点动作</p>
+            ) : visibleActions.map((item) => (
               <article
                 key={item.id}
                 className={`hotspot-review-action ${item.priority}`}
