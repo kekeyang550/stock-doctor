@@ -16,6 +16,8 @@ const stockSearchResults = [
     change_pct: 1.18,
     in_watchlist: true,
     diagnosable: true,
+    quality_status: 'pass',
+    quality_score: 100,
     match_reason: '默认候选',
   },
   {
@@ -26,6 +28,8 @@ const stockSearchResults = [
     change_pct: 0.19,
     in_watchlist: false,
     diagnosable: true,
+    quality_status: 'pass',
+    quality_score: 100,
     match_reason: '行业匹配',
   },
 ]
@@ -598,6 +602,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /贵州茅台 600519/ })).toBeInTheDocument()
     const searchResults = screen.getByText('搜索结果').closest('div')!
     expect(within(searchResults).getByText('平安银行')).toBeInTheDocument()
+    expect(within(searchResults).getAllByText('质量可靠 100').length).toBeGreaterThan(0)
     expect(within(searchResults).getByLabelText('加入自选 平安银行')).toBeInTheDocument()
     expect(screen.getByText('AI 诊断摘要')).toBeInTheDocument()
     expect(screen.getByText('证据链')).toBeInTheDocument()

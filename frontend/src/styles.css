@@ -135,6 +135,27 @@ button {
   color: #b8c6bd;
 }
 
+.search-quality {
+  justify-self: start;
+  border-radius: 6px;
+  color: #31553f;
+  background: #e8efe3;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 6px;
+}
+
+.search-quality.warn {
+  color: #7a5a2e;
+  background: #fff4d5;
+}
+
+.search-quality.fail,
+.search-quality.unknown {
+  color: #7a3d3d;
+  background: #fff0ed;
+}
+
 .search-result em,
 .search-add {
   border: 1px solid #385044;

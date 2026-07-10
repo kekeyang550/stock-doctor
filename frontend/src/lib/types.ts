@@ -9,6 +9,8 @@ export type StockSummary = {
 export type StockSearchResult = StockSummary & {
   in_watchlist: boolean
   diagnosable: boolean
+  quality_status: 'pass' | 'warn' | 'fail' | 'unknown'
+  quality_score: number | null
   match_reason: string
 }
 

@@ -112,15 +112,21 @@ async def search_stocks(
             if query in stock.symbol.lower() or query in stock.name.lower() or query in stock.industry.lower()
         ]
     candidates = sorted(candidates, key=lambda stock: (stock.symbol not in watchlist_symbols, stock.symbol))
-    return [
-        StockSearchResult(
-            **stock.model_dump(),
-            in_watchlist=stock.symbol in watchlist_symbols,
-            diagnosable=data_provider.get_snapshot(stock.symbol) is not None,
-            match_reason=_stock_match_reason(stock, query),
+    results = []
+    for stock in candidates[:limit]:
+        snapshot = data_provider.get_snapshot(stock.symbol)
+        quality = data_quality_service.build_report(snapshot) if snapshot is not None else None
+        results.append(
+            StockSearchResult(
+                **stock.model_dump(),
+                in_watchlist=stock.symbol in watchlist_symbols,
+                diagnosable=snapshot is not None,
+                quality_status=quality.status if quality is not None else "unknown",
+                quality_score=quality.score if quality is not None else None,
+                match_reason=_stock_match_reason(stock, query),
+            )
         )
-        for stock in candidates[:limit]
-    ]
+    return results
 
 
 @router.get("/market/overview", response_model=MarketOverview)

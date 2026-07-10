@@ -50,6 +50,9 @@ export function StockList({
                 <button type="button" onClick={() => onSelect(stock.symbol)}>
                   <strong>{stock.name}</strong>
                   <small>{stock.symbol} · {stock.industry} · {stock.match_reason}</small>
+                  <span className={`search-quality ${stock.quality_status}`}>
+                    {searchQualityLabel(stock)}
+                  </span>
                 </button>
                 {stock.in_watchlist ? (
                   <em>已自选</em>
@@ -109,4 +112,20 @@ export function StockList({
       </div>
     </aside>
   )
+}
+
+function searchQualityLabel(stock: StockSearchResult) {
+  if (!stock.diagnosable) {
+    return '待接快照'
+  }
+  if (stock.quality_status === 'pass') {
+    return `质量可靠 ${stock.quality_score ?? '--'}`
+  }
+  if (stock.quality_status === 'warn') {
+    return `需核验 ${stock.quality_score ?? '--'}`
+  }
+  if (stock.quality_status === 'fail') {
+    return `质量缺口 ${stock.quality_score ?? '--'}`
+  }
+  return '质量未知'
 }

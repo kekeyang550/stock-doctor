@@ -14,6 +14,8 @@ class StockSummary(BaseModel):
 class StockSearchResult(StockSummary):
     in_watchlist: bool
     diagnosable: bool
+    quality_status: str = Field(pattern="^(pass|warn|fail|unknown)$")
+    quality_score: int | None = Field(default=None, ge=0, le=100)
     match_reason: str
 
 

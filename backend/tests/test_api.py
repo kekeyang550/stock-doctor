@@ -33,6 +33,8 @@ def test_stock_search_endpoint_returns_match_context():
     assert payload[0]["match_reason"] == "名称匹配"
     assert "in_watchlist" in payload[0]
     assert payload[0]["diagnosable"] is True
+    assert payload[0]["quality_status"] in {"pass", "warn", "fail"}
+    assert isinstance(payload[0]["quality_score"], int)
 
 
 def test_diagnosis_change_endpoint_returns_baseline_or_change():
