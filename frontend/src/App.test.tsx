@@ -202,6 +202,9 @@ const reviewActions = {
   high_count: 1,
   medium_count: 1,
   low_count: 0,
+  pending_count: 2,
+  watching_count: 0,
+  done_count: 0,
   items: [
     {
       id: 'alerts-资金-主力资金流出',
@@ -231,6 +234,9 @@ const reviewActionOverview = {
   high_count: 1,
   medium_count: 5,
   low_count: 1,
+  pending_count: 7,
+  watching_count: 0,
+  done_count: 0,
   summaries: [
     {
       symbol: '600519',

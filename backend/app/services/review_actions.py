@@ -90,6 +90,9 @@ class ReviewActionService:
             high_count=len([item for item in deduped if item.priority == "high"]),
             medium_count=len([item for item in deduped if item.priority == "medium"]),
             low_count=len([item for item in deduped if item.priority == "low"]),
+            pending_count=len([item for item in deduped if item.status == "pending"]),
+            watching_count=len([item for item in deduped if item.status == "watching"]),
+            done_count=len([item for item in deduped if item.status == "done"]),
             items=deduped,
         )
 
@@ -110,6 +113,9 @@ class ReviewActionService:
             high_count=sum(plan.high_count for plan in plans),
             medium_count=sum(plan.medium_count for plan in plans),
             low_count=sum(plan.low_count for plan in plans),
+            pending_count=sum(plan.pending_count for plan in plans),
+            watching_count=sum(plan.watching_count for plan in plans),
+            done_count=sum(plan.done_count for plan in plans),
             summaries=summaries,
         )
 
@@ -123,6 +129,9 @@ class ReviewActionService:
             status_value = status_by_key.get(self.status_key(plan.symbol, plan.horizon, item.id))
             if status_value is not None:
                 item.status = status_value
+        plan.pending_count = len([item for item in plan.items if item.status == "pending"])
+        plan.watching_count = len([item for item in plan.items if item.status == "watching"])
+        plan.done_count = len([item for item in plan.items if item.status == "done"])
         return plan
 
     def status_key(self, symbol: str, horizon: str, action_id: str) -> str:

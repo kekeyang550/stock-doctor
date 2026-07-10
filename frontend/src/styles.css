@@ -896,6 +896,30 @@ button {
   font-size: 22px;
 }
 
+.review-progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.review-progress-stats span {
+  border: 1px solid #e0e8db;
+  border-radius: 8px;
+  background: #f7faf5;
+  padding: 9px 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.review-progress-stats small {
+  color: #6a7a70;
+}
+
+.review-progress-stats strong {
+  font-size: 20px;
+}
+
 .review-action-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

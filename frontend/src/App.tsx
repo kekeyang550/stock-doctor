@@ -956,9 +956,9 @@ function ReviewActionOverviewPanel({
       {overview ? (
         <>
           <div className="action-overview-metrics">
-            <SummaryMetric label="高优先" value={overview.high_count} />
-            <SummaryMetric label="待观察" value={overview.medium_count} />
-            <SummaryMetric label="低优先" value={overview.low_count} />
+            <SummaryMetric label="待处理" value={overview.pending_count} />
+            <SummaryMetric label="观察中" value={overview.watching_count} />
+            <SummaryMetric label="已完成" value={overview.done_count} />
           </div>
           {overview.summaries.length ? (
             <div className="action-overview-list">
@@ -1656,6 +1656,20 @@ function ReviewActionsPanel({
             <ActionStat label="高优先" value={plan.high_count} priority="high" />
             <ActionStat label="待观察" value={plan.medium_count} priority="medium" />
             <ActionStat label="低优先" value={plan.low_count} priority="low" />
+          </div>
+          <div className="review-progress-stats">
+            <span>
+              <small>待处理</small>
+              <strong>{plan.pending_count}</strong>
+            </span>
+            <span>
+              <small>观察中</small>
+              <strong>{plan.watching_count}</strong>
+            </span>
+            <span>
+              <small>已完成</small>
+              <strong>{plan.done_count}</strong>
+            </span>
           </div>
           <div className="review-action-list">
             {visibleItems.map((item) => (

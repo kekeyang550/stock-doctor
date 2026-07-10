@@ -242,6 +242,9 @@ export type ReviewActionPlan = {
   high_count: number
   medium_count: number
   low_count: number
+  pending_count: number
+  watching_count: number
+  done_count: number
   items: ReviewActionItem[]
 }
 
@@ -265,6 +268,9 @@ export type ReviewActionOverview = {
   high_count: number
   medium_count: number
   low_count: number
+  pending_count: number
+  watching_count: number
+  done_count: number
   summaries: ReviewActionStockSummary[]
 }
 

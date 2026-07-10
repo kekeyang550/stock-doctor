@@ -261,6 +261,9 @@ class ReviewActionPlan(BaseModel):
     high_count: int
     medium_count: int
     low_count: int
+    pending_count: int
+    watching_count: int
+    done_count: int
     items: list[ReviewActionItem]
 
 
@@ -284,6 +287,9 @@ class ReviewActionOverview(BaseModel):
     high_count: int
     medium_count: int
     low_count: int
+    pending_count: int
+    watching_count: int
+    done_count: int
     summaries: list[ReviewActionStockSummary]
 
 
