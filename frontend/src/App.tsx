@@ -1095,16 +1095,16 @@ function IndustryHeatPanel({ items, onSelect }: { items: IndustryHeatItem[]; onS
             <button type="button" key={item.industry} className={`industry-heat-row ${item.heat_level}`} onClick={() => onSelect(item.top_symbol)}>
               <span>
                 <strong>{item.industry}</strong>
-                <small>{item.stock_count} 只 · 高优先预警 {item.high_alert_count}</small>
+                <small>{item.stock_count} 只 · {item.momentum_label} · 高优先预警 {item.high_alert_count}</small>
               </span>
-              <span className="heat-meter" aria-label={`${item.industry} 热力 ${item.average_score.toFixed(1)}`}>
-                <i style={{ width: `${Math.max(8, Math.min(item.average_score, 100))}%` }} />
+              <span className="heat-meter" aria-label={`${item.industry} 热度 ${item.heat_score}`}>
+                <i style={{ width: `${Math.max(8, Math.min(item.heat_score, 100))}%` }} />
               </span>
-              <b>{item.average_score.toFixed(1)}</b>
+              <b>{item.heat_score}</b>
               <em className={item.average_change_pct >= 0 ? 'up' : 'down'}>
                 {item.average_change_pct >= 0 ? '+' : ''}{item.average_change_pct.toFixed(2)}%
               </em>
-              <small>{item.top_name} {item.top_score}</small>
+              <small>{item.top_name} {item.top_score} · 资金 {formatSignedNumber(item.average_main_inflow_million)}</small>
             </button>
           ))}
         </div>
@@ -2068,6 +2068,10 @@ function buildSparklinePath(values: number[]) {
       return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`
     })
     .join(' ')
+}
+
+function formatSignedNumber(value: number) {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(0)}`
 }
 
 function Level({ label, value }: { label: string; value: number }) {

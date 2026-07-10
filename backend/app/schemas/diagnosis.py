@@ -426,13 +426,16 @@ class WatchlistSummary(BaseModel):
 class IndustryHeatItem(BaseModel):
     industry: str
     stock_count: int
+    heat_score: int = Field(ge=0, le=100)
     average_score: float
     average_change_pct: float
+    average_main_inflow_million: float
     high_alert_count: int
     top_symbol: str
     top_name: str
     top_score: int
     heat_level: str = Field(pattern="^(hot|warm|neutral|cool)$")
+    momentum_label: str
 
 
 class RiskExposureItem(BaseModel):

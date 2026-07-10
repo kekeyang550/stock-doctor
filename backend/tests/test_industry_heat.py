@@ -33,5 +33,8 @@ def test_industry_heat_summarizes_scores_and_alerts():
     heat = IndustryHeatService().build_heatmap(snapshots=snapshots, ranked=ranked, alerts=alerts)
 
     assert len(heat) >= 3
-    assert heat[0].average_score >= heat[-1].average_score
+    assert heat[0].heat_score >= heat[-1].heat_score
+    assert all(0 <= item.heat_score <= 100 for item in heat)
+    assert all(item.momentum_label for item in heat)
+    assert any(item.average_main_inflow_million != 0 for item in heat)
     assert any(item.industry == "汽车整车" and item.high_alert_count >= 1 for item in heat)

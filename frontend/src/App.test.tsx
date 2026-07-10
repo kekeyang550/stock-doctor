@@ -454,13 +454,16 @@ const industryHeat = [
   {
     industry: '白酒',
     stock_count: 1,
+    heat_score: 89,
     average_score: 86,
     average_change_pct: 1.18,
+    average_main_inflow_million: 412.5,
     high_alert_count: 0,
     top_symbol: '600519',
     top_name: '贵州茅台',
     top_score: 86,
     heat_level: 'hot',
+    momentum_label: '价量共振',
   },
 ]
 
@@ -640,6 +643,7 @@ describe('App', () => {
     expect(screen.getByText('预警中心')).toBeInTheDocument()
     expect(screen.getByText('自选股体检')).toBeInTheDocument()
     expect(screen.getByText('行业热力')).toBeInTheDocument()
+    expect(screen.getByText(/价量共振/)).toBeInTheDocument()
     const actionOverviewPanel = screen.getByRole('heading', { name: '行动总览' }).closest('section')!
     expect(within(actionOverviewPanel).getByText('主力资金流出')).toBeInTheDocument()
     expect(within(actionOverviewPanel).getByText(/600519/)).toBeInTheDocument()

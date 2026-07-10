@@ -419,13 +419,16 @@ export type WatchlistSummary = {
 export type IndustryHeatItem = {
   industry: string
   stock_count: number
+  heat_score: number
   average_score: number
   average_change_pct: number
+  average_main_inflow_million: number
   high_alert_count: number
   top_symbol: string
   top_name: string
   top_score: number
   heat_level: 'hot' | 'warm' | 'neutral' | 'cool'
+  momentum_label: string
 }
 
 export type TrendPoint = {
