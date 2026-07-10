@@ -52,6 +52,25 @@ class FakeAkshareWithHistory:
         ]
 
 
+class FakeAkshareWithFundamentals:
+    def stock_zh_a_spot_em(self):
+        return [
+            {"代码": "688003", "名称": "天准科技", "行业": "专用设备", "最新价": "28.2", "涨跌幅": "0.8"},
+        ]
+
+    def stock_a_lg_indicator(self, symbol: str):
+        return [
+            {
+                "市盈率(TTM)": "31.4",
+                "市净率": "2.7",
+                "净资产收益率": "12.6",
+                "营业收入同比增长": "9.8",
+                "净利润同比增长": "15.2",
+                "行业市盈率分位": "42",
+            },
+        ]
+
+
 def test_akshare_provider_normalizes_spot_list():
     provider = AkshareMarketDataProvider(ak_module=FakeAkshare())
 
@@ -105,6 +124,21 @@ def test_akshare_provider_enriches_technical_snapshot_from_history():
     assert snapshot.technical.macd > 0
     assert snapshot.technical.volume_ratio == 1.02
     assert snapshot.fundamental.pe_ttm == 0
+
+
+def test_akshare_provider_enriches_fundamental_snapshot_from_remote_indicator():
+    provider = AkshareMarketDataProvider(ak_module=FakeAkshareWithFundamentals())
+
+    snapshot = provider.get_snapshot("688003")
+
+    assert snapshot is not None
+    assert snapshot.fundamental.pe_ttm == 31.4
+    assert snapshot.fundamental.pb == 2.7
+    assert snapshot.fundamental.roe == 12.6
+    assert snapshot.fundamental.revenue_growth == 9.8
+    assert snapshot.fundamental.profit_growth == 15.2
+    assert snapshot.fundamental.industry_pe_percentile == 42
+    assert snapshot.capital.main_inflow_million == 0
 
 
 def test_akshare_provider_can_watch_remote_snapshot_stock(tmp_path):

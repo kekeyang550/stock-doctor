@@ -172,6 +172,7 @@ class AkshareMarketDataProvider:
 
     def _summary_to_conservative_snapshot(self, summary: StockSummary) -> StockSnapshot:
         technical = self._technical_from_history(summary.symbol) or self._conservative_technical(summary.last_price)
+        fundamental = self._fundamental_from_remote(summary.symbol) or self._conservative_fundamental()
         price = technical["last_price"] or summary.last_price
         return StockSnapshot(
             symbol=summary.symbol,
@@ -181,14 +182,7 @@ class AkshareMarketDataProvider:
             change_pct=summary.change_pct,
             as_of=technical["as_of"],
             technical=technical["snapshot"],
-            fundamental=FundamentalSnapshot(
-                pe_ttm=0,
-                pb=0,
-                roe=0,
-                revenue_growth=0,
-                profit_growth=0,
-                industry_pe_percentile=50,
-            ),
+            fundamental=fundamental,
             capital=CapitalSnapshot(
                 main_inflow_million=0,
                 northbound_inflow_million=0,
@@ -215,6 +209,40 @@ class AkshareMarketDataProvider:
                 volume_ratio=1,
             ),
         }
+
+    def _conservative_fundamental(self) -> FundamentalSnapshot:
+        return FundamentalSnapshot(
+            pe_ttm=0,
+            pb=0,
+            roe=0,
+            revenue_growth=0,
+            profit_growth=0,
+            industry_pe_percentile=50,
+        )
+
+    def _fundamental_from_remote(self, symbol: str) -> FundamentalSnapshot | None:
+        rows = self._call_symbol_rows("stock_a_lg_indicator", symbol)
+        if not rows:
+            rows = self._call_symbol_rows("stock_financial_abstract", symbol)
+        if not rows:
+            return None
+        row = rows[-1]
+        pe_ttm = self._first_float(row, "市盈率(TTM)", "市盈率TTM", "pe_ttm", "pe", default=0)
+        pb = self._first_float(row, "市净率", "pb", default=0)
+        roe = self._first_float(row, "净资产收益率", "净资产收益率(%)", "roe", default=0)
+        revenue_growth = self._first_float(row, "营业收入同比增长", "营收同比增长", "revenue_growth", default=0)
+        profit_growth = self._first_float(row, "净利润同比增长", "归母净利润同比增长", "profit_growth", default=0)
+        industry_pe_percentile = self._first_float(row, "行业市盈率分位", "industry_pe_percentile", default=50)
+        if min(pe_ttm, pb) <= 0 and roe == 0 and revenue_growth == 0 and profit_growth == 0:
+            return None
+        return FundamentalSnapshot(
+            pe_ttm=pe_ttm,
+            pb=pb,
+            roe=roe,
+            revenue_growth=revenue_growth,
+            profit_growth=profit_growth,
+            industry_pe_percentile=max(0, min(100, industry_pe_percentile)),
+        )
 
     def _technical_from_history(self, symbol: str) -> dict | None:
         rows = self._call_history_rows(symbol)
@@ -281,3 +309,20 @@ class AkshareMarketDataProvider:
             return 1
         average = sum(history) / len(history)
         return round(latest / average, 2) if average > 0 else 1
+
+    def _call_symbol_rows(self, method_name: str, symbol: str) -> list[dict]:
+        if self._ak is None:
+            return []
+        method = getattr(self._ak, method_name, None)
+        if method is None:
+            return []
+        try:
+            payload = method(symbol=symbol)
+        except TypeError:
+            try:
+                payload = method(symbol)
+            except Exception:
+                return []
+        except Exception:
+            return []
+        return self._payload_to_rows(payload)
