@@ -391,7 +391,9 @@ button {
   min-width: 0;
 }
 
-.title-actions button {
+.title-actions button,
+.file-action,
+.import-preview-head button {
   border: 1px solid #d2dbcc;
   border-radius: 6px;
   background: #ffffff;
@@ -403,10 +405,24 @@ button {
   padding: 0 8px;
 }
 
-.title-actions button:disabled {
+.title-actions button:disabled,
+.import-preview-head button:disabled {
   cursor: not-allowed;
   color: #7a8a82;
   background: #eef3ea;
+}
+
+.file-action {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.file-action input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .panel-title h3 {
@@ -697,6 +713,10 @@ button {
   margin-top: 10px;
 }
 
+.storage-grid.compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .storage-stat {
   border: 1px solid #e0e8db;
   border-radius: 8px;
@@ -718,6 +738,48 @@ button {
 .storage-panel p {
   margin: 10px 0 0;
   color: #6a7a70;
+  line-height: 1.5;
+}
+
+.import-preview {
+  border: 1px solid #d8e2d2;
+  border-radius: 8px;
+  background: #fbfdf9;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.import-preview-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.import-preview-head span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.import-preview-head strong,
+.import-preview-head small {
+  overflow-wrap: anywhere;
+}
+
+.import-preview-head small {
+  color: #6a7a70;
+}
+
+.import-preview-head button {
+  background: #26372f;
+  color: #ffffff;
+}
+
+.import-warnings {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #7a5a2e;
   line-height: 1.5;
 }
 
@@ -1539,6 +1601,10 @@ button {
   .portfolio-details,
   .storage-grid {
     grid-template-columns: 1fr;
+  }
+
+  .storage-grid.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .note-editor {

@@ -37,7 +37,7 @@ Runtime state is intentionally ignored by Git:
 - `backend/data/state.json`
 - `backend/data/state.sqlite3`
 
-Use the app's system storage export feature to back up watchlist, reports, notes, and price alerts.
+Use the app's system storage export/import feature to back up and restore watchlist, reports, notes, and price alerts.
 
 The default storage backend is JSON. To use SQLite:
 

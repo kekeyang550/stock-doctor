@@ -303,3 +303,26 @@ class StorageExport(BaseModel):
     reports: list[dict[str, Any]]
     notes: list[dict[str, Any]]
     price_alerts: list[dict[str, Any]]
+
+
+class StorageImportRequest(BaseModel):
+    mode: str = Field(default="replace", pattern="^replace$")
+    watchlist: list[str] = Field(default_factory=list)
+    reports: list[dict[str, Any]] = Field(default_factory=list)
+    notes: list[dict[str, Any]] = Field(default_factory=list)
+    price_alerts: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class StorageImportPreview(BaseModel):
+    mode: str
+    can_import: bool
+    collections: list[StorageCollectionStat]
+    total_records: int
+    warnings: list[str]
+    skipped_records: int
+
+
+class StorageImportResult(StorageImportPreview):
+    imported_at: str
+    status: str
+    storage: StorageStatus

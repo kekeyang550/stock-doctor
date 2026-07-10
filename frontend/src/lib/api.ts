@@ -13,6 +13,9 @@ import type {
   ScreenCandidate,
   StockSummary,
   StorageExport,
+  StorageImportPayload,
+  StorageImportPreview,
+  StorageImportResult,
   StorageStatus,
   TimelineEvent,
   TrendSeries,
@@ -49,6 +52,30 @@ export function fetchStorageStatus(): Promise<StorageStatus> {
 
 export function fetchStorageExport(): Promise<StorageExport> {
   return getJson<StorageExport>('/api/v1/system/export')
+}
+
+export async function previewStorageImport(payload: StorageImportPayload): Promise<StorageImportPreview> {
+  const response = await fetch('/api/v1/system/import/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    throw new Error(`导入预检失败：${response.status}`)
+  }
+  return response.json() as Promise<StorageImportPreview>
+}
+
+export async function importStorage(payload: StorageImportPayload): Promise<StorageImportResult> {
+  const response = await fetch('/api/v1/system/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    throw new Error(`导入失败：${response.status}`)
+  }
+  return response.json() as Promise<StorageImportResult>
 }
 
 export function fetchWatchlist(): Promise<StockSummary[]> {

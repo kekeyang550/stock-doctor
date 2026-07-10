@@ -47,6 +47,28 @@ export type StorageExport = {
   price_alerts: PriceAlert[]
 }
 
+export type StorageImportPayload = {
+  watchlist: string[]
+  reports: ReportRecord[]
+  notes: ResearchNote[]
+  price_alerts: PriceAlert[]
+}
+
+export type StorageImportPreview = {
+  mode: string
+  can_import: boolean
+  collections: StorageCollectionStat[]
+  total_records: number
+  warnings: string[]
+  skipped_records: number
+}
+
+export type StorageImportResult = StorageImportPreview & {
+  imported_at: string
+  status: string
+  storage: StorageStatus
+}
+
 export type ScoreBreakdown = {
   technical: number
   valuation: number

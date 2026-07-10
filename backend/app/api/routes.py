@@ -21,6 +21,9 @@ from app.schemas.diagnosis import (
     StockSnapshot,
     StorageCollectionStat,
     StorageExport,
+    StorageImportPreview,
+    StorageImportRequest,
+    StorageImportResult,
     StorageStatus,
     TimelineEvent,
     TrendSeries,
@@ -38,7 +41,7 @@ from app.services.provider_factory import create_market_data_provider
 from app.services.reports import ReportService
 from app.services.risk_exposure import RiskExposureService
 from app.services.screener import ScreenerService
-from app.services.storage import SQLiteStateStore, create_state_store
+from app.services.storage import SQLiteStateStore, StateStore, create_state_store
 from app.services.timeline import TimelineService
 from app.services.trend import TrendService
 
@@ -80,22 +83,7 @@ async def data_sources() -> list[dict[str, str]]:
 
 @router.get("/system/storage", response_model=StorageStatus)
 async def system_storage() -> StorageStatus:
-    store = create_state_store()
-    collections = [
-        StorageCollectionStat(key="watchlist", label="自选股", count=len(store.load_watchlist([]))),
-        StorageCollectionStat(key="reports", label="诊断报告", count=len(store.load_reports())),
-        StorageCollectionStat(key="notes", label="研究笔记", count=len(store.load_notes())),
-        StorageCollectionStat(key="price_alerts", label="价位提醒", count=len(store.load_price_alerts())),
-    ]
-    backend = "sqlite" if isinstance(store, SQLiteStateStore) else "json"
-    return StorageStatus(
-        backend=backend,
-        status="online",
-        path=str(store.path),
-        collections=collections,
-        total_records=sum(item.count for item in collections),
-        migration_hint="可通过 STOCK_DOCTOR_STATE_BACKEND=sqlite 切换到 SQLite 持久化。",
-    )
+    return _storage_status(create_state_store())
 
 
 @router.get("/system/export", response_model=StorageExport)
@@ -109,6 +97,33 @@ async def system_export() -> StorageExport:
         reports=store.load_reports(),
         notes=store.load_notes(),
         price_alerts=store.load_price_alerts(),
+    )
+
+
+@router.post("/system/import/preview", response_model=StorageImportPreview)
+async def system_import_preview(request: StorageImportRequest) -> StorageImportPreview:
+    return _build_import_preview(request)
+
+
+@router.post("/system/import", response_model=StorageImportResult)
+async def system_import(request: StorageImportRequest) -> StorageImportResult:
+    preview = _build_import_preview(request)
+    if not preview.can_import:
+        raise HTTPException(status_code=400, detail="Import payload cannot be applied")
+
+    valid_watchlist = _valid_watchlist_symbols(request.watchlist)[0]
+    store = create_state_store()
+    store.save_watchlist(valid_watchlist)
+    store.save_reports(request.reports[:100])
+    store.save_notes(request.notes[:200])
+    store.save_price_alerts(request.price_alerts[:200])
+    data_provider.replace_watchlist(valid_watchlist)
+
+    return StorageImportResult(
+        **preview.model_dump(),
+        imported_at=datetime.now(timezone.utc).isoformat(),
+        status="imported",
+        storage=_storage_status(store),
     )
 
 
@@ -420,3 +435,79 @@ def _ranked_diagnoses(horizon: str) -> list[RankedDiagnosis]:
             )
         )
     return ranked
+
+
+def _storage_status(store: StateStore) -> StorageStatus:
+    collections = [
+        StorageCollectionStat(key="watchlist", label="自选股", count=len(store.load_watchlist([]))),
+        StorageCollectionStat(key="reports", label="诊断报告", count=len(store.load_reports())),
+        StorageCollectionStat(key="notes", label="研究笔记", count=len(store.load_notes())),
+        StorageCollectionStat(key="price_alerts", label="价位提醒", count=len(store.load_price_alerts())),
+    ]
+    backend = "sqlite" if isinstance(store, SQLiteStateStore) else "json"
+    return StorageStatus(
+        backend=backend,
+        status="online",
+        path=str(store.path),
+        collections=collections,
+        total_records=sum(item.count for item in collections),
+        migration_hint="可通过 STOCK_DOCTOR_STATE_BACKEND=sqlite 切换到 SQLite 持久化。",
+    )
+
+
+def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview:
+    valid_watchlist, unknown_watchlist = _valid_watchlist_symbols(request.watchlist)
+    capped_reports = request.reports[:100]
+    capped_notes = request.notes[:200]
+    capped_alerts = request.price_alerts[:200]
+    skipped_records = (
+        len(request.watchlist)
+        - len(valid_watchlist)
+        + len(request.reports)
+        - len(capped_reports)
+        + len(request.notes)
+        - len(capped_notes)
+        + len(request.price_alerts)
+        - len(capped_alerts)
+    )
+    warnings = []
+    if unknown_watchlist:
+        warnings.append(f"已忽略当前样例库暂不支持的自选股：{', '.join(unknown_watchlist[:8])}")
+    if len(request.reports) > len(capped_reports):
+        warnings.append("诊断报告超过 100 条，导入时只保留最新 100 条。")
+    if len(request.notes) > len(capped_notes):
+        warnings.append("研究笔记超过 200 条，导入时只保留最新 200 条。")
+    if len(request.price_alerts) > len(capped_alerts):
+        warnings.append("价位提醒超过 200 条，导入时只保留最新 200 条。")
+
+    collections = [
+        StorageCollectionStat(key="watchlist", label="自选股", count=len(valid_watchlist)),
+        StorageCollectionStat(key="reports", label="诊断报告", count=len(capped_reports)),
+        StorageCollectionStat(key="notes", label="研究笔记", count=len(capped_notes)),
+        StorageCollectionStat(key="price_alerts", label="价位提醒", count=len(capped_alerts)),
+    ]
+    total_records = sum(item.count for item in collections)
+    return StorageImportPreview(
+        mode=request.mode,
+        can_import=total_records > 0,
+        collections=collections,
+        total_records=total_records,
+        warnings=warnings,
+        skipped_records=skipped_records,
+    )
+
+
+def _valid_watchlist_symbols(symbols: list[str]) -> tuple[list[str], list[str]]:
+    valid = []
+    unknown = []
+    for symbol in symbols:
+        normalized = symbol.strip().upper()
+        if not normalized:
+            continue
+        if data_provider.get_snapshot(normalized) is None:
+            if normalized not in unknown:
+                unknown.append(normalized)
+            continue
+        if normalized not in valid:
+            valid.append(normalized)
+    return valid, unknown

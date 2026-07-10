@@ -303,6 +303,8 @@ describe('App', () => {
     expect(screen.getByText('系统存储')).toBeInTheDocument()
     expect(screen.getByText('JSON')).toBeInTheDocument()
     expect(screen.getByText('诊断报告')).toBeInTheDocument()
+    expect(screen.getByText('导出')).toBeInTheDocument()
+    expect(screen.getByText('预检')).toBeInTheDocument()
     expect(screen.getByText('报告历史')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研究笔记' })).toBeInTheDocument()
     expect(screen.getByText('观察量能是否继续温和放大')).toBeInTheDocument()

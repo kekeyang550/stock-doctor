@@ -148,6 +148,16 @@ class MockMarketDataProvider:
         self._watchlist_symbols = [item for item in self._watchlist_symbols if item != normalized]
         self._state_store.save_watchlist(self._watchlist_symbols)
 
+    def replace_watchlist(self, symbols: list[str]) -> list[StockSummary]:
+        next_symbols = []
+        for symbol in symbols:
+            normalized = symbol.strip().upper()
+            if normalized in self._snapshots and normalized not in next_symbols:
+                next_symbols.append(normalized)
+        self._watchlist_symbols = next_symbols
+        self._state_store.save_watchlist(self._watchlist_symbols)
+        return self.get_watchlist()
+
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
         normalized = symbol.strip().upper()
         return self._snapshots.get(normalized)

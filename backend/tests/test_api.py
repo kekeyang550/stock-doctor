@@ -61,6 +61,59 @@ def test_system_export_endpoint_returns_state_snapshot():
     assert isinstance(payload["reports"], list)
 
 
+def test_system_import_preview_summarizes_valid_records():
+    response = client.post(
+        "/api/v1/system/import/preview",
+        json={
+            "watchlist": ["600519", "unknown", "600519"],
+            "reports": [{"id": "r1"}],
+            "notes": [{"id": "n1"}],
+            "price_alerts": [{"id": "p1"}],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    counts = {item["key"]: item["count"] for item in payload["collections"]}
+    assert payload["can_import"] is True
+    assert counts["watchlist"] == 1
+    assert counts["reports"] == 1
+    assert payload["skipped_records"] == 2
+    assert any("UNKNOWN" in warning for warning in payload["warnings"])
+
+
+def test_system_import_replaces_state_and_refreshes_watchlist():
+    original = client.get("/api/v1/system/export").json()
+    import_payload = {
+        "watchlist": ["000001", "bad-symbol"],
+        "reports": [],
+        "notes": [{"id": "note-1", "symbol": "000001", "body": "迁移测试", "created_at": "2026-07-10T00:00:00Z"}],
+        "price_alerts": [],
+    }
+
+    try:
+        response = client.post("/api/v1/system/import", json=import_payload)
+
+        assert response.status_code == 200
+        payload = response.json()
+        counts = {item["key"]: item["count"] for item in payload["collections"]}
+        assert payload["status"] == "imported"
+        assert counts["watchlist"] == 1
+        assert counts["notes"] == 1
+
+        watchlist_response = client.get("/api/v1/watchlist")
+        assert watchlist_response.status_code == 200
+        assert [item["symbol"] for item in watchlist_response.json()] == ["000001"]
+    finally:
+        restore_payload = {
+            "watchlist": original["watchlist"],
+            "reports": original["reports"],
+            "notes": original["notes"],
+            "price_alerts": original["price_alerts"],
+        }
+        client.post("/api/v1/system/import", json=restore_payload)
+
+
 def test_watchlist_add_and_remove():
     add_response = client.post("/api/v1/watchlist", json={"symbol": "000001"})
 

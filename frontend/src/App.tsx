@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2 } from 'lucide-react'
+import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ScoreGauge } from './components/ScoreGauge'
 import { StockList } from './components/StockList'
@@ -29,6 +29,8 @@ import {
   fetchTrend,
   fetchWatchlist,
   fetchWatchlistSummary,
+  importStorage,
+  previewStorageImport,
   removeWatchlistSymbol,
 } from './lib/api'
 import type {
@@ -48,6 +50,8 @@ import type {
   RiskExposureItem,
   ScreenCandidate,
   StockSummary,
+  StorageImportPayload,
+  StorageImportPreview,
   StorageStatus,
   TimelineEvent,
   TrendSeries,
@@ -81,6 +85,9 @@ export default function App() {
   const [overview, setOverview] = useState<MarketOverview | null>(null)
   const [dataSources, setDataSources] = useState<DataSource[]>([])
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
+  const [storageImportPayload, setStorageImportPayload] = useState<StorageImportPayload | null>(null)
+  const [storageImportPreview, setStorageImportPreview] = useState<StorageImportPreview | null>(null)
+  const [storageImportName, setStorageImportName] = useState('')
   const [reports, setReports] = useState<ReportRecord[]>([])
   const [notes, setNotes] = useState<ResearchNote[]>([])
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([])
@@ -317,6 +324,44 @@ export default function App() {
     }
   }, [])
 
+  const previewStorageFile = useCallback(async (file: File) => {
+    setError(null)
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown
+      const payload = buildStorageImportPayload(parsed)
+      const preview = await previewStorageImport(payload)
+      setStorageImportPayload(payload)
+      setStorageImportPreview(preview)
+      setStorageImportName(file.name)
+    } catch (err) {
+      setStorageImportPayload(null)
+      setStorageImportPreview(null)
+      setStorageImportName('')
+      setError(err instanceof Error ? err.message : '导入预检失败')
+    }
+  }, [])
+
+  const applyStorageImport = useCallback(async () => {
+    if (!storageImportPayload) return
+    setError(null)
+    try {
+      const result = await importStorage(storageImportPayload)
+      setStorageStatus(result.storage)
+      await loadStocks()
+      const [nextNotes, nextPriceAlerts] = await Promise.all([
+        fetchNotes(selectedSymbol),
+        fetchPriceAlerts(selectedSymbol),
+      ])
+      setNotes(nextNotes)
+      setPriceAlerts(nextPriceAlerts)
+      setStorageImportPreview(null)
+      setStorageImportPayload(null)
+      setStorageImportName('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '数据导入失败')
+    }
+  }, [loadStocks, selectedSymbol, storageImportPayload])
+
   return (
     <main className="app-shell">
       <StockList
@@ -375,7 +420,14 @@ export default function App() {
 
         <RiskExposurePanel items={riskExposure} onSelect={setSelectedSymbol} />
 
-        <SystemStoragePanel status={storageStatus} onExport={exportStorage} />
+        <SystemStoragePanel
+          status={storageStatus}
+          importFileName={storageImportName}
+          importPreview={storageImportPreview}
+          onExport={exportStorage}
+          onPreviewImport={previewStorageFile}
+          onApplyImport={applyStorageImport}
+        />
 
         {loading || !diagnosis ? (
           <div className="state-panel">
@@ -420,7 +472,34 @@ export default function App() {
   )
 }
 
-function SystemStoragePanel({ status, onExport }: { status: StorageStatus | null; onExport: () => void }) {
+function buildStorageImportPayload(value: unknown): StorageImportPayload {
+  if (!value || typeof value !== 'object') {
+    throw new Error('备份文件格式不正确')
+  }
+  const record = value as Partial<StorageImportPayload>
+  return {
+    watchlist: Array.isArray(record.watchlist) ? record.watchlist.map(String) : [],
+    reports: Array.isArray(record.reports) ? record.reports : [],
+    notes: Array.isArray(record.notes) ? record.notes : [],
+    price_alerts: Array.isArray(record.price_alerts) ? record.price_alerts : [],
+  }
+}
+
+function SystemStoragePanel({
+  status,
+  importFileName,
+  importPreview,
+  onExport,
+  onPreviewImport,
+  onApplyImport,
+}: {
+  status: StorageStatus | null
+  importFileName: string
+  importPreview: StorageImportPreview | null
+  onExport: () => void
+  onPreviewImport: (file: File) => void
+  onApplyImport: () => void
+}) {
   return (
     <section className="panel storage-panel">
       <div className="panel-title split-title">
@@ -434,6 +513,19 @@ function SystemStoragePanel({ status, onExport }: { status: StorageStatus | null
             <Download size={15} />
             <span>导出</span>
           </button>
+          <label className="file-action">
+            <Upload size={15} />
+            <span>预检</span>
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) onPreviewImport(file)
+                event.target.value = ''
+              }}
+            />
+          </label>
         </div>
       </div>
       {status ? (
@@ -454,6 +546,35 @@ function SystemStoragePanel({ status, onExport }: { status: StorageStatus | null
             ))}
           </div>
           <p>{status.migration_hint}</p>
+          {importPreview ? (
+            <div className="import-preview">
+              <div className="import-preview-head">
+                <span>
+                  <strong>{importFileName}</strong>
+                  <small>{importPreview.total_records} 条记录 · 跳过 {importPreview.skipped_records}</small>
+                </span>
+                <button type="button" onClick={onApplyImport} disabled={!importPreview.can_import}>
+                  <Upload size={15} />
+                  <span>导入</span>
+                </button>
+              </div>
+              <div className="storage-grid compact">
+                {importPreview.collections.map((item) => (
+                  <div key={item.key} className="storage-stat">
+                    <span>{item.label}</span>
+                    <strong>{item.count}</strong>
+                  </div>
+                ))}
+              </div>
+              {importPreview.warnings.length ? (
+                <ul className="import-warnings">
+                  {importPreview.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
         </>
       ) : (
         <p className="empty-text">正在检查本地存储...</p>
