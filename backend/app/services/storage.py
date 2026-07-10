@@ -51,6 +51,16 @@ class JsonStateStore:
         state["price_alerts"] = alerts
         self._save(state)
 
+    def load_refresh_jobs(self) -> list[dict[str, Any]]:
+        state = self._load()
+        jobs = state.get("refresh_jobs")
+        return jobs if isinstance(jobs, list) else []
+
+    def save_refresh_jobs(self, jobs: list[dict[str, Any]]) -> None:
+        state = self._load()
+        state["refresh_jobs"] = jobs
+        self._save(state)
+
     def _load(self) -> dict[str, object]:
         if not self.path.exists():
             return {}
@@ -99,6 +109,13 @@ class SQLiteStateStore:
 
     def save_price_alerts(self, alerts: list[dict[str, Any]]) -> None:
         self._save_key("price_alerts", alerts)
+
+    def load_refresh_jobs(self) -> list[dict[str, Any]]:
+        jobs = self._load_key("refresh_jobs", [])
+        return jobs if isinstance(jobs, list) else []
+
+    def save_refresh_jobs(self, jobs: list[dict[str, Any]]) -> None:
+        self._save_key("refresh_jobs", jobs)
 
     def _connect(self) -> sqlite3.Connection:
         self.path.parent.mkdir(parents=True, exist_ok=True)

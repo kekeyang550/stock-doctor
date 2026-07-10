@@ -79,6 +79,21 @@ const connectorHealth = {
   ],
 }
 
+const refreshJobs = [
+  {
+    id: 'job-1',
+    provider: 'mock',
+    status: 'success',
+    started_at: '2026-07-10T06:00:00Z',
+    finished_at: '2026-07-10T06:00:01Z',
+    duration_ms: 12,
+    stock_count: 4,
+    watchlist_count: 3,
+    source_count: 3,
+    message: '已刷新全市场样例范围，覆盖 4 只标的，自选股 3 只。',
+  },
+]
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -316,6 +331,9 @@ describe('App', () => {
       if (url.includes('/system/data-connectors')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(connectorHealth) })
       }
+      if (url.includes('/system/refresh-jobs')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(refreshJobs) })
+      }
       if (url.includes('/system/storage')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(storageStatus) })
       }
@@ -339,6 +357,8 @@ describe('App', () => {
     expect(screen.getByText('数据连接器')).toBeInTheDocument()
     expect(screen.getByText('AKShare')).toBeInTheDocument()
     expect(screen.getByText('缺包')).toBeInTheDocument()
+    expect(screen.getByText('刷新全部')).toBeInTheDocument()
+    expect(screen.getByText('刷新记录')).toBeInTheDocument()
     expect(screen.getByText('系统存储')).toBeInTheDocument()
     expect(screen.getByText('JSON')).toBeInTheDocument()
     expect(screen.getByText('诊断报告')).toBeInTheDocument()

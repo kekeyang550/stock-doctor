@@ -43,6 +43,19 @@ export type DataConnectorHealth = {
   connectors: DataConnectorStatus[]
 }
 
+export type DataRefreshJob = {
+  id: string
+  provider: string
+  status: 'success' | 'failed'
+  started_at: string
+  finished_at: string
+  duration_ms: number
+  stock_count: number
+  watchlist_count: number
+  source_count: number
+  message: string
+}
+
 export type StorageCollectionStat = {
   key: string
   label: string

@@ -20,3 +20,13 @@ def test_invalid_state_file_falls_back_to_default(tmp_path):
     store = JsonStateStore(state_file)
 
     assert store.load_watchlist(["600519"]) == ["600519"]
+
+
+def test_refresh_jobs_persist_in_json_store(tmp_path):
+    state_file = tmp_path / "state.json"
+    store = JsonStateStore(state_file)
+    jobs = [{"id": "job-1", "status": "success"}]
+
+    store.save_refresh_jobs(jobs)
+
+    assert JsonStateStore(state_file).load_refresh_jobs() == jobs

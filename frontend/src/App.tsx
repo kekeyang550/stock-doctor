@@ -20,6 +20,7 @@ import {
   fetchPeerComparison,
   fetchPriceAlerts,
   fetchRankings,
+  fetchRefreshJobs,
   fetchReports,
   fetchRiskExposure,
   fetchScreener,
@@ -33,12 +34,14 @@ import {
   importStorage,
   previewStorageImport,
   removeWatchlistSymbol,
+  runRefreshJob,
 } from './lib/api'
 import type {
   AlertItem,
   ChecklistItem,
   DataConnectorHealth,
   DataConnectorStatus,
+  DataRefreshJob,
   DataSource,
   Diagnosis,
   EvidenceItem,
@@ -88,6 +91,7 @@ export default function App() {
   const [overview, setOverview] = useState<MarketOverview | null>(null)
   const [dataSources, setDataSources] = useState<DataSource[]>([])
   const [connectorHealth, setConnectorHealth] = useState<DataConnectorHealth | null>(null)
+  const [refreshJobs, setRefreshJobs] = useState<DataRefreshJob[]>([])
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
   const [storageImportPayload, setStorageImportPayload] = useState<StorageImportPayload | null>(null)
   const [storageImportPreview, setStorageImportPreview] = useState<StorageImportPreview | null>(null)
@@ -116,12 +120,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, storage, savedReports] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, jobs, storage, savedReports] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
       fetchDataSources(),
       fetchDataConnectorHealth(),
+      fetchRefreshJobs(),
       fetchStorageStatus(),
       fetchReports(),
     ])
@@ -130,6 +135,7 @@ export default function App() {
     setOverview(market)
     setDataSources(sources)
     setConnectorHealth(connectors)
+    setRefreshJobs(jobs)
     setStorageStatus(storage)
     setReports(savedReports)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
@@ -368,6 +374,17 @@ export default function App() {
     }
   }, [loadStocks, selectedSymbol, storageImportPayload])
 
+  const triggerRefreshJob = useCallback(async (scope: 'all' | 'watchlist') => {
+    setError(null)
+    try {
+      const job = await runRefreshJob(scope)
+      setRefreshJobs((items) => [job, ...items.filter((item) => item.id !== job.id)].slice(0, 5))
+      await loadStocks()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '刷新任务失败')
+    }
+  }, [loadStocks])
+
   return (
     <main className="app-shell">
       <StockList
@@ -435,7 +452,7 @@ export default function App() {
           onApplyImport={applyStorageImport}
         />
 
-        <DataConnectorPanel health={connectorHealth} />
+        <DataConnectorPanel health={connectorHealth} jobs={refreshJobs} onRun={triggerRefreshJob} />
 
         {loading || !diagnosis ? (
           <div className="state-panel">
@@ -591,7 +608,15 @@ function SystemStoragePanel({
   )
 }
 
-function DataConnectorPanel({ health }: { health: DataConnectorHealth | null }) {
+function DataConnectorPanel({
+  health,
+  jobs,
+  onRun,
+}: {
+  health: DataConnectorHealth | null
+  jobs: DataRefreshJob[]
+  onRun: (scope: 'all' | 'watchlist') => void
+}) {
   return (
     <section className="panel connector-panel">
       <div className="panel-title split-title">
@@ -606,17 +631,51 @@ function DataConnectorPanel({ health }: { health: DataConnectorHealth | null }) 
           <div className="connector-summary">
             <span>回退源</span>
             <strong>{health.fallback_provider}</strong>
+            <button type="button" onClick={() => onRun('all')}>
+              <RefreshCw size={15} />
+              <span>刷新全部</span>
+            </button>
+            <button type="button" onClick={() => onRun('watchlist')}>
+              <RefreshCw size={15} />
+              <span>刷新自选</span>
+            </button>
           </div>
           <div className="connector-list">
             {health.connectors.map((connector) => (
               <ConnectorRow key={connector.name} connector={connector} />
             ))}
           </div>
+          <RefreshJobList jobs={jobs} />
         </>
       ) : (
         <p className="empty-text">正在检查数据连接器...</p>
       )}
     </section>
+  )
+}
+
+function RefreshJobList({ jobs }: { jobs: DataRefreshJob[] }) {
+  return (
+    <div className="refresh-job-list">
+      <div className="refresh-job-title">
+        <strong>刷新记录</strong>
+        <span>{jobs.length ? `${jobs.length} 条` : '暂无'}</span>
+      </div>
+      {jobs.length === 0 ? (
+        <p className="empty-text">尚未运行刷新任务</p>
+      ) : (
+        jobs.map((job) => (
+          <article key={job.id} className={`refresh-job-row ${job.status}`}>
+            <span>
+              <strong>{job.provider}</strong>
+              <small>{formatReportTime(job.finished_at)} · {job.duration_ms} ms</small>
+            </span>
+            <em>{job.status === 'success' ? '成功' : '失败'}</em>
+            <p>{job.message}</p>
+          </article>
+        ))
+      )}
+    </div>
   )
 }
 

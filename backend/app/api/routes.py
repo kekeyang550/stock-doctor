@@ -5,6 +5,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app.schemas.diagnosis import (
     AlertItem,
     DataConnectorHealth,
+    DataRefreshJob,
+    DataRefreshJobRequest,
     DiagnosisResponse,
     IndustryHeatItem,
     MarketOverview,
@@ -41,6 +43,7 @@ from app.services.peers import PeerComparisonService
 from app.services.price_alerts import PriceAlertService
 from app.services.provider_factory import create_market_data_provider
 from app.services.reports import ReportService
+from app.services.refresh_jobs import DataRefreshJobService
 from app.services.risk_exposure import RiskExposureService
 from app.services.screener import ScreenerService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
@@ -62,6 +65,7 @@ risk_exposure_service = RiskExposureService()
 screener_service = ScreenerService()
 price_alert_service = PriceAlertService()
 data_connector_health_service = DataConnectorHealthService()
+refresh_job_service = DataRefreshJobService()
 
 
 @router.get("/health")
@@ -87,6 +91,16 @@ async def data_sources() -> list[dict[str, str]]:
 @router.get("/system/data-connectors", response_model=DataConnectorHealth)
 async def system_data_connectors() -> DataConnectorHealth:
     return data_connector_health_service.build_health()
+
+
+@router.get("/system/refresh-jobs", response_model=list[DataRefreshJob])
+async def list_refresh_jobs(limit: int = Query(default=10, ge=1, le=50)) -> list[DataRefreshJob]:
+    return refresh_job_service.list_jobs(limit=limit)
+
+
+@router.post("/system/refresh-jobs", response_model=DataRefreshJob, status_code=status.HTTP_201_CREATED)
+async def run_refresh_job(request: DataRefreshJobRequest) -> DataRefreshJob:
+    return refresh_job_service.run_refresh(provider=data_provider, scope=request.scope)
 
 
 @router.get("/system/storage", response_model=StorageStatus)

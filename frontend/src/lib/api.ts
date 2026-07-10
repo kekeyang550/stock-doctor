@@ -1,6 +1,7 @@
 import type {
   AlertItem,
   DataConnectorHealth,
+  DataRefreshJob,
   DataSource,
   Diagnosis,
   IndustryHeatItem,
@@ -49,6 +50,22 @@ export function fetchDataSources(): Promise<DataSource[]> {
 
 export function fetchDataConnectorHealth(): Promise<DataConnectorHealth> {
   return getJson<DataConnectorHealth>('/api/v1/system/data-connectors')
+}
+
+export function fetchRefreshJobs(): Promise<DataRefreshJob[]> {
+  return getJson<DataRefreshJob[]>('/api/v1/system/refresh-jobs?limit=5')
+}
+
+export async function runRefreshJob(scope: 'all' | 'watchlist'): Promise<DataRefreshJob> {
+  const response = await fetch('/api/v1/system/refresh-jobs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scope }),
+  })
+  if (!response.ok) {
+    throw new Error(`刷新任务失败：${response.status}`)
+  }
+  return response.json() as Promise<DataRefreshJob>
 }
 
 export function fetchStorageStatus(): Promise<StorageStatus> {

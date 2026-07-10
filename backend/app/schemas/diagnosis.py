@@ -63,6 +63,23 @@ class DataConnectorHealth(BaseModel):
     connectors: list[DataConnectorStatus]
 
 
+class DataRefreshJob(BaseModel):
+    id: str
+    provider: str
+    status: str = Field(pattern="^(success|failed)$")
+    started_at: str
+    finished_at: str
+    duration_ms: int
+    stock_count: int
+    watchlist_count: int
+    source_count: int
+    message: str
+
+
+class DataRefreshJobRequest(BaseModel):
+    scope: str = Field(default="all", pattern="^(all|watchlist)$")
+
+
 class TechnicalSnapshot(BaseModel):
     ma5: float
     ma20: float
