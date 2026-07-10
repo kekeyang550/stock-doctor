@@ -6,6 +6,7 @@ from app.schemas.diagnosis import (
     AlertItem,
     DataConnectorHealth,
     DataFreshnessStatus,
+    DataQualityOverview,
     DataQualityReport,
     DataRefreshJob,
     DataRefreshJobRequest,
@@ -92,6 +93,29 @@ async def market_overview() -> MarketOverview:
 @router.get("/data-sources")
 async def data_sources() -> list[dict[str, str]]:
     return data_provider.get_data_sources()
+
+
+@router.get("/data-quality", response_model=DataQualityOverview)
+async def data_quality_overview(
+    scope: str = Query(default="watchlist", pattern="^(watchlist|all)$"),
+) -> DataQualityOverview:
+    stocks = data_provider.get_watchlist() if scope == "watchlist" else data_provider.list_stocks()
+    reports = []
+    for stock in stocks:
+        snapshot = data_provider.get_snapshot(stock.symbol)
+        if snapshot is not None:
+            reports.append(data_quality_service.build_report(snapshot))
+    reports = sorted(reports, key=lambda report: (report.score, report.symbol))
+    return DataQualityOverview(
+        scope=scope,
+        stock_count=len(reports),
+        average_score=round(sum(report.score for report in reports) / len(reports), 1) if reports else 0,
+        pass_count=len([report for report in reports if report.status == "pass"]),
+        warn_count=len([report for report in reports if report.status == "warn"]),
+        fail_count=len([report for report in reports if report.status == "fail"]),
+        lowest_report=reports[0] if reports else None,
+        reports=reports,
+    )
 
 
 @router.get("/data-quality/{symbol}", response_model=DataQualityReport)

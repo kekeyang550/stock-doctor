@@ -119,6 +119,17 @@ export type DataQualityReport = {
   checks: DataQualityCheck[]
 }
 
+export type DataQualityOverview = {
+  scope: 'watchlist' | 'all'
+  stock_count: number
+  average_score: number
+  pass_count: number
+  warn_count: number
+  fail_count: number
+  lowest_report: DataQualityReport | null
+  reports: DataQualityReport[]
+}
+
 export type StorageExport = {
   exported_at: string
   backend: string

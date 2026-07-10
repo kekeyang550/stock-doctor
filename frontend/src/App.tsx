@@ -14,6 +14,7 @@ import {
   fetchDataConnectorHealth,
   fetchDataFreshness,
   fetchDataQuality,
+  fetchDataQualityOverview,
   fetchDataSources,
   fetchDiagnosis,
   fetchIndustryHeat,
@@ -46,6 +47,7 @@ import type {
   DataConnectorStatus,
   DataFreshnessStatus,
   DataQualityCheck,
+  DataQualityOverview,
   DataQualityReport,
   DataRefreshJob,
   DataSource,
@@ -113,6 +115,7 @@ export default function App() {
   const [screenCandidates, setScreenCandidates] = useState<ScreenCandidate[]>([])
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [watchlistSummary, setWatchlistSummary] = useState<WatchlistSummary | null>(null)
+  const [dataQualityOverview, setDataQualityOverview] = useState<DataQualityOverview | null>(null)
   const [industryHeat, setIndustryHeat] = useState<IndustryHeatItem[]>([])
   const [riskExposure, setRiskExposure] = useState<RiskExposureItem[]>([])
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
@@ -131,7 +134,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, savedReports] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
@@ -141,6 +144,7 @@ export default function App() {
       fetchRefreshJobs(),
       fetchStorageStatus(),
       fetchSystemReadiness(),
+      fetchDataQualityOverview(),
       fetchReports(),
     ])
     setStocks(items)
@@ -152,6 +156,7 @@ export default function App() {
     setRefreshJobs(jobs)
     setStorageStatus(storage)
     setSystemReadiness(readiness)
+    setDataQualityOverview(qualityOverview)
     setReports(savedReports)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
       setSelectedSymbol(items[0].symbol)
@@ -460,6 +465,8 @@ export default function App() {
         ) : null}
 
         <WatchlistSummaryPanel summary={watchlistSummary} onSelect={setSelectedSymbol} />
+
+        <DataQualityOverviewPanel overview={dataQualityOverview} onSelect={setSelectedSymbol} />
 
         <IndustryHeatPanel items={industryHeat} onSelect={setSelectedSymbol} />
 
@@ -877,6 +884,53 @@ function WatchlistSummaryPanel({
         </>
       ) : (
         <p className="empty-text">正在汇总自选股...</p>
+      )}
+    </section>
+  )
+}
+
+function DataQualityOverviewPanel({
+  overview,
+  onSelect,
+}: {
+  overview: DataQualityOverview | null
+  onSelect: (symbol: string) => void
+}) {
+  return (
+    <section className="panel quality-overview-panel">
+      <div className="panel-title split-title">
+        <span>
+          <CheckCircle2 size={18} />
+          <h3>数据质量总览</h3>
+        </span>
+        <small>{overview ? `${overview.stock_count} 只` : '加载中'}</small>
+      </div>
+      {overview ? (
+        <>
+          <div className="quality-overview-metrics">
+            <SummaryMetric label="平均质量" value={overview.average_score.toFixed(1)} />
+            <SummaryMetric label="可靠" value={overview.pass_count} />
+            <SummaryMetric label="关注" value={overview.warn_count} />
+            <SummaryMetric label="异常" value={overview.fail_count} />
+          </div>
+          {overview.lowest_report ? (
+            <button
+              type="button"
+              className={`quality-lowest ${overview.lowest_report.status}`}
+              onClick={() => onSelect(overview.lowest_report!.symbol)}
+            >
+              <span>
+                <strong>{overview.lowest_report.name}</strong>
+                <small>{overview.lowest_report.symbol} · {overview.lowest_report.summary}</small>
+              </span>
+              <em>{overview.lowest_report.score}</em>
+            </button>
+          ) : (
+            <p className="empty-text">暂无可检查标的</p>
+          )}
+        </>
+      ) : (
+        <p className="empty-text">正在汇总自选股数据质量...</p>
       )}
     </section>
   )

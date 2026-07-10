@@ -2,6 +2,7 @@ import type {
   AlertItem,
   DataConnectorHealth,
   DataFreshnessStatus,
+  DataQualityOverview,
   DataQualityReport,
   DataRefreshJob,
   DataSource,
@@ -53,6 +54,10 @@ export function fetchDataSources(): Promise<DataSource[]> {
 
 export function fetchDataQuality(symbol: string): Promise<DataQualityReport> {
   return getJson<DataQualityReport>(`/api/v1/data-quality/${symbol}`)
+}
+
+export function fetchDataQualityOverview(scope = 'watchlist'): Promise<DataQualityOverview> {
+  return getJson<DataQualityOverview>(`/api/v1/data-quality?scope=${scope}`)
 }
 
 export function fetchDataConnectorHealth(): Promise<DataConnectorHealth> {

@@ -128,6 +128,17 @@ class DataQualityReport(BaseModel):
     checks: list[DataQualityCheck]
 
 
+class DataQualityOverview(BaseModel):
+    scope: str = Field(pattern="^(watchlist|all)$")
+    stock_count: int
+    average_score: float
+    pass_count: int
+    warn_count: int
+    fail_count: int
+    lowest_report: DataQualityReport | None
+    reports: list[DataQualityReport]
+
+
 class TechnicalSnapshot(BaseModel):
     ma5: float
     ma20: float

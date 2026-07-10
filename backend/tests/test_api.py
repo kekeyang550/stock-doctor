@@ -51,6 +51,19 @@ def test_data_quality_endpoint_returns_field_checks():
     }
 
 
+def test_data_quality_overview_endpoint_summarizes_scope():
+    response = client.get("/api/v1/data-quality?scope=watchlist")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["scope"] == "watchlist"
+    assert payload["stock_count"] >= 1
+    assert payload["average_score"] >= 0
+    assert payload["pass_count"] + payload["warn_count"] + payload["fail_count"] == payload["stock_count"]
+    assert payload["lowest_report"]["symbol"]
+    assert len(payload["reports"]) == payload["stock_count"]
+
+
 def test_system_storage_endpoint_returns_persistence_status():
     response = client.get("/api/v1/system/storage")
 

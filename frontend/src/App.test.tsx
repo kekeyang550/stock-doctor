@@ -141,6 +141,17 @@ const dataQuality = {
   ],
 }
 
+const dataQualityOverview = {
+  scope: 'watchlist',
+  stock_count: 3,
+  average_score: 100,
+  pass_count: 3,
+  warn_count: 0,
+  fail_count: 0,
+  lowest_report: dataQuality,
+  reports: [dataQuality],
+}
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -411,6 +422,9 @@ describe('App', () => {
       if (url.includes('/data-sources')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) })
       }
+      if (url.includes('/data-quality?scope=')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(dataQualityOverview) })
+      }
       if (url.includes('/data-quality')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(dataQuality) })
       }
@@ -463,6 +477,9 @@ describe('App', () => {
     expect(within(readinessPanel).getByText('88')).toBeInTheDocument()
     expect(within(readinessPanel).getByText('状态存储')).toBeInTheDocument()
     expect(within(readinessPanel).getByText('刷新任务')).toBeInTheDocument()
+    const qualityOverviewPanel = screen.getByRole('heading', { name: '数据质量总览' }).closest('section')!
+    expect(within(qualityOverviewPanel).getByText('平均质量')).toBeInTheDocument()
+    expect(within(qualityOverviewPanel).getByText('贵州茅台')).toBeInTheDocument()
     expect(screen.getByText('报告历史')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研究笔记' })).toBeInTheDocument()
     expect(screen.getByText('观察量能是否继续温和放大')).toBeInTheDocument()
