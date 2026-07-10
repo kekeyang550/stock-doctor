@@ -11,6 +11,7 @@ from app.schemas.diagnosis import (
     DataRefreshJob,
     DataRefreshJobRequest,
     DiagnosisResponse,
+    DiagnosisThesis,
     IndustryHeatItem,
     MarketOverview,
     PeerComparisonResponse,
@@ -55,6 +56,7 @@ from app.services.screener import ScreenerService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
 from app.services.timeline import TimelineService
 from app.services.trend import TrendService
+from app.services.thesis import ThesisService
 
 
 router = APIRouter()
@@ -73,6 +75,7 @@ price_alert_service = PriceAlertService()
 data_connector_health_service = DataConnectorHealthService()
 refresh_job_service = DataRefreshJobService()
 data_quality_service = DataQualityService()
+thesis_service = ThesisService()
 
 
 @router.get("/health")
@@ -477,6 +480,18 @@ async def diagnose_stock(
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
     return diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
+
+
+@router.get("/thesis/{symbol}", response_model=DiagnosisThesis)
+async def diagnosis_thesis(
+    symbol: str,
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+) -> DiagnosisThesis:
+    snapshot = data_provider.get_snapshot(symbol)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Stock symbol not found")
+    diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
+    return thesis_service.build_thesis(snapshot=snapshot, diagnosis=diagnosis)
 
 
 def _all_snapshots() -> list[StockSnapshot]:

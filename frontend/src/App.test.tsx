@@ -152,6 +152,23 @@ const dataQualityOverview = {
   reports: [dataQuality],
 }
 
+const thesis = {
+  symbol: '600519',
+  name: '贵州茅台',
+  horizon: 'swing',
+  stance: 'bullish',
+  confidence: 82,
+  bull_case: '贵州茅台的多头假设来自中短期趋势排列较强，综合评分 86。',
+  bear_case: '贵州茅台的空头假设主要是暂未触发重大规则风险，但仍需关注公告、业绩和市场系统性波动。',
+  trigger: '价格放量站稳中枢 1502.60 后，观察能否挑战压力位 1598.42。',
+  invalidation: '若跌破风控线 1396.51 或核心风险继续升温，当前假设失效。',
+  evidence: [
+    { label: '均线结构', side: 'bull', weight: 90, detail: '中短期趋势排列较强' },
+    { label: '主力资金', side: 'bull', weight: 88, detail: '主力净流入明显' },
+  ],
+  next_checks: ['确认主力资金与北向资金是否连续两日同向。'],
+}
+
 const storageStatus = {
   backend: 'json',
   status: 'online',
@@ -404,6 +421,9 @@ describe('App', () => {
       if (url.includes('/peers')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(peers) })
       }
+      if (url.includes('/thesis')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(thesis) })
+      }
       if (url.includes('/alerts')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(alerts) })
       }
@@ -503,6 +523,10 @@ describe('App', () => {
     expect(within(qualityPanel).getAllByText('可靠').length).toBeGreaterThan(0)
     expect(within(qualityPanel).getByText('行情字段')).toBeInTheDocument()
     expect(within(qualityPanel).getByText('技术指标')).toBeInTheDocument()
+    const thesisPanel = screen.getByRole('heading', { name: '诊断论证' }).closest('section')!
+    expect(within(thesisPanel).getByText('多头假设')).toBeInTheDocument()
+    expect(within(thesisPanel).getByText('空头假设')).toBeInTheDocument()
+    expect(within(thesisPanel).getByText('均线结构')).toBeInTheDocument()
     expect(screen.getByText(/当前标的/)).toBeInTheDocument()
     expect(screen.getAllByText('临近解禁窗口').length).toBeGreaterThan(0)
     const alertsPanel = screen.getByRole('heading', { name: '预警中心' }).closest('section')!

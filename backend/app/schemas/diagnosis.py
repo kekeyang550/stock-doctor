@@ -193,6 +193,27 @@ class EvidenceItem(BaseModel):
     polarity: str = Field(pattern="^(positive|neutral|negative)$")
 
 
+class ThesisEvidence(BaseModel):
+    label: str
+    side: str = Field(pattern="^(bull|bear|neutral)$")
+    weight: int = Field(ge=0, le=100)
+    detail: str
+
+
+class DiagnosisThesis(BaseModel):
+    symbol: str
+    name: str
+    horizon: str
+    stance: str = Field(pattern="^(bullish|balanced|defensive)$")
+    confidence: int = Field(ge=0, le=100)
+    bull_case: str
+    bear_case: str
+    trigger: str
+    invalidation: str
+    evidence: list[ThesisEvidence]
+    next_checks: list[str]
+
+
 class ChecklistItem(BaseModel):
     id: str
     title: str

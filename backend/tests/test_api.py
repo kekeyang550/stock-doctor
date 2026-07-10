@@ -23,6 +23,20 @@ def test_stock_diagnosis_endpoint():
     assert len(payload["evidence"]) > 0
 
 
+def test_thesis_endpoint_returns_structured_argument():
+    response = client.get("/api/v1/thesis/600519?horizon=swing")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600519"
+    assert payload["stance"] in {"bullish", "balanced", "defensive"}
+    assert 0 <= payload["confidence"] <= 100
+    assert payload["bull_case"]
+    assert payload["bear_case"]
+    assert payload["evidence"]
+    assert payload["next_checks"]
+
+
 def test_market_overview_endpoint():
     response = client.get("/api/v1/market/overview")
 

@@ -176,6 +176,27 @@ export type EvidenceItem = {
   polarity: 'positive' | 'neutral' | 'negative'
 }
 
+export type ThesisEvidence = {
+  label: string
+  side: 'bull' | 'bear' | 'neutral'
+  weight: number
+  detail: string
+}
+
+export type DiagnosisThesis = {
+  symbol: string
+  name: string
+  horizon: string
+  stance: 'bullish' | 'balanced' | 'defensive'
+  confidence: number
+  bull_case: string
+  bear_case: string
+  trigger: string
+  invalidation: string
+  evidence: ThesisEvidence[]
+  next_checks: string[]
+}
+
 export type ChecklistItem = {
   id: string
   title: string

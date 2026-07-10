@@ -593,9 +593,33 @@ button {
   grid-column: 1 / -1;
 }
 
+.thesis-panel {
+  grid-column: 1 / -1;
+}
+
 .data-quality-panel .split-title small {
   border-radius: 6px;
   padding: 4px 7px;
+}
+
+.thesis-panel .split-title small {
+  border-radius: 6px;
+  padding: 4px 7px;
+}
+
+.thesis-panel .split-title small.bullish {
+  color: #31553f;
+  background: #e8efe3;
+}
+
+.thesis-panel .split-title small.balanced {
+  color: #7a5a2e;
+  background: #fff4d5;
+}
+
+.thesis-panel .split-title small.defensive {
+  color: #7a3d3d;
+  background: #fff0ed;
 }
 
 .data-quality-panel .split-title small.pass,
@@ -701,6 +725,129 @@ button {
 .quality-check small {
   color: #6a7a70;
   line-height: 1.45;
+}
+
+.thesis-head {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e0e8db;
+  border-radius: 8px;
+  background: #f7faf5;
+  padding: 12px;
+}
+
+.thesis-head strong {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  background: #26372f;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+
+.thesis-head span {
+  display: grid;
+  gap: 5px;
+}
+
+.thesis-head b {
+  line-height: 1.45;
+}
+
+.thesis-head small {
+  color: #6a7a70;
+  line-height: 1.45;
+}
+
+.thesis-cases {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.thesis-cases article {
+  border: 1px solid #e0e8db;
+  border-radius: 8px;
+  background: #fbfdf9;
+  padding: 12px;
+}
+
+.thesis-cases p {
+  margin: 6px 0 0;
+  color: #394a40;
+  line-height: 1.55;
+}
+
+.thesis-evidence-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.thesis-evidence {
+  border: 1px solid #e0e8db;
+  border-left: 5px solid #bac7ba;
+  border-radius: 8px;
+  background: #f7faf5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+}
+
+.thesis-evidence.bull {
+  border-left-color: #2e6b4f;
+}
+
+.thesis-evidence.bear {
+  border-left-color: #b94a48;
+}
+
+.thesis-evidence span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.thesis-evidence small {
+  color: #6a7a70;
+  line-height: 1.45;
+}
+
+.thesis-evidence em {
+  justify-self: end;
+  width: 38px;
+  height: 34px;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #344239;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.thesis-next {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.thesis-next span {
+  border: 1px solid #e0e8db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #394a40;
+  padding: 7px 9px;
+  font-size: 13px;
 }
 
 .peer-panel .split-title small {
@@ -2089,6 +2236,10 @@ button {
     grid-column: 1 / -1;
   }
 
+  .thesis-panel {
+    grid-column: 1 / -1;
+  }
+
   .ranking-list {
     grid-template-columns: 1fr;
   }
@@ -2118,6 +2269,8 @@ button {
   .quality-overview-metrics,
   .quality-checks,
   .readiness-checks,
+  .thesis-cases,
+  .thesis-evidence-list,
   .storage-grid {
     grid-template-columns: 1fr;
   }
@@ -2176,6 +2329,10 @@ button {
   }
 
   .data-quality-panel {
+    grid-column: auto;
+  }
+
+  .thesis-panel {
     grid-column: auto;
   }
 }

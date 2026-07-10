@@ -17,6 +17,7 @@ import {
   fetchDataQualityOverview,
   fetchDataSources,
   fetchDiagnosis,
+  fetchDiagnosisThesis,
   fetchIndustryHeat,
   fetchMarketOverview,
   fetchNotes,
@@ -52,6 +53,7 @@ import type {
   DataRefreshJob,
   DataSource,
   Diagnosis,
+  DiagnosisThesis,
   EvidenceItem,
   IndustryHeatItem,
   MarketOverview,
@@ -129,6 +131,7 @@ export default function App() {
   const [noteDraft, setNoteDraft] = useState('')
   const [priceAlertDraft, setPriceAlertDraft] = useState('')
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null)
+  const [thesis, setThesis] = useState<DiagnosisThesis | null>(null)
   const [dataQuality, setDataQuality] = useState<DataQualityReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -167,12 +170,14 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const [result, quality] = await Promise.all([
+      const [result, quality, thesisResult] = await Promise.all([
         fetchDiagnosis(selectedSymbol, horizon),
         fetchDataQuality(selectedSymbol),
+        fetchDiagnosisThesis(selectedSymbol, horizon),
       ])
       setDiagnosis(result)
       setDataQuality(quality)
+      setThesis(thesisResult)
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误')
     } finally {
@@ -500,6 +505,7 @@ export default function App() {
             trend={trend}
             peers={peers}
             dataQuality={dataQuality}
+            thesis={thesis}
           />
         )}
         <PriceAlertsPanel
@@ -1390,6 +1396,7 @@ function DiagnosisWorkspace({
   trend,
   peers,
   dataQuality,
+  thesis,
 }: {
   diagnosis: Diagnosis
   overview: MarketOverview | null
@@ -1397,6 +1404,7 @@ function DiagnosisWorkspace({
   trend: TrendSeries | null
   peers: PeerComparison | null
   dataQuality: DataQualityReport | null
+  thesis: DiagnosisThesis | null
 }) {
   return (
     <div className="diagnosis-layout">
@@ -1443,6 +1451,8 @@ function DiagnosisWorkspace({
       <PeerPanel peers={peers} />
 
       <DataQualityPanel report={dataQuality} />
+
+      <ThesisPanel thesis={thesis} />
 
       <section className="panel report-panel">
         <div className="panel-title">
@@ -1582,6 +1592,67 @@ function qualityStatusLabel(status: DataQualityReport['status']) {
   if (status === 'pass') return '可靠'
   if (status === 'warn') return '关注'
   return '异常'
+}
+
+function ThesisPanel({ thesis }: { thesis: DiagnosisThesis | null }) {
+  return (
+    <section className="panel thesis-panel">
+      <div className="panel-title split-title">
+        <span>
+          <ListChecks size={18} />
+          <h3>诊断论证</h3>
+        </span>
+        <small className={thesis ? thesis.stance : 'balanced'}>
+          {thesis ? thesisStanceLabel(thesis.stance) : '加载中'}
+        </small>
+      </div>
+      {thesis ? (
+        <>
+          <div className="thesis-head">
+            <strong>{thesis.confidence}</strong>
+            <span>
+              <b>{thesis.trigger}</b>
+              <small>{thesis.invalidation}</small>
+            </span>
+          </div>
+          <div className="thesis-cases">
+            <article>
+              <strong>多头假设</strong>
+              <p>{thesis.bull_case}</p>
+            </article>
+            <article>
+              <strong>空头假设</strong>
+              <p>{thesis.bear_case}</p>
+            </article>
+          </div>
+          <div className="thesis-evidence-list">
+            {thesis.evidence.map((item) => (
+              <article key={`${item.side}-${item.label}`} className={`thesis-evidence ${item.side}`}>
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{item.detail}</small>
+                </span>
+                <em>{item.weight}</em>
+              </article>
+            ))}
+          </div>
+          <div className="thesis-next">
+            {thesis.next_checks.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="empty-text">正在生成诊断论证...</p>
+      )}
+    </section>
+  )
+}
+
+function thesisStanceLabel(stance: DiagnosisThesis['stance']) {
+  if (stance === 'bullish') return '偏多'
+  if (stance === 'defensive') return '防御'
+  return '均衡'
 }
 
 function priorityLabel(priority: ChecklistItem['priority']) {
