@@ -77,7 +77,7 @@ def test_hotspot_brief_endpoint_returns_market_focus():
 
 
 def test_hotspot_candidates_endpoint_returns_ranked_candidates():
-    response = client.get("/api/v1/hotspots/candidates")
+    response = client.get("/api/v1/hotspots/candidates?mode=capital")
 
     assert response.status_code == 200
     payload = response.json()

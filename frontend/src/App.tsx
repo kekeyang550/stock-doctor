@@ -117,6 +117,12 @@ const screenerPresets = [
   { value: 'capital-risk', label: '资金承压' },
 ]
 
+const hotspotModes = [
+  { value: 'balanced', label: '综合' },
+  { value: 'capital', label: '资金' },
+  { value: 'momentum', label: '异动' },
+]
+
 export default function App() {
   const [stocks, setStocks] = useState<StockSummary[]>([])
   const [stockSearchResults, setStockSearchResults] = useState<StockSearchResult[]>([])
@@ -151,6 +157,7 @@ export default function App() {
   const [peers, setPeers] = useState<PeerComparison | null>(null)
   const [rankingSort, setRankingSort] = useState('total')
   const [screenerPreset, setScreenerPreset] = useState('strong')
+  const [hotspotMode, setHotspotMode] = useState('balanced')
   const [selectedSymbol, setSelectedSymbol] = useState('600519')
   const [horizon, setHorizon] = useState('swing')
   const [query, setQuery] = useState('')
@@ -179,7 +186,7 @@ export default function App() {
       fetchReports(),
       fetchMomentumSignals(),
       fetchHotspotBrief(horizon),
-      fetchHotspotCandidates(horizon),
+      fetchHotspotCandidates(horizon, hotspotMode),
     ])
     setStocks(items)
     setWatchlist(watchItems)
@@ -198,7 +205,7 @@ export default function App() {
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
       setSelectedSymbol(items[0].symbol)
     }
-  }, [selectedSymbol, horizon])
+  }, [selectedSymbol, horizon, hotspotMode])
 
   const loadDiagnosis = useCallback(async () => {
     setLoading(true)
@@ -553,7 +560,12 @@ export default function App() {
 
         <HotspotBriefPanel brief={hotspotBrief} onSelect={setSelectedSymbol} />
 
-        <HotspotCandidatesPanel candidates={hotspotCandidates} onSelect={setSelectedSymbol} />
+        <HotspotCandidatesPanel
+          candidates={hotspotCandidates}
+          mode={hotspotMode}
+          onModeChange={setHotspotMode}
+          onSelect={setSelectedSymbol}
+        />
 
         <WatchlistSummaryPanel summary={watchlistSummary} onSelect={setSelectedSymbol} />
 
@@ -1154,7 +1166,17 @@ function HotspotBriefMetric({ label, value, score }: { label: string; value: str
   )
 }
 
-function HotspotCandidatesPanel({ candidates, onSelect }: { candidates: HotspotCandidate[]; onSelect: (symbol: string) => void }) {
+function HotspotCandidatesPanel({
+  candidates,
+  mode,
+  onModeChange,
+  onSelect,
+}: {
+  candidates: HotspotCandidate[]
+  mode: string
+  onModeChange: (mode: string) => void
+  onSelect: (symbol: string) => void
+}) {
   return (
     <section className="panel hotspot-candidates-panel">
       <div className="panel-title split-title">
@@ -1162,7 +1184,18 @@ function HotspotCandidatesPanel({ candidates, onSelect }: { candidates: HotspotC
           <ListChecks size={18} />
           <h3>热点选股池</h3>
         </span>
-        <small>{candidates.length ? `${candidates.length} 只候选` : '暂无候选'}</small>
+        <div className="mini-segments" aria-label="热点选股模式">
+          {hotspotModes.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              className={mode === option.value ? 'selected' : ''}
+              onClick={() => onModeChange(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
       {candidates.length === 0 ? (
         <p className="empty-text">当前没有满足热点观察条件的标的</p>

@@ -702,6 +702,8 @@ describe('App', () => {
     expect(within(hotspotPanel).getByText('新能源汽车')).toBeInTheDocument()
     const hotspotPool = screen.getByRole('heading', { name: '热点选股池' }).closest('section')!
     expect(within(hotspotPool).getByText('比亚迪')).toBeInTheDocument()
+    expect(within(hotspotPool).getByText('资金')).toBeInTheDocument()
+    expect(within(hotspotPool).getByText('异动')).toBeInTheDocument()
     expect(screen.getByText('报告历史')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研究笔记' })).toBeInTheDocument()
     expect(screen.getByText('观察量能是否继续温和放大')).toBeInTheDocument()

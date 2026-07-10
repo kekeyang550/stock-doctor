@@ -11,6 +11,7 @@ class HotspotCandidateService:
         snapshots: list[StockSnapshot],
         diagnoses: list[DiagnosisResponse],
         signals: list[MomentumSignalItem],
+        mode: str = "balanced",
         limit: int = 10,
     ) -> list[HotspotCandidate]:
         diagnosis_by_symbol = {item.symbol: item for item in diagnoses}
@@ -20,7 +21,7 @@ class HotspotCandidateService:
             diagnosis = diagnosis_by_symbol[snapshot.symbol]
             signal = signal_by_symbol.get(snapshot.symbol)
             concept = self._concept_service._concepts_for(snapshot)[0]
-            heat_score = self._score(snapshot, diagnosis, signal)
+            heat_score = self._score(snapshot, diagnosis, signal, mode)
             if heat_score < 52:
                 continue
             candidates.append(
@@ -38,21 +39,38 @@ class HotspotCandidateService:
                     risk_note=diagnosis.risks[0],
                 )
             )
-        return sorted(candidates, key=lambda item: (item.heat_score, item.signal_score, item.change_pct), reverse=True)[:limit]
+        return sorted(candidates, key=lambda item: self._sort_key(item, mode), reverse=True)[:limit]
 
     def _score(
         self,
         snapshot: StockSnapshot,
         diagnosis: DiagnosisResponse,
         signal: MomentumSignalItem | None,
+        mode: str,
     ) -> int:
         signal_score = signal.signal_score if signal else 35
-        score = diagnosis.score.total * 0.45 + signal_score * 0.35
-        score += max(-8, min(12, snapshot.change_pct * 3))
-        score += max(-6, min(10, snapshot.capital.main_inflow_million / 120))
+        if mode == "capital":
+            score = diagnosis.score.total * 0.32 + signal_score * 0.24
+            score += max(-10, min(24, snapshot.capital.main_inflow_million / 70))
+            score += max(-6, min(10, snapshot.change_pct * 2))
+        elif mode == "momentum":
+            score = diagnosis.score.total * 0.28 + signal_score * 0.48
+            score += max(-10, min(20, snapshot.change_pct * 4))
+            score += max(-5, min(8, snapshot.capital.main_inflow_million / 160))
+        else:
+            score = diagnosis.score.total * 0.45 + signal_score * 0.35
+            score += max(-8, min(12, snapshot.change_pct * 3))
+            score += max(-6, min(10, snapshot.capital.main_inflow_million / 120))
         if snapshot.risk.st_flag:
             score -= 18
         return max(0, min(100, round(score)))
+
+    def _sort_key(self, item: HotspotCandidate, mode: str) -> tuple:
+        if mode == "capital":
+            return (item.heat_score, item.main_inflow_million, item.signal_score)
+        if mode == "momentum":
+            return (item.heat_score, item.signal_score, item.change_pct)
+        return (item.heat_score, item.signal_score, item.change_pct)
 
     def _reason(
         self,

@@ -461,6 +461,7 @@ async def hotspot_brief(
 @router.get("/hotspots/candidates", response_model=list[HotspotCandidate])
 async def hotspot_candidates(
     horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    mode: str = Query(default="balanced", pattern="^(balanced|capital|momentum)$"),
     limit: int = Query(default=10, ge=1, le=30),
 ) -> list[HotspotCandidate]:
     snapshots = _all_snapshots()
@@ -470,6 +471,7 @@ async def hotspot_candidates(
         snapshots=snapshots,
         diagnoses=diagnoses,
         signals=signals,
+        mode=mode,
         limit=limit,
     )
 
