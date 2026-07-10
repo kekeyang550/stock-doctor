@@ -121,6 +121,42 @@ const storageStatus = {
   migration_hint: '可通过 STOCK_DOCTOR_STATE_BACKEND=sqlite 切换到 SQLite 持久化。',
 }
 
+const systemReadiness = {
+  status: 'warn',
+  score: 88,
+  summary: '系统可继续开发，就绪度 88 分，存在 1 个待完善项。',
+  checks: [
+    {
+      key: 'storage',
+      label: '状态存储',
+      status: 'pass',
+      detail: 'JSON 存储在线，当前 6 条本地记录。',
+      next_action: '继续使用导出/导入能力做跨设备备份。',
+    },
+    {
+      key: 'connector',
+      label: '数据连接器',
+      status: 'pass',
+      detail: 'Mock A股样例库 当前启用，状态为 online。',
+      next_action: '研发阶段可继续使用 Mock；接近实盘前切换到 AKShare 或 Tushare。',
+    },
+    {
+      key: 'freshness',
+      label: '数据新鲜度',
+      status: 'pass',
+      detail: '最近刷新距今 2 分钟，覆盖率 100.0%。',
+      next_action: '可以继续使用当前诊断数据。',
+    },
+    {
+      key: 'refresh_jobs',
+      label: '刷新任务',
+      status: 'warn',
+      detail: '尚未记录刷新任务。',
+      next_action: '运行一次全量刷新，建立任务基线。',
+    },
+  ],
+}
+
 const reports = [
   { id: 'r1', generated_at: '2026-07-10T03:00:00Z', diagnosis },
 ]
@@ -350,6 +386,9 @@ describe('App', () => {
       if (url.includes('/system/freshness')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(freshness) })
       }
+      if (url.includes('/system/readiness')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(systemReadiness) })
+      }
       if (url.includes('/system/storage')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(storageStatus) })
       }
@@ -370,11 +409,11 @@ describe('App', () => {
     expect(screen.getByText('证据链')).toBeInTheDocument()
     expect(screen.getByText('市场概览')).toBeInTheDocument()
     expect(screen.getByText('数据源状态')).toBeInTheDocument()
-    expect(screen.getByText('数据连接器')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '数据连接器' })).toBeInTheDocument()
     expect(screen.getByText('AKShare')).toBeInTheDocument()
     expect(screen.getByText('缺包')).toBeInTheDocument()
     expect(screen.getByText('刷新全部')).toBeInTheDocument()
-    expect(screen.getByText('数据新鲜度')).toBeInTheDocument()
+    expect(screen.getAllByText('数据新鲜度').length).toBeGreaterThan(0)
     expect(screen.getByText('新鲜')).toBeInTheDocument()
     expect(screen.getByText('100.0%')).toBeInTheDocument()
     expect(screen.getByText('刷新记录')).toBeInTheDocument()
@@ -383,6 +422,10 @@ describe('App', () => {
     expect(screen.getByText('诊断报告')).toBeInTheDocument()
     expect(screen.getByText('导出')).toBeInTheDocument()
     expect(screen.getByText('预检')).toBeInTheDocument()
+    const readinessPanel = screen.getByRole('heading', { name: '系统就绪度' }).closest('section')!
+    expect(within(readinessPanel).getByText('88')).toBeInTheDocument()
+    expect(within(readinessPanel).getByText('状态存储')).toBeInTheDocument()
+    expect(within(readinessPanel).getByText('刷新任务')).toBeInTheDocument()
     expect(screen.getByText('报告历史')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研究笔记' })).toBeInTheDocument()
     expect(screen.getByText('观察量能是否继续温和放大')).toBeInTheDocument()

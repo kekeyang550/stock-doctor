@@ -28,6 +28,7 @@ import {
   fetchStocks,
   fetchStorageExport,
   fetchStorageStatus,
+  fetchSystemReadiness,
   fetchTimeline,
   fetchTrend,
   fetchWatchlist,
@@ -61,6 +62,8 @@ import type {
   StorageImportPayload,
   StorageImportPreview,
   StorageStatus,
+  SystemReadiness,
+  SystemReadinessCheck,
   TimelineEvent,
   TrendSeries,
   WatchlistSummary,
@@ -96,6 +99,7 @@ export default function App() {
   const [freshness, setFreshness] = useState<DataFreshnessStatus | null>(null)
   const [refreshJobs, setRefreshJobs] = useState<DataRefreshJob[]>([])
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
+  const [systemReadiness, setSystemReadiness] = useState<SystemReadiness | null>(null)
   const [storageImportPayload, setStorageImportPayload] = useState<StorageImportPayload | null>(null)
   const [storageImportPreview, setStorageImportPreview] = useState<StorageImportPreview | null>(null)
   const [storageImportName, setStorageImportName] = useState('')
@@ -123,7 +127,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, savedReports] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, savedReports] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
@@ -132,6 +136,7 @@ export default function App() {
       fetchDataFreshness(),
       fetchRefreshJobs(),
       fetchStorageStatus(),
+      fetchSystemReadiness(),
       fetchReports(),
     ])
     setStocks(items)
@@ -142,6 +147,7 @@ export default function App() {
     setFreshness(fresh)
     setRefreshJobs(jobs)
     setStorageStatus(storage)
+    setSystemReadiness(readiness)
     setReports(savedReports)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
       setSelectedSymbol(items[0].symbol)
@@ -363,7 +369,9 @@ export default function App() {
     setError(null)
     try {
       const result = await importStorage(storageImportPayload)
+      const readiness = await fetchSystemReadiness()
       setStorageStatus(result.storage)
+      setSystemReadiness(readiness)
       await loadStocks()
       const [nextNotes, nextPriceAlerts] = await Promise.all([
         fetchNotes(selectedSymbol),
@@ -383,9 +391,10 @@ export default function App() {
     setError(null)
     try {
       const job = await runRefreshJob(scope)
-      const fresh = await fetchDataFreshness()
+      const [fresh, readiness] = await Promise.all([fetchDataFreshness(), fetchSystemReadiness()])
       setRefreshJobs((items) => [job, ...items.filter((item) => item.id !== job.id)].slice(0, 5))
       setFreshness(fresh)
+      setSystemReadiness(readiness)
       await loadStocks()
     } catch (err) {
       setError(err instanceof Error ? err.message : '刷新任务失败')
@@ -458,6 +467,8 @@ export default function App() {
           onPreviewImport={previewStorageFile}
           onApplyImport={applyStorageImport}
         />
+
+        <SystemReadinessPanel readiness={systemReadiness} />
 
         <DataConnectorPanel health={connectorHealth} freshness={freshness} jobs={refreshJobs} onRun={triggerRefreshJob} />
 
@@ -613,6 +624,56 @@ function SystemStoragePanel({
       )}
     </section>
   )
+}
+
+function SystemReadinessPanel({ readiness }: { readiness: SystemReadiness | null }) {
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-title split-title">
+        <span>
+          <CheckCircle2 size={18} />
+          <h3>系统就绪度</h3>
+        </span>
+        <small className={readiness ? readiness.status : 'warn'}>
+          {readiness ? readinessStatusLabel(readiness.status) : '加载中'}
+        </small>
+      </div>
+      {readiness ? (
+        <>
+          <div className="readiness-head">
+            <strong>{readiness.score}</strong>
+            <span>{readiness.summary}</span>
+          </div>
+          <div className="readiness-checks">
+            {readiness.checks.map((check) => (
+              <ReadinessCheckRow key={check.key} check={check} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="empty-text">正在汇总系统就绪状态...</p>
+      )}
+    </section>
+  )
+}
+
+function ReadinessCheckRow({ check }: { check: SystemReadinessCheck }) {
+  return (
+    <article className={`readiness-check ${check.status}`}>
+      <div>
+        <strong>{check.label}</strong>
+        <em>{readinessStatusLabel(check.status)}</em>
+      </div>
+      <p>{check.detail}</p>
+      <small>{check.next_action}</small>
+    </article>
+  )
+}
+
+function readinessStatusLabel(status: SystemReadiness['status']) {
+  if (status === 'pass') return '正常'
+  if (status === 'warn') return '待完善'
+  return '阻断'
 }
 
 function DataConnectorPanel({

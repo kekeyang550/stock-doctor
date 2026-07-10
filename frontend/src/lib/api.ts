@@ -20,6 +20,7 @@ import type {
   StorageImportPreview,
   StorageImportResult,
   StorageStatus,
+  SystemReadiness,
   TimelineEvent,
   TrendSeries,
   WatchlistSummary,
@@ -75,6 +76,10 @@ export async function runRefreshJob(scope: 'all' | 'watchlist'): Promise<DataRef
 
 export function fetchStorageStatus(): Promise<StorageStatus> {
   return getJson<StorageStatus>('/api/v1/system/storage')
+}
+
+export function fetchSystemReadiness(): Promise<SystemReadiness> {
+  return getJson<SystemReadiness>('/api/v1/system/readiness')
 }
 
 export function fetchStorageExport(): Promise<StorageExport> {

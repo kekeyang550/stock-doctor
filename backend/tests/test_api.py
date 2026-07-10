@@ -49,6 +49,20 @@ def test_system_storage_endpoint_returns_persistence_status():
     }
 
 
+def test_system_readiness_endpoint_returns_operational_checks():
+    response = client.get("/api/v1/system/readiness")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] in {"pass", "warn", "fail"}
+    assert 0 <= payload["score"] <= 100
+    assert payload["summary"]
+    checks = {item["key"]: item for item in payload["checks"]}
+    assert {"storage", "connector", "freshness", "refresh_jobs"}.issubset(checks.keys())
+    assert checks["storage"]["status"] == "pass"
+    assert checks["connector"]["next_action"]
+
+
 def test_system_export_endpoint_returns_state_snapshot():
     response = client.get("/api/v1/system/export")
 

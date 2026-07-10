@@ -84,6 +84,21 @@ export type StorageStatus = {
   migration_hint: string
 }
 
+export type SystemReadinessCheck = {
+  key: string
+  label: string
+  status: 'pass' | 'warn' | 'fail'
+  detail: string
+  next_action: string
+}
+
+export type SystemReadiness = {
+  status: 'pass' | 'warn' | 'fail'
+  score: number
+  summary: string
+  checks: SystemReadinessCheck[]
+}
+
 export type StorageExport = {
   exported_at: string
   backend: string

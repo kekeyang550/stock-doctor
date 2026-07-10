@@ -29,6 +29,8 @@ from app.schemas.diagnosis import (
     StorageImportRequest,
     StorageImportResult,
     StorageStatus,
+    SystemReadiness,
+    SystemReadinessCheck,
     TimelineEvent,
     TrendSeries,
     WatchlistRequest,
@@ -112,6 +114,16 @@ async def run_refresh_job(request: DataRefreshJobRequest) -> DataRefreshJob:
 @router.get("/system/storage", response_model=StorageStatus)
 async def system_storage() -> StorageStatus:
     return _storage_status(create_state_store())
+
+
+@router.get("/system/readiness", response_model=SystemReadiness)
+async def system_readiness() -> SystemReadiness:
+    store = create_state_store()
+    storage = _storage_status(store)
+    health = data_connector_health_service.build_health()
+    freshness = refresh_job_service.build_freshness(provider=data_provider)
+    jobs = refresh_job_service.list_jobs(limit=5)
+    return _build_system_readiness(storage=storage, health=health, freshness=freshness, jobs=jobs)
 
 
 @router.get("/system/export", response_model=StorageExport)
@@ -481,6 +493,106 @@ def _storage_status(store: StateStore) -> StorageStatus:
         total_records=sum(item.count for item in collections),
         migration_hint="可通过 STOCK_DOCTOR_STATE_BACKEND=sqlite 切换到 SQLite 持久化。",
     )
+
+
+def _build_system_readiness(
+    storage: StorageStatus,
+    health: DataConnectorHealth,
+    freshness: DataFreshnessStatus,
+    jobs: list[DataRefreshJob],
+) -> SystemReadiness:
+    active_connector = next((connector for connector in health.connectors if connector.active), None)
+    failed_jobs = [job for job in jobs if job.status == "failed"]
+    checks = [
+        SystemReadinessCheck(
+            key="storage",
+            label="状态存储",
+            status="pass" if storage.status == "online" else "fail",
+            detail=f"{storage.backend.upper()} 存储在线，当前 {storage.total_records} 条本地记录。",
+            next_action="继续使用导出/导入能力做跨设备备份。" if storage.status == "online" else "检查状态文件路径和读写权限。",
+        ),
+        SystemReadinessCheck(
+            key="connector",
+            label="数据连接器",
+            status=_connector_readiness_status(active_connector),
+            detail=_connector_readiness_detail(active_connector, health),
+            next_action=_connector_readiness_action(active_connector, health),
+        ),
+        SystemReadinessCheck(
+            key="freshness",
+            label="数据新鲜度",
+            status=_freshness_readiness_status(freshness),
+            detail=freshness.message,
+            next_action=freshness.next_action,
+        ),
+        SystemReadinessCheck(
+            key="refresh_jobs",
+            label="刷新任务",
+            status="warn" if failed_jobs or not jobs else "pass",
+            detail=_refresh_job_readiness_detail(jobs, failed_jobs),
+            next_action=_refresh_job_readiness_action(jobs, failed_jobs),
+        ),
+    ]
+    failures = len([check for check in checks if check.status == "fail"])
+    warnings = len([check for check in checks if check.status == "warn"])
+    status = "fail" if failures else "warn" if warnings else "pass"
+    score = max(0, 100 - failures * 30 - warnings * 12)
+    summary = _system_readiness_summary(status, score, failures, warnings)
+    return SystemReadiness(status=status, score=score, summary=summary, checks=checks)
+
+
+def _connector_readiness_status(active_connector) -> str:
+    if active_connector is None:
+        return "fail"
+    if active_connector.status in {"online", "fallback"}:
+        return "pass"
+    return "warn"
+
+
+def _connector_readiness_detail(active_connector, health: DataConnectorHealth) -> str:
+    if active_connector is None:
+        return f"未找到启用中的数据连接器，当前配置为 {health.active_provider}。"
+    return f"{active_connector.name} 当前启用，状态为 {active_connector.status}。"
+
+
+def _connector_readiness_action(active_connector, health: DataConnectorHealth) -> str:
+    if active_connector is None:
+        return "检查 STOCK_DOCTOR_DATA_PROVIDER 配置，并保留 mock 作为回退源。"
+    if health.active_provider == "mock":
+        return "研发阶段可继续使用 Mock；接近实盘前切换到 AKShare 或 Tushare。"
+    return active_connector.next_action
+
+
+def _freshness_readiness_status(freshness: DataFreshnessStatus) -> str:
+    if freshness.status == "fresh":
+        return "pass"
+    if freshness.status in {"unknown", "stale"}:
+        return "warn"
+    return "fail"
+
+
+def _refresh_job_readiness_detail(jobs: list[DataRefreshJob], failed_jobs: list[DataRefreshJob]) -> str:
+    if not jobs:
+        return "尚未记录刷新任务。"
+    if failed_jobs:
+        return f"最近 {len(jobs)} 次刷新中有 {len(failed_jobs)} 次失败。"
+    return f"最近 {len(jobs)} 次刷新均成功。"
+
+
+def _refresh_job_readiness_action(jobs: list[DataRefreshJob], failed_jobs: list[DataRefreshJob]) -> str:
+    if not jobs:
+        return "运行一次全量刷新，建立任务基线。"
+    if failed_jobs:
+        return "查看失败任务消息，确认数据源依赖、网络和字段映射。"
+    return "后续接入定时调度后可复用当前刷新记录。"
+
+
+def _system_readiness_summary(status: str, score: int, failures: int, warnings: int) -> str:
+    if status == "pass":
+        return f"系统基础能力正常，就绪度 {score} 分。"
+    if status == "warn":
+        return f"系统可继续开发，就绪度 {score} 分，存在 {warnings} 个待完善项。"
+    return f"系统存在 {failures} 个阻断项，就绪度 {score} 分。"
 
 
 def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview:

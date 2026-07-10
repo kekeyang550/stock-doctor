@@ -93,6 +93,21 @@ class DataFreshnessStatus(BaseModel):
     next_action: str
 
 
+class SystemReadinessCheck(BaseModel):
+    key: str
+    label: str
+    status: str = Field(pattern="^(pass|warn|fail)$")
+    detail: str
+    next_action: str
+
+
+class SystemReadiness(BaseModel):
+    status: str = Field(pattern="^(pass|warn|fail)$")
+    score: int = Field(ge=0, le=100)
+    summary: str
+    checks: list[SystemReadinessCheck]
+
+
 class TechnicalSnapshot(BaseModel):
     ma5: float
     ma20: float
