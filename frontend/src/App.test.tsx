@@ -505,6 +505,22 @@ const hotspotBrief = {
   focus_symbols: ['600519', '002594'],
 }
 
+const hotspotCandidates = [
+  {
+    symbol: '002594',
+    name: '比亚迪',
+    industry: '汽车整车',
+    concept: '新能源汽车',
+    heat_score: 88,
+    diagnosis_score: 84,
+    signal_score: 91,
+    change_pct: 2.85,
+    main_inflow_million: 638.9,
+    reason: '新能源汽车题材；诊断分 84；强势异动，量比放大。',
+    risk_note: '18 天内存在解禁窗口，需关注供给冲击。',
+  },
+]
+
 const trend = {
   symbol: '600519',
   name: '贵州茅台',
@@ -613,6 +629,9 @@ describe('App', () => {
       if (url.includes('/hotspots/brief')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotBrief) })
       }
+      if (url.includes('/hotspots/candidates')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotCandidates) })
+      }
       if (url.includes('/data-sources')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) })
       }
@@ -681,6 +700,8 @@ describe('App', () => {
     const hotspotPanel = screen.getByRole('heading', { name: '热点总览' }).closest('section')!
     expect(within(hotspotPanel).getByText('热点强')).toBeInTheDocument()
     expect(within(hotspotPanel).getByText('新能源汽车')).toBeInTheDocument()
+    const hotspotPool = screen.getByRole('heading', { name: '热点选股池' }).closest('section')!
+    expect(within(hotspotPool).getByText('比亚迪')).toBeInTheDocument()
     expect(screen.getByText('报告历史')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研究笔记' })).toBeInTheDocument()
     expect(screen.getByText('观察量能是否继续温和放大')).toBeInTheDocument()

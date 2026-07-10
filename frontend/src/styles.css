@@ -1920,6 +1920,63 @@ button {
   font-weight: 800;
 }
 
+.hotspot-candidates-panel .split-title small {
+  color: #6a7a70;
+}
+
+.hotspot-candidate-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.hotspot-candidate-row {
+  border: 1px solid #e0e8db;
+  border-left: 5px solid #b94a48;
+  border-radius: 8px;
+  background: #f7faf5;
+  color: inherit;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 58px 96px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  text-align: left;
+}
+
+.hotspot-candidate-row > strong {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #26372f;
+  display: grid;
+  place-items: center;
+}
+
+.hotspot-candidate-row span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.hotspot-candidate-row small {
+  color: #6a7a70;
+  line-height: 1.4;
+}
+
+.hotspot-candidate-row em {
+  font-style: normal;
+  font-weight: 800;
+}
+
+.hotspot-candidate-row p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #394a40;
+  line-height: 1.5;
+}
+
 .portfolio-details {
   margin-top: 10px;
   display: grid;
@@ -2931,6 +2988,11 @@ button {
   }
 
   .hotspot-brief-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hotspot-candidate-list,
+  .hotspot-candidate-row {
     grid-template-columns: 1fr;
   }
 

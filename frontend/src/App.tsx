@@ -21,6 +21,7 @@ import {
   fetchDiagnosisChange,
   fetchDiagnosisThesis,
   fetchHotspotBrief,
+  fetchHotspotCandidates,
   fetchIndustryHeat,
   fetchMarketOverview,
   fetchMomentumSignals,
@@ -67,6 +68,7 @@ import type {
   DiagnosisThesis,
   EvidenceItem,
   HotspotBrief,
+  HotspotCandidate,
   IndustryHeatItem,
   MarketOverview,
   MomentumSignalItem,
@@ -139,6 +141,7 @@ export default function App() {
   const [reviewActionOverview, setReviewActionOverview] = useState<ReviewActionOverview | null>(null)
   const [dataQualityOverview, setDataQualityOverview] = useState<DataQualityOverview | null>(null)
   const [hotspotBrief, setHotspotBrief] = useState<HotspotBrief | null>(null)
+  const [hotspotCandidates, setHotspotCandidates] = useState<HotspotCandidate[]>([])
   const [industryHeat, setIndustryHeat] = useState<IndustryHeatItem[]>([])
   const [conceptHeat, setConceptHeat] = useState<ConceptHeatItem[]>([])
   const [momentumSignals, setMomentumSignals] = useState<MomentumSignalItem[]>([])
@@ -162,7 +165,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotPool] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
@@ -176,6 +179,7 @@ export default function App() {
       fetchReports(),
       fetchMomentumSignals(),
       fetchHotspotBrief(horizon),
+      fetchHotspotCandidates(horizon),
     ])
     setStocks(items)
     setWatchlist(watchItems)
@@ -190,6 +194,7 @@ export default function App() {
     setReports(savedReports)
     setMomentumSignals(momentum)
     setHotspotBrief(brief)
+    setHotspotCandidates(hotspotPool)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
       setSelectedSymbol(items[0].symbol)
     }
@@ -547,6 +552,8 @@ export default function App() {
         ) : null}
 
         <HotspotBriefPanel brief={hotspotBrief} onSelect={setSelectedSymbol} />
+
+        <HotspotCandidatesPanel candidates={hotspotCandidates} onSelect={setSelectedSymbol} />
 
         <WatchlistSummaryPanel summary={watchlistSummary} onSelect={setSelectedSymbol} />
 
@@ -1144,6 +1151,40 @@ function HotspotBriefMetric({ label, value, score }: { label: string; value: str
       <strong>{value}</strong>
       <em>{score ?? '--'}</em>
     </span>
+  )
+}
+
+function HotspotCandidatesPanel({ candidates, onSelect }: { candidates: HotspotCandidate[]; onSelect: (symbol: string) => void }) {
+  return (
+    <section className="panel hotspot-candidates-panel">
+      <div className="panel-title split-title">
+        <span>
+          <ListChecks size={18} />
+          <h3>热点选股池</h3>
+        </span>
+        <small>{candidates.length ? `${candidates.length} 只候选` : '暂无候选'}</small>
+      </div>
+      {candidates.length === 0 ? (
+        <p className="empty-text">当前没有满足热点观察条件的标的</p>
+      ) : (
+        <div className="hotspot-candidate-list">
+          {candidates.map((item) => (
+            <button type="button" key={item.symbol} className="hotspot-candidate-row" onClick={() => onSelect(item.symbol)}>
+              <strong>{item.heat_score}</strong>
+              <span>
+                <b>{item.name}</b>
+                <small>{item.symbol} · {item.concept} · {item.industry}</small>
+              </span>
+              <em className={item.change_pct >= 0 ? 'up' : 'down'}>
+                {item.change_pct >= 0 ? '+' : ''}{item.change_pct.toFixed(2)}%
+              </em>
+              <small>诊断 {item.diagnosis_score} · 异动 {item.signal_score}</small>
+              <p>{item.reason}</p>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 

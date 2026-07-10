@@ -76,6 +76,15 @@ def test_hotspot_brief_endpoint_returns_market_focus():
     assert "focus_symbols" in payload
 
 
+def test_hotspot_candidates_endpoint_returns_ranked_candidates():
+    response = client.get("/api/v1/hotspots/candidates")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert {"concept", "heat_score", "signal_score", "reason"}.issubset(payload[0].keys())
+
+
 def test_thesis_endpoint_returns_structured_argument():
     response = client.get("/api/v1/thesis/600519?horizon=swing")
 

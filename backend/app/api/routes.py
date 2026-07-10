@@ -15,6 +15,7 @@ from app.schemas.diagnosis import (
     DiagnosisResponse,
     DiagnosisThesis,
     HotspotBrief,
+    HotspotCandidate,
     IndustryHeatItem,
     MarketOverview,
     MomentumSignalItem,
@@ -55,6 +56,7 @@ from app.services.data_quality import DataQualityService
 from app.services.diagnosis import DiagnosisEngine
 from app.services.diagnosis_change import DiagnosisChangeService
 from app.services.hotspot_brief import HotspotBriefService
+from app.services.hotspot_candidates import HotspotCandidateService
 from app.services.industry_heat import IndustryHeatService
 from app.services.momentum_signals import MomentumSignalService
 from app.services.notes import ResearchNoteService
@@ -86,6 +88,7 @@ industry_heat_service = IndustryHeatService()
 concept_heat_service = ConceptHeatService()
 momentum_signal_service = MomentumSignalService()
 hotspot_brief_service = HotspotBriefService()
+hotspot_candidate_service = HotspotCandidateService()
 risk_exposure_service = RiskExposureService()
 screener_service = ScreenerService()
 price_alert_service = PriceAlertService()
@@ -453,6 +456,22 @@ async def hotspot_brief(
     concepts = concept_heat_service.build_heatmap(snapshots=snapshots, ranked=ranked)
     signals = momentum_signal_service.build_signals(snapshots=snapshots, limit=12)
     return hotspot_brief_service.build_brief(industries=industries, concepts=concepts, signals=signals)
+
+
+@router.get("/hotspots/candidates", response_model=list[HotspotCandidate])
+async def hotspot_candidates(
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    limit: int = Query(default=10, ge=1, le=30),
+) -> list[HotspotCandidate]:
+    snapshots = _all_snapshots()
+    diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    signals = momentum_signal_service.build_signals(snapshots=snapshots, limit=50)
+    return hotspot_candidate_service.build_candidates(
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        signals=signals,
+        limit=limit,
+    )
 
 
 @router.get("/alerts", response_model=list[AlertItem])

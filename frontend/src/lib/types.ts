@@ -465,6 +465,20 @@ export type HotspotBrief = {
   focus_symbols: string[]
 }
 
+export type HotspotCandidate = {
+  symbol: string
+  name: string
+  industry: string
+  concept: string
+  heat_score: number
+  diagnosis_score: number
+  signal_score: number
+  change_pct: number
+  main_inflow_million: number
+  reason: string
+  risk_note: string
+}
+
 export type TrendPoint = {
   date: string
   close: number

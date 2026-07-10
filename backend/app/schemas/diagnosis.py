@@ -472,6 +472,20 @@ class HotspotBrief(BaseModel):
     focus_symbols: list[str]
 
 
+class HotspotCandidate(BaseModel):
+    symbol: str
+    name: str
+    industry: str
+    concept: str
+    heat_score: int = Field(ge=0, le=100)
+    diagnosis_score: int
+    signal_score: int
+    change_pct: float
+    main_inflow_million: float
+    reason: str
+    risk_note: str
+
+
 class RiskExposureItem(BaseModel):
     category: str
     event_count: int
