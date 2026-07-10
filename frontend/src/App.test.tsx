@@ -481,6 +481,21 @@ const conceptHeat = [
   },
 ]
 
+const momentumSignals = [
+  {
+    symbol: '002594',
+    name: '比亚迪',
+    industry: '汽车整车',
+    signal_score: 91,
+    change_pct: 2.85,
+    volume_ratio: 1.58,
+    main_inflow_million: 638.9,
+    signal_level: 'surging',
+    title: '强势异动',
+    reason: '涨幅居前；量比放大；主力净流入明显',
+  },
+]
+
 const trend = {
   symbol: '600519',
   name: '贵州茅台',
@@ -583,6 +598,9 @@ describe('App', () => {
       if (url.includes('/concepts/heat')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(conceptHeat) })
       }
+      if (url.includes('/momentum/signals')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(momentumSignals) })
+      }
       if (url.includes('/data-sources')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) })
       }
@@ -663,6 +681,7 @@ describe('App', () => {
     expect(screen.getByText(/价量共振/)).toBeInTheDocument()
     expect(screen.getByText('题材热榜')).toBeInTheDocument()
     expect(screen.getByText('新能源汽车')).toBeInTheDocument()
+    expect(screen.getByText('异动雷达')).toBeInTheDocument()
     const actionOverviewPanel = screen.getByRole('heading', { name: '行动总览' }).closest('section')!
     expect(within(actionOverviewPanel).getByText('主力资金流出')).toBeInTheDocument()
     expect(within(actionOverviewPanel).getByText(/600519/)).toBeInTheDocument()

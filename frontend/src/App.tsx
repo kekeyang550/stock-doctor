@@ -22,6 +22,7 @@ import {
   fetchDiagnosisThesis,
   fetchIndustryHeat,
   fetchMarketOverview,
+  fetchMomentumSignals,
   fetchNotes,
   fetchPeerComparison,
   fetchPriceAlerts,
@@ -66,6 +67,7 @@ import type {
   EvidenceItem,
   IndustryHeatItem,
   MarketOverview,
+  MomentumSignalItem,
   PeerComparison,
   PeerComparisonItem,
   PriceAlert,
@@ -136,6 +138,7 @@ export default function App() {
   const [dataQualityOverview, setDataQualityOverview] = useState<DataQualityOverview | null>(null)
   const [industryHeat, setIndustryHeat] = useState<IndustryHeatItem[]>([])
   const [conceptHeat, setConceptHeat] = useState<ConceptHeatItem[]>([])
+  const [momentumSignals, setMomentumSignals] = useState<MomentumSignalItem[]>([])
   const [riskExposure, setRiskExposure] = useState<RiskExposureItem[]>([])
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
   const [trend, setTrend] = useState<TrendSeries | null>(null)
@@ -156,7 +159,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
@@ -168,6 +171,7 @@ export default function App() {
       fetchSystemReadiness(),
       fetchDataQualityOverview(),
       fetchReports(),
+      fetchMomentumSignals(),
     ])
     setStocks(items)
     setWatchlist(watchItems)
@@ -180,6 +184,7 @@ export default function App() {
     setSystemReadiness(readiness)
     setDataQualityOverview(qualityOverview)
     setReports(savedReports)
+    setMomentumSignals(momentum)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
       setSelectedSymbol(items[0].symbol)
     }
@@ -545,6 +550,8 @@ export default function App() {
         <IndustryHeatPanel items={industryHeat} onSelect={setSelectedSymbol} />
 
         <ConceptHeatPanel items={conceptHeat} onSelect={setSelectedSymbol} />
+
+        <MomentumSignalPanel items={momentumSignals} onSelect={setSelectedSymbol} />
 
         <TimelinePanel events={timeline} onSelect={setSelectedSymbol} />
 
@@ -1149,6 +1156,40 @@ function ConceptHeatPanel({ items, onSelect }: { items: ConceptHeatItem[]; onSel
                 {item.average_change_pct >= 0 ? '+' : ''}{item.average_change_pct.toFixed(2)}%
               </em>
               <small>资金 {formatSignedNumber(item.average_main_inflow_million)}</small>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function MomentumSignalPanel({ items, onSelect }: { items: MomentumSignalItem[]; onSelect: (symbol: string) => void }) {
+  return (
+    <section className="panel momentum-panel">
+      <div className="panel-title split-title">
+        <span>
+          <BellRing size={18} />
+          <h3>异动雷达</h3>
+        </span>
+        <small>{items.length ? `${items.length} 条信号` : '暂无异动'}</small>
+      </div>
+      {items.length === 0 ? (
+        <p className="empty-text">当前没有明显短线异动</p>
+      ) : (
+        <div className="momentum-list">
+          {items.map((item) => (
+            <button type="button" key={item.symbol} className={`momentum-row ${item.signal_level}`} onClick={() => onSelect(item.symbol)}>
+              <strong>{item.signal_score}</strong>
+              <span>
+                <b>{item.name}</b>
+                <small>{item.symbol} · {item.industry} · {item.title}</small>
+                <small>{item.reason}</small>
+              </span>
+              <em className={item.change_pct >= 0 ? 'up' : 'down'}>
+                {item.change_pct >= 0 ? '+' : ''}{item.change_pct.toFixed(2)}%
+              </em>
+              <small>量比 {item.volume_ratio.toFixed(2)} · 资金 {formatSignedNumber(item.main_inflow_million)}</small>
             </button>
           ))}
         </div>

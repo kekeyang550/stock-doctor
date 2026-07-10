@@ -443,6 +443,19 @@ export type ConceptHeatItem = {
   heat_level: 'hot' | 'warm' | 'neutral' | 'cool'
 }
 
+export type MomentumSignalItem = {
+  symbol: string
+  name: string
+  industry: string
+  signal_score: number
+  change_pct: number
+  volume_ratio: number
+  main_inflow_million: number
+  signal_level: 'limit-watch' | 'surging' | 'active' | 'cooling'
+  title: string
+  reason: string
+}
+
 export type TrendPoint = {
   date: string
   close: number

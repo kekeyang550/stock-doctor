@@ -12,6 +12,7 @@ import type {
   DiagnosisThesis,
   IndustryHeatItem,
   MarketOverview,
+  MomentumSignalItem,
   PeerComparison,
   PriceAlert,
   RankedDiagnosis,
@@ -60,6 +61,10 @@ export function fetchIndustryHeat(horizon: string): Promise<IndustryHeatItem[]> 
 
 export function fetchConceptHeat(horizon: string): Promise<ConceptHeatItem[]> {
   return getJson<ConceptHeatItem[]>(`/api/v1/concepts/heat?horizon=${horizon}`)
+}
+
+export function fetchMomentumSignals(): Promise<MomentumSignalItem[]> {
+  return getJson<MomentumSignalItem[]>('/api/v1/momentum/signals?limit=12')
 }
 
 export function fetchDataSources(): Promise<DataSource[]> {

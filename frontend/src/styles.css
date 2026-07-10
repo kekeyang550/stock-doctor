@@ -2002,6 +2002,10 @@ button {
   color: #6a7a70;
 }
 
+.momentum-panel .split-title small {
+  color: #6a7a70;
+}
+
 .industry-heat-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2009,6 +2013,12 @@ button {
 }
 
 .concept-heat-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.momentum-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -2093,6 +2103,60 @@ button {
 }
 
 .concept-heat-row em {
+  font-style: normal;
+  font-weight: 800;
+}
+
+.momentum-row {
+  border: 1px solid #e0e8db;
+  border-left: 5px solid #2e6b4f;
+  border-radius: 8px;
+  background: #f7faf5;
+  color: inherit;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 58px minmax(110px, 0.8fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  text-align: left;
+}
+
+.momentum-row.limit-watch,
+.momentum-row.surging {
+  border-left-color: #b94a48;
+}
+
+.momentum-row.active {
+  border-left-color: #b6812d;
+}
+
+.momentum-row.cooling {
+  border-left-color: #1465a8;
+}
+
+.momentum-row > strong {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #26372f;
+  display: grid;
+  place-items: center;
+}
+
+.momentum-row span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.momentum-row small {
+  color: #6a7a70;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.momentum-row em {
   font-style: normal;
   font-weight: 800;
 }
@@ -2743,7 +2807,9 @@ button {
   }
 
   .concept-heat-list,
-  .concept-heat-row {
+  .concept-heat-row,
+  .momentum-list,
+  .momentum-row {
     grid-template-columns: 1fr;
   }
 

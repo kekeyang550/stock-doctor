@@ -57,6 +57,15 @@ def test_concept_heat_endpoint_returns_theme_scores():
     assert {"concept", "heat_score", "reason", "top_symbol"}.issubset(payload[0].keys())
 
 
+def test_momentum_signals_endpoint_returns_activity_items():
+    response = client.get("/api/v1/momentum/signals")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert {"signal_score", "signal_level", "reason", "volume_ratio"}.issubset(payload[0].keys())
+
+
 def test_thesis_endpoint_returns_structured_argument():
     response = client.get("/api/v1/thesis/600519?horizon=swing")
 

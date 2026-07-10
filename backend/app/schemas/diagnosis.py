@@ -450,6 +450,19 @@ class ConceptHeatItem(BaseModel):
     heat_level: str = Field(pattern="^(hot|warm|neutral|cool)$")
 
 
+class MomentumSignalItem(BaseModel):
+    symbol: str
+    name: str
+    industry: str
+    signal_score: int = Field(ge=0, le=100)
+    change_pct: float
+    volume_ratio: float
+    main_inflow_million: float
+    signal_level: str = Field(pattern="^(limit-watch|surging|active|cooling)$")
+    title: str
+    reason: str
+
+
 class RiskExposureItem(BaseModel):
     category: str
     event_count: int
