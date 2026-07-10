@@ -1,5 +1,16 @@
-from app.schemas.diagnosis import MarketOverview, StockSnapshot, StockSummary
+from datetime import date
+
+from app.schemas.diagnosis import (
+    CapitalSnapshot,
+    FundamentalSnapshot,
+    MarketOverview,
+    RiskSnapshot,
+    StockSnapshot,
+    StockSummary,
+    TechnicalSnapshot,
+)
 from app.services.market_data import MockMarketDataProvider
+from app.services.storage import StateStore
 
 
 class AkshareMarketDataProvider:
@@ -9,7 +20,7 @@ class AkshareMarketDataProvider:
     and should be normalized behind this adapter before reaching the diagnosis engine.
     """
 
-    def __init__(self, ak_module=None) -> None:
+    def __init__(self, ak_module=None, state_store: StateStore | None = None) -> None:
         if ak_module is not None:
             self._ak = ak_module
         else:
@@ -19,7 +30,10 @@ class AkshareMarketDataProvider:
                 self._ak = None
             else:
                 self._ak = ak
-        self._fallback = MockMarketDataProvider()
+        self._fallback = MockMarketDataProvider(state_store=state_store)
+        self._state_store = self._fallback._state_store
+        self._default_watchlist = self._fallback._default_watchlist
+        self._watchlist_symbols = self._state_store.load_watchlist(self._default_watchlist)
         self._stock_cache: list[StockSummary] | None = None
         self._last_error: str | None = None
 
@@ -52,19 +66,41 @@ class AkshareMarketDataProvider:
         ]
 
     def get_watchlist(self) -> list[StockSummary]:
-        return self._fallback.get_watchlist()
+        summaries = {stock.symbol: stock for stock in self.list_stocks()}
+        return [summaries[symbol] for symbol in self._watchlist_symbols if symbol in summaries]
 
     def add_to_watchlist(self, symbol: str) -> bool:
-        return self._fallback.add_to_watchlist(symbol)
+        normalized = symbol.strip().upper()
+        if self.get_snapshot(normalized) is None:
+            return False
+        if normalized not in self._watchlist_symbols:
+            self._watchlist_symbols.append(normalized)
+            self._state_store.save_watchlist(self._watchlist_symbols)
+        return True
 
     def remove_from_watchlist(self, symbol: str) -> None:
-        self._fallback.remove_from_watchlist(symbol)
+        normalized = symbol.strip().upper()
+        self._watchlist_symbols = [item for item in self._watchlist_symbols if item != normalized]
+        self._state_store.save_watchlist(self._watchlist_symbols)
 
     def replace_watchlist(self, symbols: list[str]) -> list[StockSummary]:
-        return self._fallback.replace_watchlist(symbols)
+        next_symbols = []
+        for symbol in symbols:
+            normalized = symbol.strip().upper()
+            if normalized not in next_symbols and self.get_snapshot(normalized) is not None:
+                next_symbols.append(normalized)
+        self._watchlist_symbols = next_symbols
+        self._state_store.save_watchlist(self._watchlist_symbols)
+        return self.get_watchlist()
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
-        return self._fallback.get_snapshot(symbol)
+        fallback_snapshot = self._fallback.get_snapshot(symbol)
+        if fallback_snapshot is not None:
+            return fallback_snapshot
+        summary = next((stock for stock in self.list_stocks() if stock.symbol == symbol.strip().upper()), None)
+        if summary is None or summary.last_price <= 0:
+            return None
+        return self._summary_to_conservative_snapshot(summary)
 
     def _load_a_share_list(self) -> list[StockSummary]:
         rows = self._call_stock_rows("stock_zh_a_spot_em")
@@ -116,3 +152,41 @@ class AkshareMarketDataProvider:
             except (TypeError, ValueError):
                 continue
         return default
+
+    def _summary_to_conservative_snapshot(self, summary: StockSummary) -> StockSnapshot:
+        price = summary.last_price
+        return StockSnapshot(
+            symbol=summary.symbol,
+            name=summary.name,
+            industry=summary.industry,
+            last_price=price,
+            change_pct=summary.change_pct,
+            as_of=date.today().isoformat(),
+            technical=TechnicalSnapshot(
+                ma5=price,
+                ma20=price,
+                ma60=price,
+                rsi14=50,
+                macd=0,
+                volume_ratio=1,
+            ),
+            fundamental=FundamentalSnapshot(
+                pe_ttm=0,
+                pb=0,
+                roe=0,
+                revenue_growth=0,
+                profit_growth=0,
+                industry_pe_percentile=50,
+            ),
+            capital=CapitalSnapshot(
+                main_inflow_million=0,
+                northbound_inflow_million=0,
+                turnover_rate=0,
+            ),
+            risk=RiskSnapshot(
+                pledge_ratio=0,
+                unlock_days=None,
+                st_flag=False,
+                limit_up_streak=0,
+            ),
+        )
