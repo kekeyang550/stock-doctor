@@ -16,7 +16,8 @@ class DataRefreshJobService:
         jobs = [DataRefreshJob.model_validate(item) for item in self._state_store.load_refresh_jobs()]
         return sorted(jobs, key=lambda item: datetime.fromisoformat(item.started_at), reverse=True)[:limit]
 
-    def build_freshness(self, provider: MarketDataProvider, stale_after_minutes: int = 30) -> DataFreshnessStatus:
+    def build_freshness(self, provider: MarketDataProvider, stale_after_minutes: int | None = None) -> DataFreshnessStatus:
+        stale_after_minutes = stale_after_minutes or settings.data_freshness_stale_after_minutes
         expected_stock_count = len(provider.list_stocks())
         successful_jobs = [job for job in self.list_jobs(limit=50) if job.status == "success"]
         if not successful_jobs:

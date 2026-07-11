@@ -48,6 +48,11 @@ export type DataConnectorStatus = {
 export type DataConnectorHealth = {
   active_provider: string
   fallback_provider: string
+  runtime_config?: {
+    request_timeout_seconds: number
+    cache_ttl_seconds: number
+    freshness_stale_after_minutes: number
+  }
   connectors: DataConnectorStatus[]
 }
 

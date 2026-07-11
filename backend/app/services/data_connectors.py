@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from importlib.util import find_spec
 
 from app.config import settings
-from app.schemas.diagnosis import DataConnectorHealth, DataConnectorStatus
+from app.schemas.diagnosis import DataConnectorHealth, DataConnectorRuntimeConfig, DataConnectorStatus
 from app.services.providers import MarketDataProvider
 
 
@@ -58,6 +58,11 @@ class DataConnectorHealthService:
         return DataConnectorHealth(
             active_provider=active_provider,
             fallback_provider="mock",
+            runtime_config=DataConnectorRuntimeConfig(
+                request_timeout_seconds=settings.data_request_timeout_seconds,
+                cache_ttl_seconds=settings.data_cache_ttl_seconds,
+                freshness_stale_after_minutes=settings.data_freshness_stale_after_minutes,
+            ),
             connectors=connectors,
         )
 

@@ -71,9 +71,16 @@ class DataConnectorStatus(BaseModel):
     next_action: str
 
 
+class DataConnectorRuntimeConfig(BaseModel):
+    request_timeout_seconds: int
+    cache_ttl_seconds: int
+    freshness_stale_after_minutes: int
+
+
 class DataConnectorHealth(BaseModel):
     active_provider: str
     fallback_provider: str
+    runtime_config: DataConnectorRuntimeConfig
     connectors: list[DataConnectorStatus]
 
 

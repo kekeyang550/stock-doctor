@@ -64,3 +64,13 @@ The AKShare adapter keeps the mock provider as a fallback while real A-share fie
 The workspace also includes a manual refresh job panel. Refresh jobs record provider, scope, status, duration, and covered stock counts so the same history can later back scheduled real-data updates.
 
 The connector panel also shows data freshness: latest successful refresh time, refresh age, covered stock count, coverage rate, and the recommended next action.
+
+Optional runtime knobs for real-data trials:
+
+```powershell
+$env:STOCK_DOCTOR_DATA_REQUEST_TIMEOUT_SECONDS = "8"
+$env:STOCK_DOCTOR_DATA_CACHE_TTL_SECONDS = "300"
+$env:STOCK_DOCTOR_DATA_FRESHNESS_STALE_AFTER_MINUTES = "30"
+```
+
+These values are returned by `/api/v1/system/data-connectors` and displayed in the data trust panel so the current real-data operating assumptions are visible before diagnosis or backtest decisions.

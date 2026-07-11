@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.config import settings
 from app.services.market_data import MockMarketDataProvider
 from app.services.refresh_jobs import DataRefreshJobService
 from app.services.storage import JsonStateStore
@@ -60,6 +61,17 @@ def test_refresh_job_service_builds_freshness_status(tmp_path):
     assert freshness.status == "fresh"
     assert freshness.last_stock_count == len(provider.list_stocks())
     assert freshness.coverage_pct == 100
+
+
+def test_refresh_job_service_uses_configured_freshness_threshold(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "data_freshness_stale_after_minutes", 12)
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = MockMarketDataProvider(state_store=store)
+    service = DataRefreshJobService(state_store=store)
+
+    freshness = service.build_freshness(provider=provider)
+
+    assert freshness.stale_after_minutes == 12
 
 
 def test_refresh_jobs_endpoint_creates_and_lists_job():

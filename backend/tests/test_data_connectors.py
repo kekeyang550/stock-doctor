@@ -13,6 +13,9 @@ def test_data_connector_health_reports_mock_and_planned_sources():
 
     assert health.active_provider in {"mock", "akshare"}
     assert health.fallback_provider == "mock"
+    assert health.runtime_config.request_timeout_seconds == settings.data_request_timeout_seconds
+    assert health.runtime_config.cache_ttl_seconds == settings.data_cache_ttl_seconds
+    assert health.runtime_config.freshness_stale_after_minutes == settings.data_freshness_stale_after_minutes
     names = {connector.name for connector in health.connectors}
     assert {"Mock A股样例库", "AKShare", "Tushare Pro"}.issubset(names)
     assert all(connector.last_checked_at for connector in health.connectors)
@@ -70,5 +73,8 @@ def test_data_connector_health_endpoint():
     assert response.status_code == 200
     payload = response.json()
     assert payload["fallback_provider"] == "mock"
+    assert payload["runtime_config"]["request_timeout_seconds"] == settings.data_request_timeout_seconds
+    assert payload["runtime_config"]["cache_ttl_seconds"] == settings.data_cache_ttl_seconds
+    assert payload["runtime_config"]["freshness_stale_after_minutes"] == settings.data_freshness_stale_after_minutes
     assert any(item["name"] == "AKShare" for item in payload["connectors"])
     assert all("next_action" in item for item in payload["connectors"])

@@ -77,6 +77,11 @@ const sources = [
 const connectorHealth = {
   active_provider: 'mock',
   fallback_provider: 'mock',
+  runtime_config: {
+    request_timeout_seconds: 8,
+    cache_ttl_seconds: 300,
+    freshness_stale_after_minutes: 30,
+  },
   connectors: [
     {
       name: 'Mock A股样例库',
@@ -926,6 +931,12 @@ describe('App', () => {
     expect(screen.getByText('数据源状态')).toBeInTheDocument()
     const trustPanel = screen.getByRole('heading', { name: '数据可信度' }).closest('section')!
     expect(within(trustPanel).getByText('行情来源')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('请求超时')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('8 秒')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('缓存 TTL')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('300 秒')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('过期阈值')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('30 分钟')).toBeInTheDocument()
     expect(within(trustPanel).getAllByText('mock').length).toBeGreaterThan(0)
     expect(within(trustPanel).getByText('正在使用回退源')).toBeInTheDocument()
     expect(within(trustPanel).getByText('缓存可用')).toBeInTheDocument()

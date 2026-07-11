@@ -240,6 +240,7 @@ export function DataConnectorPanel({
   const activeConnector = health?.connectors.find((connector) => connector.active) ?? null
   const latestJob = jobs[0] ?? null
   const usingFallback = health ? health.active_provider === health.fallback_provider : false
+  const runtimeConfig = health?.runtime_config
   return (
     <section className="panel connector-panel">
       <div className="panel-title split-title">
@@ -281,6 +282,24 @@ export function DataConnectorPanel({
               label="最近成功"
               value={freshness?.last_success_at ? formatReportTime(freshness.last_success_at) : '暂无成功刷新'}
               detail={freshness?.age_minutes === null || !freshness ? `过期阈值 ${freshness?.stale_after_minutes ?? '--'} 分钟。` : `距今 ${freshness.age_minutes} 分钟，覆盖 ${freshness.last_stock_count}/${freshness.expected_stock_count}。`}
+              status={freshness ? cacheStatusClass(freshness) : 'unknown'}
+            />
+            <TrustCard
+              label="请求超时"
+              value={runtimeConfig ? `${runtimeConfig.request_timeout_seconds} 秒` : '--'}
+              detail="真实行情接口调用的单次等待上限。"
+              status="unknown"
+            />
+            <TrustCard
+              label="缓存 TTL"
+              value={runtimeConfig ? `${runtimeConfig.cache_ttl_seconds} 秒` : '--'}
+              detail="行情缓存有效窗口，超过后应重新刷新。"
+              status="unknown"
+            />
+            <TrustCard
+              label="过期阈值"
+              value={runtimeConfig ? `${runtimeConfig.freshness_stale_after_minutes} 分钟` : freshness ? `${freshness.stale_after_minutes} 分钟` : '--'}
+              detail="超过该时间后，数据可信度会提示偏旧。"
               status={freshness ? cacheStatusClass(freshness) : 'unknown'}
             />
             <TrustCard
