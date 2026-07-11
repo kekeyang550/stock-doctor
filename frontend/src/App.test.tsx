@@ -524,6 +524,9 @@ const strategyBacktest = {
   horizon: 'swing',
   holding_days: 5,
   price_source: 'historical-kline',
+  history_bar_count: 30,
+  history_last_date: '2026-06-30',
+  fallback_reason: null,
   sample_size: 4,
   match_count: 2,
   trade_count: 2,
@@ -560,10 +563,10 @@ const strategyBacktestComparison = {
   recommended_holding_days: 10,
   summary: 'strong 已比较 4 个持有周期，当前样例推荐 10 日。',
   periods: [
-    { holding_days: 3, trade_count: 2, win_rate: 50, average_return_pct: 0.8, max_drawdown_pct: -1.5 },
-    { holding_days: 5, trade_count: 2, win_rate: 50, average_return_pct: 1.23, max_drawdown_pct: -2.1 },
-    { holding_days: 10, trade_count: 2, win_rate: 100, average_return_pct: 5.2, max_drawdown_pct: -2.8 },
-    { holding_days: 20, trade_count: 2, win_rate: 50, average_return_pct: 2.4, max_drawdown_pct: -4.6 },
+    { holding_days: 3, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 0.8, max_drawdown_pct: -1.5 },
+    { holding_days: 5, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 1.23, max_drawdown_pct: -2.1 },
+    { holding_days: 10, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 100, average_return_pct: 5.2, max_drawdown_pct: -2.8 },
+    { holding_days: 20, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 2.4, max_drawdown_pct: -4.6 },
   ],
 }
 
@@ -1125,6 +1128,10 @@ describe('App', () => {
     expect(within(backtestPanel).getAllByText('-2.10%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('价格来源')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('历史K线')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('历史样本')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('30 根')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('最后交易日')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('2026-06-30')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('贵州茅台')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('600519 · 白酒 · 5 日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('综合高分')).toBeInTheDocument()
@@ -1541,6 +1548,11 @@ describe('App', () => {
     expect(html).toContain('贵州茅台')
     expect(html).toContain('组合风险')
     expect(html).toContain('策略回测')
+    expect(html).toContain('历史K线')
+    expect(html).toContain('历史样本')
+    expect(html).toContain('30 根')
+    expect(html).toContain('最后交易日')
+    expect(html).toContain('2026-06-30')
     expect(html).toContain('数据可信度')
     expect(anchor.download).toBe('stock-doctor-report-600519-2026-07-11.html')
     expect(click).toHaveBeenCalled()

@@ -12,6 +12,11 @@ class FakeHistoricalProvider:
         ][-days:]
 
 
+class FailingHistoricalProvider:
+    def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
+        raise RuntimeError("provider timeout")
+
+
 def test_strategy_backtest_reports_returns_and_drawdown():
     provider = MockMarketDataProvider()
     snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
@@ -54,9 +59,33 @@ def test_strategy_backtest_prefers_provider_price_history():
     )
 
     assert report.price_source == "historical-kline"
+    assert report.history_bar_count == 30
+    assert report.history_last_date == "2026-06-30"
+    assert report.fallback_reason is None
     assert report.trades[0].entry_price == 125
     assert report.trades[0].exit_price == 130
     assert report.trades[0].return_pct == 4
+
+
+def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FailingHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+    )
+
+    assert report.price_source == "synthetic-trend"
+    assert report.history_bar_count == 0
+    assert report.history_last_date is None
+    assert report.fallback_reason == "历史行情读取失败，已回退样例趋势"
+    assert report.trade_count >= 1
 
 
 def test_strategy_backtest_compares_multiple_holding_periods():
@@ -81,3 +110,4 @@ def test_strategy_backtest_compares_multiple_holding_periods():
     assert comparison.match_count >= 1
     assert comparison.summary
     assert all(period.trade_count >= 0 for period in comparison.periods)
+    assert all(period.history_bar_count >= 0 for period in comparison.periods)

@@ -419,6 +419,9 @@ export type StrategyBacktestReport = {
   horizon: 'intraday' | 'swing' | 'position'
   holding_days: number
   price_source: 'historical-kline' | 'synthetic-trend'
+  history_bar_count: number
+  history_last_date: string | null
+  fallback_reason: string | null
   sample_size: number
   match_count: number
   trade_count: number
@@ -435,6 +438,9 @@ export type StrategyBacktestReport = {
 export type StrategyBacktestPeriodSummary = {
   holding_days: number
   price_source: 'historical-kline' | 'synthetic-trend'
+  history_bar_count: number
+  history_last_date: string | null
+  fallback_reason: string | null
   trade_count: number
   win_rate: number
   average_return_pct: number

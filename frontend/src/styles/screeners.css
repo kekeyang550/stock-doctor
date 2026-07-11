@@ -647,22 +647,34 @@
   line-height: 1.5;
 }
 
-.backtest-source-badge {
-  display: inline-flex;
-  align-items: center;
+.backtest-lineage-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  width: fit-content;
   margin-top: 10px;
   border: 1px solid #dde6da;
-  border-radius: 999px;
-  padding: 4px 9px;
+  border-radius: 8px;
+  padding: 9px;
   background: #f7faf5;
+}
+
+.backtest-lineage-card span {
+  display: grid;
+  gap: 2px;
   color: #6a7a70;
   font-size: 12px;
 }
 
-.backtest-source-badge strong {
+.backtest-lineage-card strong {
   color: #1f2f25;
+  font-size: 13px;
+}
+
+.backtest-lineage-card em {
+  grid-column: 1 / -1;
+  color: #4f6256;
+  font-size: 12px;
+  font-style: normal;
 }
 
 .backtest-comparison,
@@ -752,6 +764,11 @@
 
 .backtest-period-grid b {
   color: #1f2f25;
+}
+
+.backtest-period-source {
+  color: #6a7a70;
+  font-size: 12px;
 }
 
 .backtest-trade-list {

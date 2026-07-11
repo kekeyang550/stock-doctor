@@ -643,6 +643,9 @@ class StrategyBacktestReport(BaseModel):
     horizon: str = Field(pattern="^(intraday|swing|position)$")
     holding_days: int
     price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
+    history_bar_count: int = 0
+    history_last_date: str | None = None
+    fallback_reason: str | None = None
     sample_size: int
     match_count: int
     trade_count: int
@@ -659,6 +662,9 @@ class StrategyBacktestReport(BaseModel):
 class StrategyBacktestPeriodSummary(BaseModel):
     holding_days: int
     price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
+    history_bar_count: int = 0
+    history_last_date: str | None = None
+    fallback_reason: str | None = None
     trade_count: int
     win_rate: float = Field(ge=0, le=100)
     average_return_pct: float

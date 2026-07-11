@@ -672,9 +672,20 @@ export function StrategyBacktestPanel({
         </div>
       ) : (
         <>
-          <div className="backtest-source-badge">
-            <span>价格来源</span>
-            <strong>{backtestPriceSourceLabel(report.price_source)}</strong>
+          <div className="backtest-lineage-card">
+            <span>
+              <small>价格来源</small>
+              <strong>{backtestPriceSourceLabel(report.price_source)}</strong>
+            </span>
+            <span>
+              <small>历史样本</small>
+              <strong>{formatBacktestHistoryCount(report.history_bar_count)}</strong>
+            </span>
+            <span>
+              <small>最后交易日</small>
+              <strong>{report.history_last_date ?? '-'}</strong>
+            </span>
+            <em>{report.fallback_reason ?? '未发生 fallback'}</em>
           </div>
           <div className="portfolio-metrics backtest-metrics">
             <SummaryMetric label="样例交易" value={report.trade_count} />
@@ -716,6 +727,10 @@ export function StrategyBacktestPanel({
 
 function backtestPriceSourceLabel(source: StrategyBacktestReport['price_source']) {
   return source === 'historical-kline' ? '历史K线' : '样例趋势'
+}
+
+function formatBacktestHistoryCount(value: number) {
+  return value > 0 ? `${value} 根` : '-'
 }
 
 function BacktestPeriodComparison({
@@ -762,6 +777,9 @@ function BacktestPeriodComparison({
               <small>最大回撤</small>
               <b className="down">{formatSignedPercent(period.max_drawdown_pct)}</b>
             </span>
+            <small className="backtest-period-source">
+              {backtestPriceSourceLabel(period.price_source)} · {formatBacktestHistoryCount(period.history_bar_count)}
+            </small>
           </article>
         ))}
       </div>

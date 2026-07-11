@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from app.schemas.diagnosis import (
     DiagnosisResponse,
     HistoricalPriceBar,
@@ -12,6 +14,15 @@ from app.schemas.diagnosis import (
 from app.services.providers import MarketDataProvider
 from app.services.screener import ScreenerService
 from app.services.trend import TrendService
+
+
+@dataclass(frozen=True)
+class PriceSeriesResult:
+    series: TrendSeries
+    source: str
+    history_bar_count: int
+    history_last_date: str | None
+    fallback_reason: str | None
 
 
 class StrategyBacktestService:
@@ -42,14 +53,23 @@ class StrategyBacktestService:
         candidates = self._screener_service.screen(snapshots=snapshots, diagnoses=diagnoses, preset=preset)
         trades: list[StrategyBacktestTrade] = []
         used_historical = False
+        historical_counts: list[int] = []
+        historical_last_dates: list[str] = []
+        fallback_reasons: list[str] = []
 
         for candidate in candidates[:limit]:
             snapshot = snapshot_by_symbol.get(candidate.symbol)
             if snapshot is None:
                 continue
-            series, source = self._price_series(snapshot, holding_days)
-            used_historical = used_historical or source == "historical-kline"
-            trade = self._build_trade(snapshot, candidate.reason, candidate.rule_tags, series.points, holding_days)
+            price_series = self._price_series(snapshot, holding_days)
+            used_historical = used_historical or price_series.source == "historical-kline"
+            if price_series.source == "historical-kline":
+                historical_counts.append(price_series.history_bar_count)
+                if price_series.history_last_date:
+                    historical_last_dates.append(price_series.history_last_date)
+            elif price_series.fallback_reason:
+                fallback_reasons.append(price_series.fallback_reason)
+            trade = self._build_trade(snapshot, candidate.reason, candidate.rule_tags, price_series.series.points, holding_days)
             if trade is not None:
                 trades.append(trade)
 
@@ -65,6 +85,9 @@ class StrategyBacktestService:
             horizon=horizon,
             holding_days=holding_days,
             price_source="historical-kline" if used_historical else "synthetic-trend",
+            history_bar_count=min(historical_counts) if historical_counts else 0,
+            history_last_date=max(historical_last_dates) if historical_last_dates else None,
+            fallback_reason=self._fallback_reason(used_historical, fallback_reasons),
             sample_size=len(snapshots),
             match_count=len(candidates),
             trade_count=len(trades),
@@ -103,6 +126,9 @@ class StrategyBacktestService:
             StrategyBacktestPeriodSummary(
                 holding_days=report.holding_days,
                 price_source=report.price_source,
+                history_bar_count=report.history_bar_count,
+                history_last_date=report.history_last_date,
+                fallback_reason=report.fallback_reason,
                 trade_count=report.trade_count,
                 win_rate=report.win_rate,
                 average_return_pct=report.average_return_pct,
@@ -195,20 +221,41 @@ class StrategyBacktestService:
             signal_reason=signal_reason,
         )
 
-    def _price_series(self, snapshot: StockSnapshot, holding_days: int):
-        historical_points = self._historical_points(snapshot.symbol, days=max(holding_days + 5, 60))
+    def _price_series(self, snapshot: StockSnapshot, holding_days: int) -> PriceSeriesResult:
+        requested_days = max(holding_days + 5, 60)
+        historical_points, failure_reason = self._historical_points(snapshot.symbol, days=requested_days)
         if len(historical_points) >= holding_days + 1:
-            return self._series_from_points(snapshot, historical_points), "historical-kline"
-        return self._trend_service.build_series(snapshot=snapshot, days=max(holding_days + 5, 20)), "synthetic-trend"
+            return PriceSeriesResult(
+                series=self._series_from_points(snapshot, historical_points),
+                source="historical-kline",
+                history_bar_count=len(historical_points),
+                history_last_date=historical_points[-1].date,
+                fallback_reason=None,
+            )
+        reason = failure_reason or "历史K线样本不足，已回退样例趋势"
+        return PriceSeriesResult(
+            series=self._trend_service.build_series(snapshot=snapshot, days=max(holding_days + 5, 20)),
+            source="synthetic-trend",
+            history_bar_count=0,
+            history_last_date=None,
+            fallback_reason=reason,
+        )
 
-    def _historical_points(self, symbol: str, days: int) -> list[TrendPoint]:
+    def _historical_points(self, symbol: str, days: int) -> tuple[list[TrendPoint], str | None]:
         if self._market_data_provider is None:
-            return []
+            return [], "未配置历史行情 provider，已回退样例趋势"
         try:
             bars = self._market_data_provider.get_price_history(symbol, days=days)
         except Exception:
-            return []
-        return self._bars_to_points(bars)
+            return [], "历史行情读取失败，已回退样例趋势"
+        return self._bars_to_points(bars), None
+
+    def _fallback_reason(self, used_historical: bool, reasons: list[str]) -> str | None:
+        if not reasons:
+            return None
+        if used_historical:
+            return "部分标的历史K线不可用，已混合使用样例趋势"
+        return reasons[0]
 
     def _bars_to_points(self, bars: list[HistoricalPriceBar]) -> list[TrendPoint]:
         points: list[TrendPoint] = []

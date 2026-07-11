@@ -1067,6 +1067,10 @@ function buildResearchReportHtml(payload: Record<string, any>) {
     <section>
       <h2>策略回测</h2>
       <div class="grid">
+        <div class="metric"><span>价格来源</span><strong>${escapeHtml(strategyBacktestPriceSourceLabel(strategyBacktest.price_source))}</strong></div>
+        <div class="metric"><span>历史样本</span><strong>${escapeHtml(strategyBacktest.history_bar_count ? `${strategyBacktest.history_bar_count} 根` : "-")}</strong></div>
+        <div class="metric"><span>最后交易日</span><strong>${escapeHtml(strategyBacktest.history_last_date ?? "-")}</strong></div>
+        <div class="metric"><span>Fallback</span><strong>${escapeHtml(strategyBacktest.fallback_reason ?? "未发生 fallback")}</strong></div>
         <div class="metric"><span>样例交易</span><strong>${escapeHtml(strategyBacktest.trade_count ?? 0)}</strong></div>
         <div class="metric"><span>胜率</span><strong>${escapeHtml(strategyBacktest.win_rate ?? 0)}%</strong></div>
         <div class="metric"><span>平均收益</span><strong>${escapeHtml(strategyBacktest.average_return_pct ?? 0)}%</strong></div>
@@ -1098,6 +1102,10 @@ function escapeHtml(value: unknown) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+function strategyBacktestPriceSourceLabel(source: unknown) {
+  return source === 'historical-kline' ? '历史K线' : '样例趋势'
 }
 
 function buildStorageImportPayload(value: unknown): StorageImportPayload {

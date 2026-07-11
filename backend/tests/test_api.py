@@ -490,6 +490,9 @@ def test_strategy_backtest_endpoint_returns_sample_report():
     assert payload["horizon"] == "swing"
     assert payload["holding_days"] == 5
     assert payload["price_source"] == "historical-kline"
+    assert payload["history_bar_count"] >= 6
+    assert payload["history_last_date"]
+    assert payload["fallback_reason"] is None
     assert payload["trade_count"] >= 1
     assert {"win_rate", "average_return_pct", "max_drawdown_pct", "trades"}.issubset(payload.keys())
     assert {"symbol", "entry_price", "exit_price", "return_pct", "rule_tags"}.issubset(payload["trades"][0].keys())
@@ -506,6 +509,9 @@ def test_strategy_backtest_period_comparison_endpoint_returns_period_summaries()
     assert payload["recommended_holding_days"] in [3, 5, 10, 20]
     assert payload["summary"]
     assert all(period["price_source"] == "historical-kline" for period in payload["periods"])
+    assert all(period["history_bar_count"] >= period["holding_days"] + 1 for period in payload["periods"])
+    assert all(period["history_last_date"] for period in payload["periods"])
+    assert all(period["fallback_reason"] is None for period in payload["periods"])
     assert all("average_return_pct" in period for period in payload["periods"])
 
 
