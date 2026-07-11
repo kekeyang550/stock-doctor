@@ -170,6 +170,7 @@ class StrategyBacktestService:
             match_count=reports[0].match_count if reports else 0,
             recommended_holding_days=recommended.holding_days if recommended else None,
             periods=summaries,
+            recommendation_reason=self._period_recommendation_reason(recommended),
             summary=self._comparison_summary(preset, summaries, recommended),
         )
 
@@ -223,6 +224,7 @@ class StrategyBacktestService:
             sample_size=reports[0].sample_size if reports else len(snapshots),
             recommended_preset=recommended.preset if recommended else None,
             presets=summaries,
+            recommendation_reason=self._preset_recommendation_reason(recommended),
             summary=self._preset_comparison_summary(summaries, recommended),
         )
 
@@ -298,6 +300,24 @@ class StrategyBacktestService:
         return (
             f"已比较 {len(presets)} 个策略，当前样例推荐 {recommended.label}，"
             f"平均收益 {recommended.average_return_pct:.2f}%，最大回撤 {recommended.max_drawdown_pct:.2f}%。"
+        )
+
+    def _period_recommendation_reason(self, recommended: StrategyBacktestPeriodSummary | None) -> str | None:
+        if recommended is None:
+            return None
+        return (
+            f"推荐 {recommended.holding_days} 日，因为收益回撤比 {recommended.return_drawdown_ratio:.2f}，"
+            f"平均收益 {recommended.average_return_pct:.2f}%，最大回撤 {recommended.max_drawdown_pct:.2f}%，"
+            f"胜率 {recommended.win_rate:.1f}%。"
+        )
+
+    def _preset_recommendation_reason(self, recommended: StrategyBacktestPresetSummary | None) -> str | None:
+        if recommended is None:
+            return None
+        return (
+            f"推荐 {recommended.label}，因为收益回撤比 {recommended.return_drawdown_ratio:.2f}，"
+            f"平均收益 {recommended.average_return_pct:.2f}%，最大回撤 {recommended.max_drawdown_pct:.2f}%，"
+            f"胜率 {recommended.win_rate:.1f}%，交易 {recommended.trade_count} 笔。"
         )
 
     def _return_drawdown_ratio(self, average_return_pct: float, max_drawdown_pct: float) -> float:

@@ -689,6 +689,7 @@ class StrategyBacktestComparison(BaseModel):
     match_count: int
     recommended_holding_days: int | None
     periods: list[StrategyBacktestPeriodSummary]
+    recommendation_reason: str | None = None
     summary: str
 
 
@@ -714,6 +715,7 @@ class StrategyBacktestPresetComparison(BaseModel):
     sample_size: int
     recommended_preset: str | None
     presets: list[StrategyBacktestPresetSummary]
+    recommendation_reason: str | None = None
     summary: str
 
 

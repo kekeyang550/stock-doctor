@@ -532,6 +532,7 @@ def test_strategy_backtest_period_comparison_endpoint_returns_period_summaries()
     assert all(period["fallback_reason"] is None for period in payload["periods"])
     assert all("average_return_pct" in period for period in payload["periods"])
     assert all("return_drawdown_ratio" in period for period in payload["periods"])
+    assert "收益回撤比" in payload["recommendation_reason"]
 
 
 def test_strategy_backtest_period_comparison_accepts_cost_assumptions():
@@ -547,6 +548,7 @@ def test_strategy_backtest_period_comparison_accepts_cost_assumptions():
     assert all(period["trade_count"] >= 1 for period in payload["periods"])
     assert all("average_return_pct" in period for period in payload["periods"])
     assert all("return_drawdown_ratio" in period for period in payload["periods"])
+    assert "收益回撤比" in payload["recommendation_reason"]
 
 
 def test_strategy_backtest_preset_comparison_endpoint_returns_preset_summaries():
@@ -565,6 +567,7 @@ def test_strategy_backtest_preset_comparison_endpoint_returns_preset_summaries()
     assert all(item["holding_days"] == 10 for item in payload["presets"])
     assert all("average_return_pct" in item for item in payload["presets"])
     assert all("return_drawdown_ratio" in item for item in payload["presets"])
+    assert "收益回撤比" in payload["recommendation_reason"]
     assert payload["summary"]
 
 

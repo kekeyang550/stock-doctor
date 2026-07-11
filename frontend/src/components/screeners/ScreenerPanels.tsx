@@ -844,6 +844,13 @@ function BacktestPeriodComparison({
       <div className="backtest-comparison-head">
         <strong>周期对比</strong>
         <span>{comparison.summary}</span>
+        {comparison.recommendation_reason ? (
+          <small className="backtest-recommendation-reason">
+            <b>推荐依据</b>
+            ：
+            {comparison.recommendation_reason}
+          </small>
+        ) : null}
       </div>
       <div className="backtest-period-grid">
         {comparison.periods.map((period) => (
@@ -904,6 +911,13 @@ function BacktestPresetComparison({
       <div className="backtest-comparison-head">
         <strong>策略对比</strong>
         <span>{comparison.summary}</span>
+        {comparison.recommendation_reason ? (
+          <small className="backtest-recommendation-reason">
+            <b>推荐依据</b>
+            ：
+            {comparison.recommendation_reason}
+          </small>
+        ) : null}
       </div>
       <div className="backtest-preset-grid">
         {comparison.presets.map((preset) => (

@@ -465,6 +465,7 @@ export type StrategyBacktestComparison = {
   match_count: number
   recommended_holding_days: number | null
   periods: StrategyBacktestPeriodSummary[]
+  recommendation_reason: string | null
   summary: string
 }
 
@@ -490,6 +491,7 @@ export type StrategyBacktestPresetComparison = {
   sample_size: number
   recommended_preset: string | null
   presets: StrategyBacktestPresetSummary[]
+  recommendation_reason: string | null
   summary: string
 }
 

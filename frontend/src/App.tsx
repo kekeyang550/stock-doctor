@@ -1148,6 +1148,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <p>${escapeHtml(strategyBacktest.summary ?? "")}</p>
       <h3>策略横向对比</h3>
       <p>${escapeHtml(strategyPresetComparison.summary ?? "")}</p>
+      ${strategyPresetComparison.recommendation_reason ? `<p><strong>策略推荐依据：</strong>${escapeHtml(strategyPresetComparison.recommendation_reason)}</p>` : ""}
       ${presetSummaries.slice(0, 6).map((preset: any) => `<div class="row"><strong>${escapeHtml(preset.label ?? preset.preset)}</strong><small>${escapeHtml(preset.preset)} · 命中 ${escapeHtml(preset.match_count ?? 0)} · 交易 ${escapeHtml(preset.trade_count ?? 0)} · 胜率 ${escapeHtml(preset.win_rate ?? 0)}% · 平均收益 ${escapeHtml(preset.average_return_pct ?? 0)}% · 最大回撤 ${escapeHtml(preset.max_drawdown_pct ?? 0)}% · 收益回撤比 ${escapeHtml(preset.return_drawdown_ratio ?? 0)}${preset.preset === strategyPresetComparison.recommended_preset ? " · 推荐" : ""}</small></div>`).join("") || "<p>暂无策略对比</p>"}
       ${trades.slice(0, 6).map((trade: any) => `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · 净收益 ${escapeHtml(trade.return_pct)}% · 毛收益 ${escapeHtml(trade.gross_return_pct ?? trade.return_pct)}% · 成本 ${escapeHtml(trade.cost_pct ?? 0)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%</small></div>`).join("") || "<p>暂无样例交易</p>"}
     </section>

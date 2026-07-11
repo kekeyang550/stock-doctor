@@ -572,6 +572,7 @@ const strategyBacktestComparison = {
   match_count: 2,
   recommended_holding_days: 10,
   summary: 'strong 已比较 4 个持有周期，当前样例推荐 10 日。',
+  recommendation_reason: '推荐 10 日，因为收益回撤比 1.86，平均收益 5.20%，最大回撤 -2.80%，胜率 100.0%。',
   periods: [
     { holding_days: 3, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 0.8, max_drawdown_pct: -1.5, return_drawdown_ratio: 0.53 },
     { holding_days: 5, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 1.23, max_drawdown_pct: -2.1, return_drawdown_ratio: 0.59 },
@@ -586,6 +587,7 @@ const strategyBacktestPresetComparison = {
   sample_size: 4,
   recommended_preset: 'strong',
   summary: '已比较 3 个策略，当前样例推荐 强势关注。',
+  recommendation_reason: '推荐 强势关注，因为收益回撤比 0.59，平均收益 1.23%，最大回撤 -2.10%，胜率 50.0%，交易 2 笔。',
   presets: [
     {
       preset: 'strong',
@@ -1267,10 +1269,13 @@ describe('App', () => {
     })
 
     expect(within(backtestPanel).getByText('strong 已比较 4 个持有周期，当前样例推荐 10 日。')).toBeInTheDocument()
+    expect(within(backtestPanel).getAllByText('推荐依据').length).toBeGreaterThan(0)
+    expect(backtestPanel).toHaveTextContent('推荐 10 日，因为收益回撤比 1.86，平均收益 5.20%，最大回撤 -2.80%，胜率 100.0%。')
     expect(within(backtestPanel).getByText('3日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('10日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('20日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('策略推荐')).toBeInTheDocument()
+    expect(backtestPanel).toHaveTextContent('推荐 强势关注，因为收益回撤比 0.59，平均收益 1.23%，最大回撤 -2.10%，胜率 50.0%，交易 2 笔。')
     expect(within(backtestPanel).getAllByText('平均收益').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('收益回撤比').length).toBeGreaterThan(0)
@@ -1832,6 +1837,8 @@ describe('App', () => {
     expect(html).toContain('样本数量')
     expect(html).toContain('8')
     expect(html).toContain('策略横向对比')
+    expect(html).toContain('策略推荐依据')
+    expect(html).toContain('推荐 强势关注，因为收益回撤比 0.59')
     expect(html).toContain('强势关注')
     expect(html).toContain('低估值观察')
     expect(html).toContain('资金承压')

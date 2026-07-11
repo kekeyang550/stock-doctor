@@ -149,6 +149,8 @@ def test_strategy_backtest_compares_multiple_holding_periods():
     assert comparison.sample_size == len(snapshots)
     assert comparison.match_count >= 1
     assert comparison.summary
+    assert comparison.recommendation_reason
+    assert "收益回撤比" in comparison.recommendation_reason
     assert all(period.trade_count >= 0 for period in comparison.periods)
     assert all(period.history_bar_count >= 0 for period in comparison.periods)
     assert all(hasattr(period, "return_drawdown_ratio") for period in comparison.periods)
@@ -176,6 +178,8 @@ def test_strategy_backtest_compares_multiple_presets():
     assert [item.preset for item in comparison.presets] == ["strong", "value", "capital-risk"]
     assert comparison.recommended_preset in {"strong", "value", "capital-risk"}
     assert comparison.summary
+    assert comparison.recommendation_reason
+    assert "收益回撤比" in comparison.recommendation_reason
     assert all(item.label for item in comparison.presets)
     assert all(item.trade_count >= 0 for item in comparison.presets)
     assert all(item.match_count >= 0 for item in comparison.presets)
