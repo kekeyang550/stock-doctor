@@ -439,6 +439,7 @@ export type StrategyBacktestReport = {
   best_return_pct: number
   worst_return_pct: number
   max_drawdown_pct: number
+  return_drawdown_ratio: number
   summary: string
   rule_notes: string[]
   trades: StrategyBacktestTrade[]
@@ -454,6 +455,7 @@ export type StrategyBacktestPeriodSummary = {
   win_rate: number
   average_return_pct: number
   max_drawdown_pct: number
+  return_drawdown_ratio: number
 }
 
 export type StrategyBacktestComparison = {
@@ -479,6 +481,7 @@ export type StrategyBacktestPresetSummary = {
   win_rate: number
   average_return_pct: number
   max_drawdown_pct: number
+  return_drawdown_ratio: number
 }
 
 export type StrategyBacktestPresetComparison = {

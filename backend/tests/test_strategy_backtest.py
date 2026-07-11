@@ -42,6 +42,7 @@ def test_strategy_backtest_reports_returns_and_drawdown():
     assert 0 <= report.win_rate <= 100
     assert report.best_return_pct >= report.worst_return_pct
     assert report.max_drawdown_pct <= 0
+    assert report.return_drawdown_ratio == round(report.average_return_pct / abs(report.max_drawdown_pct), 2)
     assert report.trades[0].holding_days == 5
     assert report.trades[0].rule_tags
 
@@ -150,6 +151,7 @@ def test_strategy_backtest_compares_multiple_holding_periods():
     assert comparison.summary
     assert all(period.trade_count >= 0 for period in comparison.periods)
     assert all(period.history_bar_count >= 0 for period in comparison.periods)
+    assert all(hasattr(period, "return_drawdown_ratio") for period in comparison.periods)
 
 
 def test_strategy_backtest_compares_multiple_presets():
@@ -179,3 +181,4 @@ def test_strategy_backtest_compares_multiple_presets():
     assert all(item.match_count >= 0 for item in comparison.presets)
     assert all(0 <= item.win_rate <= 100 for item in comparison.presets)
     assert all(item.holding_days == 5 for item in comparison.presets)
+    assert all(hasattr(item, "return_drawdown_ratio") for item in comparison.presets)

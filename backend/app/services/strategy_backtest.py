@@ -95,6 +95,7 @@ class StrategyBacktestService:
         best_return = max(returns) if returns else 0.0
         worst_return = min(returns) if returns else 0.0
         max_drawdown = min((trade.max_drawdown_pct for trade in trades), default=0.0)
+        return_drawdown_ratio = self._return_drawdown_ratio(average_return, max_drawdown)
 
         return StrategyBacktestReport(
             preset=preset,
@@ -115,6 +116,7 @@ class StrategyBacktestService:
             best_return_pct=round(best_return, 2),
             worst_return_pct=round(worst_return, 2),
             max_drawdown_pct=round(max_drawdown, 2),
+            return_drawdown_ratio=return_drawdown_ratio,
             summary=self._summary(preset, len(candidates), trades, average_return, max_drawdown),
             rule_notes=self._rule_notes(preset),
             trades=sorted(trades, key=lambda item: item.return_pct, reverse=True),
@@ -156,6 +158,7 @@ class StrategyBacktestService:
                 win_rate=report.win_rate,
                 average_return_pct=report.average_return_pct,
                 max_drawdown_pct=report.max_drawdown_pct,
+                return_drawdown_ratio=report.return_drawdown_ratio,
             )
             for report in reports
         ]
@@ -209,6 +212,7 @@ class StrategyBacktestService:
                 win_rate=report.win_rate,
                 average_return_pct=report.average_return_pct,
                 max_drawdown_pct=report.max_drawdown_pct,
+                return_drawdown_ratio=report.return_drawdown_ratio,
             )
             for report in reports
         ]
@@ -244,6 +248,7 @@ class StrategyBacktestService:
         return max(
             periods,
             key=lambda period: (
+                period.return_drawdown_ratio,
                 period.average_return_pct,
                 period.max_drawdown_pct,
                 period.win_rate,
@@ -257,6 +262,7 @@ class StrategyBacktestService:
         return max(
             presets,
             key=lambda preset: (
+                preset.return_drawdown_ratio,
                 preset.average_return_pct,
                 preset.max_drawdown_pct,
                 preset.win_rate,
@@ -293,6 +299,11 @@ class StrategyBacktestService:
             f"已比较 {len(presets)} 个策略，当前样例推荐 {recommended.label}，"
             f"平均收益 {recommended.average_return_pct:.2f}%，最大回撤 {recommended.max_drawdown_pct:.2f}%。"
         )
+
+    def _return_drawdown_ratio(self, average_return_pct: float, max_drawdown_pct: float) -> float:
+        if max_drawdown_pct == 0:
+            return 0.0
+        return round(average_return_pct / abs(max_drawdown_pct), 2)
 
     def _build_trade(
         self,

@@ -765,6 +765,7 @@ export function StrategyBacktestPanel({
             <SummaryMetric label="胜率" value={`${report.win_rate.toFixed(1)}%`} />
             <SummaryMetric label="平均收益" value={formatSignedPercent(report.average_return_pct)} />
             <SummaryMetric label="最大回撤" value={formatSignedPercent(report.max_drawdown_pct)} />
+            <SummaryMetric label="收益回撤比" value={formatRatio(report.return_drawdown_ratio)} />
           </div>
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
           <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />
@@ -866,6 +867,10 @@ function BacktestPeriodComparison({
               <small>最大回撤</small>
               <b className="down">{formatSignedPercent(period.max_drawdown_pct)}</b>
             </span>
+            <span>
+              <small>收益回撤比</small>
+              <b>{formatRatio(period.return_drawdown_ratio)}</b>
+            </span>
             <small className="backtest-period-source">
               {backtestPriceSourceLabel(period.price_source)} · {formatBacktestHistoryCount(period.history_bar_count)}
             </small>
@@ -932,6 +937,10 @@ function BacktestPresetComparison({
               <small>最大回撤</small>
               <b className="down">{formatSignedPercent(preset.max_drawdown_pct)}</b>
             </span>
+            <span>
+              <small>收益回撤比</small>
+              <b>{formatRatio(preset.return_drawdown_ratio)}</b>
+            </span>
             <small className="backtest-period-source">
               {backtestPriceSourceLabel(preset.price_source)} · {formatBacktestHistoryCount(preset.history_bar_count)}
             </small>
@@ -944,4 +953,8 @@ function BacktestPresetComparison({
 
 function formatSignedPercent(value: number) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+}
+
+function formatRatio(value: number) {
+  return Number.isFinite(value) ? value.toFixed(2) : '0.00'
 }

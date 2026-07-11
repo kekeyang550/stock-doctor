@@ -663,6 +663,7 @@ class StrategyBacktestReport(BaseModel):
     best_return_pct: float
     worst_return_pct: float
     max_drawdown_pct: float
+    return_drawdown_ratio: float = 0
     summary: str
     rule_notes: list[str]
     trades: list[StrategyBacktestTrade]
@@ -678,6 +679,7 @@ class StrategyBacktestPeriodSummary(BaseModel):
     win_rate: float = Field(ge=0, le=100)
     average_return_pct: float
     max_drawdown_pct: float
+    return_drawdown_ratio: float = 0
 
 
 class StrategyBacktestComparison(BaseModel):
@@ -703,6 +705,7 @@ class StrategyBacktestPresetSummary(BaseModel):
     win_rate: float = Field(ge=0, le=100)
     average_return_pct: float
     max_drawdown_pct: float
+    return_drawdown_ratio: float = 0
 
 
 class StrategyBacktestPresetComparison(BaseModel):

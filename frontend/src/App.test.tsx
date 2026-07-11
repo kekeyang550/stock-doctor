@@ -538,6 +538,7 @@ const strategyBacktest = {
   best_return_pct: 3.4,
   worst_return_pct: -0.9,
   max_drawdown_pct: -2.1,
+  return_drawdown_ratio: 0.59,
   summary: 'strong 在样例数据中命中 2 只标的，形成 2 笔 5 日持有交易。',
   rule_notes: ['综合分和技术分同时较强。', '样例回测不代表真实历史收益。'],
   trades: [
@@ -572,10 +573,10 @@ const strategyBacktestComparison = {
   recommended_holding_days: 10,
   summary: 'strong 已比较 4 个持有周期，当前样例推荐 10 日。',
   periods: [
-    { holding_days: 3, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 0.8, max_drawdown_pct: -1.5 },
-    { holding_days: 5, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 1.23, max_drawdown_pct: -2.1 },
-    { holding_days: 10, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 100, average_return_pct: 5.2, max_drawdown_pct: -2.8 },
-    { holding_days: 20, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 2.4, max_drawdown_pct: -4.6 },
+    { holding_days: 3, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 0.8, max_drawdown_pct: -1.5, return_drawdown_ratio: 0.53 },
+    { holding_days: 5, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 1.23, max_drawdown_pct: -2.1, return_drawdown_ratio: 0.59 },
+    { holding_days: 10, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 100, average_return_pct: 5.2, max_drawdown_pct: -2.8, return_drawdown_ratio: 1.86 },
+    { holding_days: 20, price_source: 'historical-kline', history_bar_count: 30, history_last_date: '2026-06-30', fallback_reason: null, trade_count: 2, win_rate: 50, average_return_pct: 2.4, max_drawdown_pct: -4.6, return_drawdown_ratio: 0.52 },
   ],
 }
 
@@ -599,6 +600,7 @@ const strategyBacktestPresetComparison = {
       win_rate: 50,
       average_return_pct: 1.23,
       max_drawdown_pct: -2.1,
+      return_drawdown_ratio: 0.59,
     },
     {
       preset: 'value',
@@ -613,6 +615,7 @@ const strategyBacktestPresetComparison = {
       win_rate: 100,
       average_return_pct: 0.88,
       max_drawdown_pct: -1.4,
+      return_drawdown_ratio: 0.63,
     },
     {
       preset: 'capital-risk',
@@ -627,6 +630,7 @@ const strategyBacktestPresetComparison = {
       win_rate: 0,
       average_return_pct: -0.42,
       max_drawdown_pct: -3.2,
+      return_drawdown_ratio: -0.13,
     },
   ],
 }
@@ -1188,10 +1192,12 @@ describe('App', () => {
     expect(within(backtestPanel).getAllByText('胜率').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('平均收益').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getAllByText('收益回撤比').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('2')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('50.0%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('+1.23%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('-2.10%').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getAllByText('0.59').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('价格来源')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('历史K线')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('历史样本')).toBeInTheDocument()
@@ -1229,7 +1235,9 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('策略推荐')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('平均收益').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getAllByText('收益回撤比').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('+5.20%')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('1.86')).toBeInTheDocument()
   })
 
   it('keeps the selected strategy backtest when period comparison fails', async () => {
@@ -1789,6 +1797,8 @@ describe('App', () => {
     expect(html).toContain('强势关注')
     expect(html).toContain('低估值观察')
     expect(html).toContain('资金承压')
+    expect(html).toContain('收益回撤比')
+    expect(html).toContain('0.59')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('数据可信度')
