@@ -5,6 +5,7 @@ from app.schemas.diagnosis import (
     DiagnosisResponse,
     PortfolioRiskConcentration,
     PortfolioIndustryExposure,
+    PortfolioRebalanceAction,
     PortfolioRiskContribution,
     PortfolioRiskDistribution,
     PortfolioRiskDriver,
@@ -49,6 +50,7 @@ class PortfolioRiskService:
                 industry_exposures=[],
                 distribution=PortfolioRiskDistribution(high_count=0, medium_count=0, low_count=0),
                 risk_contributions=[],
+                rebalance_actions=[],
                 top_drivers=[],
                 suggestions=["先添加自选股，再查看组合风险。"],
                 exposures=exposures,
@@ -72,6 +74,7 @@ class PortfolioRiskService:
         risk_level, risk_label = self._risk_level(pressure)
         drivers = self._drivers(snapshots, diagnosis_by_symbol, alerts, raw_weights)
         risk_contributions = self._risk_contributions(snapshots, diagnosis_by_symbol, normalized_weights, raw_weights)
+        rebalance_actions = self._rebalance_actions(risk_contributions)
         suggestions = self._suggestions(pressure, concentration, distribution, drivers)
         positions = self._positions(snapshots, raw_weights)
 
@@ -91,6 +94,7 @@ class PortfolioRiskService:
             industry_exposures=industry_exposures,
             distribution=distribution,
             risk_contributions=risk_contributions,
+            rebalance_actions=rebalance_actions,
             top_drivers=drivers,
             suggestions=suggestions,
             exposures=exposures,
@@ -258,6 +262,48 @@ class PortfolioRiskService:
                 )
             )
         return sorted(contributions, key=lambda item: item.contribution_score, reverse=True)
+
+    def _rebalance_actions(self, contributions: list[PortfolioRiskContribution]) -> list[PortfolioRebalanceAction]:
+        actions: list[PortfolioRebalanceAction] = []
+        for item in contributions:
+            action = "hold"
+            priority = "low"
+            suggested = item.weight_pct
+            reason = f"风险分 {item.risk_score}，维持当前仓位并跟踪。"
+
+            if item.weight_pct > 0 and (item.risk_score < 60 or item.contribution_score >= 12 or item.weight_pct >= 50):
+                action = "reduce"
+                priority = "high" if item.risk_score < 60 or item.weight_pct >= 50 else "medium"
+                reduction = 10 if priority == "high" else 5
+                suggested = max(0, item.weight_pct - reduction)
+                reason = f"风险分 {item.risk_score}，风险贡献 {item.contribution_score:.1f}，建议先降权。"
+            elif item.risk_score >= 80 and 0 < item.weight_pct < 30 and item.contribution_score < 8:
+                action = "increase"
+                priority = "low"
+                suggested = min(35, item.weight_pct + 5)
+                reason = f"风险分 {item.risk_score} 较稳，当前权重不高，可小幅补强。"
+
+            suggested = round(suggested, 2)
+            actions.append(
+                PortfolioRebalanceAction(
+                    symbol=item.symbol,
+                    name=item.name,
+                    industry=item.industry,
+                    current_weight_pct=item.weight_pct,
+                    suggested_weight_pct=suggested,
+                    delta_pct=round(suggested - item.weight_pct, 2),
+                    action=action,
+                    priority=priority,
+                    reason=reason,
+                )
+            )
+        priority_rank = {"high": 3, "medium": 2, "low": 1}
+        action_rank = {"reduce": 3, "increase": 2, "hold": 1}
+        return sorted(
+            actions,
+            key=lambda item: (priority_rank[item.priority], action_rank[item.action], abs(item.delta_pct)),
+            reverse=True,
+        )
 
     def _suggestions(
         self,

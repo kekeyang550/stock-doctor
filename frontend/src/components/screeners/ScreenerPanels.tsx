@@ -302,6 +302,7 @@ export function RiskExposurePanel({
   const items = report?.exposures ?? []
   const industryExposures = report?.industry_exposures ?? []
   const riskContributions = report?.risk_contributions ?? []
+  const rebalanceActions = report?.rebalance_actions ?? []
   const positions = report?.positions.length
     ? report.positions
     : watchlist.map((stock) => ({ symbol: stock.symbol, name: stock.name, industry: stock.industry, weight_pct: 0 }))
@@ -396,6 +397,17 @@ export function RiskExposurePanel({
               ))}
             </div>
           ) : null}
+          {rebalanceActions.length ? (
+            <div className="portfolio-suggestions">
+              <strong>再平衡建议</strong>
+              {rebalanceActions.slice(0, 4).map((item) => (
+                <span key={item.symbol}>
+                  {item.name} · {rebalanceActionLabel(item.action)} · {formatWeightPercent(item.current_weight_pct)} → {formatWeightPercent(item.suggested_weight_pct)}
+                  <small>{item.reason}</small>
+                </span>
+              ))}
+            </div>
+          ) : null}
           {report.suggestions.length ? (
             <div className="portfolio-suggestions">
               {report.suggestions.map((suggestion) => (
@@ -444,6 +456,12 @@ function formatWeightInput(value: number) {
 function formatWeightPercent(value: number) {
   if (!Number.isFinite(value)) return '--'
   return `${value.toFixed(1)}%`
+}
+
+function rebalanceActionLabel(action: 'reduce' | 'hold' | 'increase') {
+  if (action === 'reduce') return '降权'
+  if (action === 'increase') return '补强'
+  return '保持'
 }
 
 

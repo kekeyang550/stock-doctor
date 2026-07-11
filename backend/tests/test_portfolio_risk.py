@@ -95,3 +95,9 @@ def test_portfolio_risk_report_supports_custom_position_weights():
     maotai_contribution = next(item for item in report.risk_contributions if item.symbol == "600519")
     assert maotai_contribution.weight_pct == 80
     assert maotai_contribution.contribution_score > 0
+    assert report.rebalance_actions
+    maotai_action = next(item for item in report.rebalance_actions if item.symbol == "600519")
+    assert maotai_action.action in {"reduce", "hold"}
+    assert maotai_action.current_weight_pct == 80
+    assert maotai_action.suggested_weight_pct <= 80
+    assert maotai_action.reason

@@ -594,6 +594,18 @@ export type PortfolioRiskContribution = {
   contribution_score: number
 }
 
+export type PortfolioRebalanceAction = {
+  symbol: string
+  name: string
+  industry: string
+  current_weight_pct: number
+  suggested_weight_pct: number
+  delta_pct: number
+  action: 'reduce' | 'hold' | 'increase'
+  priority: 'high' | 'medium' | 'low'
+  reason: string
+}
+
 export type PortfolioRiskDriver = {
   symbol: string
   name: string
@@ -628,6 +640,7 @@ export type PortfolioRiskReport = {
   industry_exposures?: PortfolioIndustryExposure[]
   distribution: PortfolioRiskDistribution
   risk_contributions?: PortfolioRiskContribution[]
+  rebalance_actions?: PortfolioRebalanceAction[]
   top_drivers: PortfolioRiskDriver[]
   suggestions: string[]
   exposures: RiskExposureItem[]

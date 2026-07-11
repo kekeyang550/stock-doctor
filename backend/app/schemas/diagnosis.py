@@ -628,6 +628,18 @@ class PortfolioRiskContribution(BaseModel):
     contribution_score: float
 
 
+class PortfolioRebalanceAction(BaseModel):
+    symbol: str
+    name: str
+    industry: str
+    current_weight_pct: float
+    suggested_weight_pct: float
+    delta_pct: float
+    action: str = Field(pattern="^(reduce|hold|increase)$")
+    priority: str = Field(pattern="^(high|medium|low)$")
+    reason: str
+
+
 class PortfolioRiskDriver(BaseModel):
     symbol: str
     name: str
@@ -662,6 +674,7 @@ class PortfolioRiskReport(BaseModel):
     industry_exposures: list[PortfolioIndustryExposure] = Field(default_factory=list)
     distribution: PortfolioRiskDistribution
     risk_contributions: list[PortfolioRiskContribution] = Field(default_factory=list)
+    rebalance_actions: list[PortfolioRebalanceAction] = Field(default_factory=list)
     top_drivers: list[PortfolioRiskDriver]
     suggestions: list[str]
     exposures: list[RiskExposureItem]

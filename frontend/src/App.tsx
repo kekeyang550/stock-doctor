@@ -1085,6 +1085,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
   const industryExposures = Array.isArray(portfolioRisk.industry_exposures) ? portfolioRisk.industry_exposures : []
   const riskContributions = Array.isArray(portfolioRisk.risk_contributions) ? portfolioRisk.risk_contributions : []
+  const rebalanceActions = Array.isArray(portfolioRisk.rebalance_actions) ? portfolioRisk.rebalance_actions : []
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
   const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
   const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
@@ -1166,6 +1167,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       ${industryExposures.map((item: any) => `<div class="row"><strong>${escapeHtml(item.industry)}</strong><small>权重 ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.stock_count)} 只 · 风险压力 ${escapeHtml(item.risk_score)}</small></div>`).join("") || "<p>暂无行业暴露</p>"}
       <h3>风险贡献</h3>
       ${riskContributions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · 权重 ${escapeHtml(item.weight_pct)}% · 风险分 ${escapeHtml(item.risk_score)} · 贡献 ${escapeHtml(item.contribution_score)}</small></div>`).join("") || "<p>暂无风险贡献</p>"}
+      <h3>再平衡建议</h3>
+      ${rebalanceActions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(reportRebalanceActionLabel(item.action))} · 当前 ${escapeHtml(item.current_weight_pct)}% · 建议 ${escapeHtml(item.suggested_weight_pct)}% · 调整 ${escapeHtml(item.delta_pct)}% · ${escapeHtml(item.reason)}</small></div>`).join("") || "<p>暂无再平衡建议</p>"}
       <p>输入权重：<code>${escapeHtml(JSON.stringify(weightInputs))}</code></p>
     </section>
 
@@ -1271,6 +1274,12 @@ function reportCacheStatusLabel(status: unknown) {
   if (status === 'partial') return '部分有效'
   if (status === 'expired') return '全部过期'
   return '暂无缓存'
+}
+
+function reportRebalanceActionLabel(action: unknown) {
+  if (action === 'reduce') return '降权'
+  if (action === 'increase') return '补强'
+  return '保持'
 }
 
 function formatReportSignedPercent(value: unknown) {

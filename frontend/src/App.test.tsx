@@ -564,6 +564,30 @@ const portfolioRisk = {
     { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 33.33, risk_score: 82, contribution_score: 6 },
     { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 33.33, risk_score: 83, contribution_score: 5.7 },
   ],
+  rebalance_actions: [
+    {
+      symbol: '002594',
+      name: '比亚迪',
+      industry: '汽车整车',
+      current_weight_pct: 33.33,
+      suggested_weight_pct: 23.33,
+      delta_pct: -10,
+      action: 'reduce',
+      priority: 'high',
+      reason: '风险分 58，风险贡献 14.0，建议先降权。',
+    },
+    {
+      symbol: '600519',
+      name: '贵州茅台',
+      industry: '白酒',
+      current_weight_pct: 33.33,
+      suggested_weight_pct: 33.33,
+      delta_pct: 0,
+      action: 'hold',
+      priority: 'low',
+      reason: '风险分 82，维持当前仓位并跟踪。',
+    },
+  ],
   suggestions: [
     '优先复核 比亚迪：临近解禁窗口',
     '1 只标的处于高风险档，先检查风控线和事件窗口。',
@@ -1253,6 +1277,9 @@ describe('App', () => {
     expect(within(riskPanel).getByText('风险贡献')).toBeInTheDocument()
     expect(riskPanel).toHaveTextContent('比亚迪 · 汽车整车')
     expect(riskPanel).toHaveTextContent('贡献 14.0')
+    expect(within(riskPanel).getByText('再平衡建议')).toBeInTheDocument()
+    expect(riskPanel).toHaveTextContent('比亚迪 · 降权 · 33.3% → 23.3%')
+    expect(riskPanel).toHaveTextContent('风险分 58，风险贡献 14.0，建议先降权。')
     expect(within(riskPanel).getByText('优先复核 比亚迪：临近解禁窗口')).toBeInTheDocument()
     expect(within(riskPanel).getByText('事件')).toBeInTheDocument()
     expect(within(riskPanel).getByText('临近解禁窗口')).toBeInTheDocument()
@@ -1923,6 +1950,8 @@ describe('App', () => {
     expect(html).toContain('风险贡献')
     expect(html).toContain('<strong>比亚迪</strong>')
     expect(html).toContain('002594 · 汽车整车 · 权重 33.33% · 风险分 58 · 贡献 14')
+    expect(html).toContain('再平衡建议')
+    expect(html).toContain('降权 · 当前 33.33% · 建议 23.33% · 调整 -10%')
     expect(html).toContain('策略回测')
     expect(html).toContain('历史K线')
     expect(html).toContain('历史样本')
