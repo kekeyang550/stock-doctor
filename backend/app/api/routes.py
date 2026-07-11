@@ -35,6 +35,7 @@ from app.schemas.diagnosis import (
     ReportRequest,
     ScreenCandidate,
     StrategyBacktestComparison,
+    StrategyBacktestHistoryComparison,
     StrategyBacktestPresetComparison,
     StrategyBacktestReport,
     StockSummary,
@@ -76,6 +77,7 @@ from app.services.portfolio_risk import PortfolioRiskService
 from app.services.risk_exposure import RiskExposureService
 from app.services.screener import ScreenerService
 from app.services.strategy_backtest import StrategyBacktestService
+from app.services.strategy_backtest_history import StrategyBacktestHistoryService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
 from app.services.timeline import TimelineService
 from app.services.trend import TrendService
@@ -106,6 +108,7 @@ strategy_backtest_service = StrategyBacktestService(
     trend_service=trend_service,
     market_data_provider=data_provider,
 )
+strategy_backtest_history_service = StrategyBacktestHistoryService()
 price_alert_service = PriceAlertService()
 data_connector_health_service = DataConnectorHealthService()
 refresh_job_service = DataRefreshJobService()
@@ -246,6 +249,7 @@ async def system_export() -> StorageExport:
         notes=store.load_notes(),
         price_alerts=store.load_price_alerts(),
         review_action_statuses=store.load_review_action_statuses(),
+        strategy_backtests=store.load_strategy_backtests(),
     )
 
 
@@ -267,6 +271,7 @@ async def system_import(request: StorageImportRequest) -> StorageImportResult:
     store.save_notes(request.notes[:200])
     store.save_price_alerts(request.price_alerts[:200])
     store.save_review_action_statuses(request.review_action_statuses[:500])
+    store.save_strategy_backtests(request.strategy_backtests[:100])
     data_provider.replace_watchlist(valid_watchlist)
 
     return StorageImportResult(
@@ -688,7 +693,7 @@ async def strategy_backtest(
         raise HTTPException(status_code=404, detail="Screener preset not found")
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
-    return strategy_backtest_service.run(
+    report = strategy_backtest_service.run(
         preset=preset,
         horizon=horizon,
         snapshots=snapshots,
@@ -697,6 +702,33 @@ async def strategy_backtest(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+    )
+    strategy_backtest_history_service.record(
+        report=report,
+        preset=preset,
+        horizon=horizon,
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+        state_store=create_state_store(),
+    )
+    return report
+
+
+@router.get("/backtests/strategy/history", response_model=StrategyBacktestHistoryComparison)
+async def strategy_backtest_history(
+    preset: str = Query(default="breakout-volume"),
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    limit: int = Query(default=8, ge=1, le=50),
+) -> StrategyBacktestHistoryComparison:
+    if preset not in SCREENER_PRESETS:
+        raise HTTPException(status_code=404, detail="Screener preset not found")
+    return strategy_backtest_history_service.compare(
+        preset=preset,
+        horizon=horizon,
+        state_store=create_state_store(),
+        limit=limit,
     )
 
 
@@ -962,6 +994,7 @@ def _storage_status(store: StateStore) -> StorageStatus:
         StorageCollectionStat(key="notes", label="研究笔记", count=len(store.load_notes())),
         StorageCollectionStat(key="price_alerts", label="价位提醒", count=len(store.load_price_alerts())),
         StorageCollectionStat(key="review_action_statuses", label="行动状态", count=len(store.load_review_action_statuses())),
+        StorageCollectionStat(key="strategy_backtests", label="回测历史", count=len(store.load_strategy_backtests())),
     ]
     backend = "sqlite" if isinstance(store, SQLiteStateStore) else "json"
     return StorageStatus(
@@ -1080,6 +1113,7 @@ def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview
     capped_notes = request.notes[:200]
     capped_alerts = request.price_alerts[:200]
     capped_action_statuses = request.review_action_statuses[:500]
+    capped_strategy_backtests = request.strategy_backtests[:100]
     skipped_records = (
         len(request.watchlist)
         - len(valid_watchlist)
@@ -1091,6 +1125,8 @@ def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview
         - len(capped_alerts)
         + len(request.review_action_statuses)
         - len(capped_action_statuses)
+        + len(request.strategy_backtests)
+        - len(capped_strategy_backtests)
     )
     warnings = []
     if unknown_watchlist:
@@ -1103,6 +1139,8 @@ def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview
         warnings.append("价位提醒超过 200 条，导入时只保留最新 200 条。")
     if len(request.review_action_statuses) > len(capped_action_statuses):
         warnings.append("行动状态超过 500 条，导入时只保留最新 500 条。")
+    if len(request.strategy_backtests) > len(capped_strategy_backtests):
+        warnings.append("回测历史超过 100 条，导入时只保留最新 100 条。")
 
     collections = [
         StorageCollectionStat(key="watchlist", label="自选股", count=len(valid_watchlist)),
@@ -1110,6 +1148,7 @@ def _build_import_preview(request: StorageImportRequest) -> StorageImportPreview
         StorageCollectionStat(key="notes", label="研究笔记", count=len(capped_notes)),
         StorageCollectionStat(key="price_alerts", label="价位提醒", count=len(capped_alerts)),
         StorageCollectionStat(key="review_action_statuses", label="行动状态", count=len(capped_action_statuses)),
+        StorageCollectionStat(key="strategy_backtests", label="回测历史", count=len(capped_strategy_backtests)),
     ]
     total_records = sum(item.count for item in collections)
     return StorageImportPreview(

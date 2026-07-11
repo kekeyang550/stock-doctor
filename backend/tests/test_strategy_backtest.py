@@ -3,6 +3,8 @@ import pytest
 from app.services.diagnosis import DiagnosisEngine
 from app.services.market_data import MockMarketDataProvider
 from app.services.strategy_backtest import StrategyBacktestService
+from app.services.strategy_backtest_history import StrategyBacktestHistoryService
+from app.services.storage import JsonStateStore
 from app.schemas.diagnosis import HistoricalPriceBar
 
 
@@ -211,3 +213,46 @@ def test_strategy_backtest_compares_multiple_presets():
     assert all(0 <= item.win_rate <= 100 for item in comparison.presets)
     assert all(item.holding_days == 5 for item in comparison.presets)
     assert all(hasattr(item, "return_drawdown_ratio") for item in comparison.presets)
+
+
+def test_strategy_backtest_history_service_records_and_compares(tmp_path):
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+    backtest_service = StrategyBacktestService()
+    history_service = StrategyBacktestHistoryService()
+    store = JsonStateStore(tmp_path / "state.json")
+
+    first = backtest_service.run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+    )
+    second = backtest_service.run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=10,
+        limit=8,
+    )
+
+    history_service.record(first, "breakout-volume", "swing", 5, 8, 5, 10, store)
+    history_service.record(second, "breakout-volume", "swing", 10, 8, 5, 10, store)
+    comparison = history_service.compare("breakout-volume", "swing", store)
+
+    assert len(comparison.items) == 2
+    assert comparison.latest is not None
+    assert comparison.previous is not None
+    assert comparison.latest.holding_days == 10
+    assert comparison.previous.holding_days == 5
+    assert comparison.latest.stability_score >= 0
+    assert comparison.latest.sample_confidence_score >= 0
+    assert comparison.average_return_delta == round(
+        comparison.latest.average_return_pct - comparison.previous.average_return_pct,
+        2,
+    )
+    assert "最近" in comparison.summary

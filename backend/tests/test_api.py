@@ -226,6 +226,7 @@ def test_system_storage_endpoint_returns_persistence_status():
         "notes",
         "price_alerts",
         "review_action_statuses",
+        "strategy_backtests",
     }
 
 
@@ -514,6 +515,25 @@ def test_strategy_backtest_endpoint_returns_sample_report():
     }.issubset(payload["trades"][0].keys())
     assert payload["trades"][0]["cost_pct"] == 0.4
     assert payload["trades"][0]["gross_return_pct"] > payload["trades"][0]["return_pct"]
+
+
+def test_strategy_backtest_history_records_recent_runs():
+    first_response = client.get("/api/v1/backtests/strategy?preset=breakout-volume&horizon=swing&holding_days=5")
+    second_response = client.get("/api/v1/backtests/strategy?preset=breakout-volume&horizon=swing&holding_days=10")
+
+    response = client.get("/api/v1/backtests/strategy/history?preset=breakout-volume&horizon=swing&limit=8")
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preset"] == "breakout-volume"
+    assert payload["horizon"] == "swing"
+    assert len(payload["items"]) >= 2
+    assert payload["latest"]["stability_score"] >= 0
+    assert payload["latest"]["sample_confidence_score"] >= 0
+    assert "average_return_delta" in payload
+    assert payload["summary"]
 
 
 def test_strategy_backtest_period_comparison_endpoint_returns_period_summaries():

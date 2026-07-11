@@ -30,6 +30,7 @@ import type {
   StockSearchResult,
   StockSummary,
   StrategyBacktestComparison,
+  StrategyBacktestHistoryComparison,
   StrategyBacktestPresetComparison,
   StrategyBacktestReport,
   StorageExport,
@@ -338,6 +339,16 @@ export function fetchStrategyBacktestPresetComparison(
 ): Promise<StrategyBacktestPresetComparison> {
   return getJson<StrategyBacktestPresetComparison>(
     `/api/v1/backtests/strategy/presets?horizon=${horizon}&presets=strong,value,capital-risk&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+  )
+}
+
+export function fetchStrategyBacktestHistory(
+  preset: string,
+  horizon: string,
+  limit = 8,
+): Promise<StrategyBacktestHistoryComparison> {
+  return getJson<StrategyBacktestHistoryComparison>(
+    `/api/v1/backtests/strategy/history?preset=${preset}&horizon=${horizon}&limit=${limit}`,
   )
 }
 

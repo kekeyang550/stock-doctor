@@ -804,6 +804,40 @@ class StrategyBacktestPresetComparison(BaseModel):
     summary: str
 
 
+class StrategyBacktestHistoryItem(BaseModel):
+    id: str
+    created_at: str
+    preset: str
+    horizon: str = Field(pattern="^(intraday|swing|position)$")
+    holding_days: int
+    limit: int
+    fee_bps: float
+    slippage_bps: float
+    price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
+    sample_confidence_score: int = 0
+    sample_confidence_label: str = "暂无评估"
+    stability_score: int = 0
+    stability_label: str = "暂无评估"
+    trade_count: int
+    win_rate: float = Field(ge=0, le=100)
+    average_return_pct: float
+    max_drawdown_pct: float
+    return_drawdown_ratio: float = 0
+
+
+class StrategyBacktestHistoryComparison(BaseModel):
+    preset: str
+    horizon: str = Field(pattern="^(intraday|swing|position)$")
+    items: list[StrategyBacktestHistoryItem]
+    latest: StrategyBacktestHistoryItem | None = None
+    previous: StrategyBacktestHistoryItem | None = None
+    average_return_delta: float = 0
+    max_drawdown_delta: float = 0
+    stability_score_delta: int = 0
+    sample_confidence_delta: int = 0
+    summary: str
+
+
 class TrendPoint(BaseModel):
     date: str
     close: float
@@ -865,6 +899,7 @@ class StorageExport(BaseModel):
     notes: list[dict[str, Any]]
     price_alerts: list[dict[str, Any]]
     review_action_statuses: list[dict[str, Any]]
+    strategy_backtests: list[dict[str, Any]]
 
 
 class StorageImportRequest(BaseModel):
@@ -874,6 +909,7 @@ class StorageImportRequest(BaseModel):
     notes: list[dict[str, Any]] = Field(default_factory=list)
     price_alerts: list[dict[str, Any]] = Field(default_factory=list)
     review_action_statuses: list[dict[str, Any]] = Field(default_factory=list)
+    strategy_backtests: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class StorageImportPreview(BaseModel):

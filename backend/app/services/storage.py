@@ -61,6 +61,16 @@ class JsonStateStore:
         state["review_action_statuses"] = statuses
         self._save(state)
 
+    def load_strategy_backtests(self) -> list[dict[str, Any]]:
+        state = self._load()
+        records = state.get("strategy_backtests")
+        return records if isinstance(records, list) else []
+
+    def save_strategy_backtests(self, records: list[dict[str, Any]]) -> None:
+        state = self._load()
+        state["strategy_backtests"] = records
+        self._save(state)
+
     def load_refresh_jobs(self) -> list[dict[str, Any]]:
         state = self._load()
         jobs = state.get("refresh_jobs")
@@ -126,6 +136,13 @@ class SQLiteStateStore:
 
     def save_review_action_statuses(self, statuses: list[dict[str, Any]]) -> None:
         self._save_key("review_action_statuses", statuses)
+
+    def load_strategy_backtests(self) -> list[dict[str, Any]]:
+        records = self._load_key("strategy_backtests", [])
+        return records if isinstance(records, list) else []
+
+    def save_strategy_backtests(self, records: list[dict[str, Any]]) -> None:
+        self._save_key("strategy_backtests", records)
 
     def load_refresh_jobs(self) -> list[dict[str, Any]]:
         jobs = self._load_key("refresh_jobs", [])

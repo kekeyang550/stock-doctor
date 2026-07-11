@@ -545,6 +545,40 @@ export type StrategyBacktestPresetComparison = {
   summary: string
 }
 
+export type StrategyBacktestHistoryItem = {
+  id: string
+  created_at: string
+  preset: string
+  horizon: 'intraday' | 'swing' | 'position'
+  holding_days: number
+  limit: number
+  fee_bps: number
+  slippage_bps: number
+  price_source: 'historical-kline' | 'synthetic-trend'
+  sample_confidence_score: number
+  sample_confidence_label: string
+  stability_score: number
+  stability_label: string
+  trade_count: number
+  win_rate: number
+  average_return_pct: number
+  max_drawdown_pct: number
+  return_drawdown_ratio: number
+}
+
+export type StrategyBacktestHistoryComparison = {
+  preset: string
+  horizon: 'intraday' | 'swing' | 'position'
+  items: StrategyBacktestHistoryItem[]
+  latest: StrategyBacktestHistoryItem | null
+  previous: StrategyBacktestHistoryItem | null
+  average_return_delta: number
+  max_drawdown_delta: number
+  stability_score_delta: number
+  sample_confidence_delta: number
+  summary: string
+}
+
 export type AlertItem = {
   id: string
   symbol: string

@@ -739,6 +739,98 @@ const strategyBacktestPresetComparison = {
   ],
 }
 
+const strategyBacktestHistory = {
+  preset: 'strong',
+  horizon: 'swing',
+  summary: 'strong 最近 3 次回测可比，平均收益较上次提升 0.45%，稳定评分提升 2 分。',
+  average_return_delta: 0.45,
+  max_drawdown_delta: -0.2,
+  stability_score_delta: 2,
+  sample_confidence_delta: 1,
+  latest: {
+    id: 'bt-3',
+    created_at: '2026-07-11T07:50:00Z',
+    preset: 'strong',
+    horizon: 'swing',
+    holding_days: 5,
+    limit: 8,
+    fee_bps: 5,
+    slippage_bps: 10,
+    price_source: 'historical-kline',
+    sample_confidence_score: 76,
+    sample_confidence_label: '高',
+    stability_score: 78,
+    stability_label: '稳定',
+    trade_count: 2,
+    win_rate: 50,
+    average_return_pct: 1.23,
+    max_drawdown_pct: -2.1,
+    return_drawdown_ratio: 0.59,
+  },
+  previous: {
+    id: 'bt-2',
+    created_at: '2026-07-11T07:40:00Z',
+    preset: 'strong',
+    horizon: 'swing',
+    holding_days: 10,
+    limit: 8,
+    fee_bps: 5,
+    slippage_bps: 10,
+    price_source: 'historical-kline',
+    sample_confidence_score: 75,
+    sample_confidence_label: '高',
+    stability_score: 76,
+    stability_label: '稳定',
+    trade_count: 2,
+    win_rate: 50,
+    average_return_pct: 0.78,
+    max_drawdown_pct: -1.9,
+    return_drawdown_ratio: 0.41,
+  },
+  items: [
+    {
+      id: 'bt-3',
+      created_at: '2026-07-11T07:50:00Z',
+      preset: 'strong',
+      horizon: 'swing',
+      holding_days: 5,
+      limit: 8,
+      fee_bps: 5,
+      slippage_bps: 10,
+      price_source: 'historical-kline',
+      sample_confidence_score: 76,
+      sample_confidence_label: '高',
+      stability_score: 78,
+      stability_label: '稳定',
+      trade_count: 2,
+      win_rate: 50,
+      average_return_pct: 1.23,
+      max_drawdown_pct: -2.1,
+      return_drawdown_ratio: 0.59,
+    },
+    {
+      id: 'bt-2',
+      created_at: '2026-07-11T07:40:00Z',
+      preset: 'strong',
+      horizon: 'swing',
+      holding_days: 10,
+      limit: 8,
+      fee_bps: 5,
+      slippage_bps: 10,
+      price_source: 'historical-kline',
+      sample_confidence_score: 75,
+      sample_confidence_label: '高',
+      stability_score: 76,
+      stability_label: '稳定',
+      trade_count: 2,
+      win_rate: 50,
+      average_return_pct: 0.78,
+      max_drawdown_pct: -1.9,
+      return_drawdown_ratio: 0.41,
+    },
+  ],
+}
+
 const watchlistSummary = {
   as_of: '2026-07-10',
   stock_count: 3,
@@ -921,6 +1013,9 @@ describe('App', () => {
       }
       if (url.includes('/backtests/strategy/periods')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestComparison) })
+      }
+      if (url.includes('/backtests/strategy/history')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestHistory) })
       }
       if (url.includes('/backtests/strategy')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktest) })
@@ -1376,6 +1471,10 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('可信等级')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('可信度说明')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('76')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('历史对比')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('平均收益变化')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('稳定评分变化')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('最近回测')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('2')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('50.0%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('+1.23%').length).toBeGreaterThan(0)
@@ -2033,6 +2132,9 @@ describe('App', () => {
     expect(html).toContain('可信等级')
     expect(html).toContain('可信度说明')
     expect(html).toContain('行情口径更接近真实路径')
+    expect(html).toContain('历史对比')
+    expect(html).toContain('稳定评分变化')
+    expect(html).toContain('最近回测')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('缓存命中')

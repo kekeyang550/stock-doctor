@@ -63,6 +63,7 @@ import {
   fetchScreener,
   fetchStrategyBacktest,
   fetchStrategyBacktestComparison,
+  fetchStrategyBacktestHistory,
   fetchStrategyBacktestPresetComparison,
   fetchStockSearch,
   fetchStocks,
@@ -119,6 +120,7 @@ import type {
   StockSearchResult,
   StockSummary,
   StrategyBacktestComparison,
+  StrategyBacktestHistoryComparison,
   StrategyBacktestPresetComparison,
   StrategyBacktestReport,
   StorageImportPayload,
@@ -195,6 +197,7 @@ export default function App() {
   const [screenCandidates, setScreenCandidates] = useState<ScreenCandidate[]>([])
   const [strategyBacktest, setStrategyBacktest] = useState<StrategyBacktestReport | null>(null)
   const [strategyBacktestComparison, setStrategyBacktestComparison] = useState<StrategyBacktestComparison | null>(null)
+  const [strategyBacktestHistory, setStrategyBacktestHistory] = useState<StrategyBacktestHistoryComparison | null>(null)
   const [strategyBacktestPresetComparison, setStrategyBacktestPresetComparison] = useState<StrategyBacktestPresetComparison | null>(null)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [watchlistSummary, setWatchlistSummary] = useState<WatchlistSummary | null>(null)
@@ -235,6 +238,7 @@ export default function App() {
   const [screenerError, setScreenerError] = useState<string | null>(null)
   const [strategyBacktestError, setStrategyBacktestError] = useState<string | null>(null)
   const [strategyBacktestComparisonError, setStrategyBacktestComparisonError] = useState<string | null>(null)
+  const [strategyBacktestHistoryError, setStrategyBacktestHistoryError] = useState<string | null>(null)
   const [strategyBacktestPresetComparisonError, setStrategyBacktestPresetComparisonError] = useState<string | null>(null)
   const [refreshingScope, setRefreshingScope] = useState<'all' | 'watchlist' | null>(null)
   const [updatingWatchlist, setUpdatingWatchlist] = useState(false)
@@ -348,10 +352,19 @@ export default function App() {
   const loadStrategyBacktest = useCallback(async () => {
     setStrategyBacktestError(null)
     setStrategyBacktestComparisonError(null)
+    setStrategyBacktestHistoryError(null)
     setStrategyBacktestPresetComparisonError(null)
     try {
       const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
       setStrategyBacktest(report)
+      try {
+        const history = await fetchStrategyBacktestHistory(screenerPreset, horizon, 8)
+        setStrategyBacktestHistory(history)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '回测历史加载失败'
+        setStrategyBacktestHistoryError(message)
+        setStrategyBacktestHistory(null)
+      }
       try {
         const comparison = await fetchStrategyBacktestComparison(screenerPreset, horizon, backtestFeeBps, backtestSlippageBps, backtestLimit)
         setStrategyBacktestComparison(comparison)
@@ -373,6 +386,7 @@ export default function App() {
       setStrategyBacktestError(message)
       setStrategyBacktest(null)
       setStrategyBacktestComparison(null)
+      setStrategyBacktestHistory(null)
       setStrategyBacktestPresetComparison(null)
       setError(message)
     }
@@ -570,6 +584,7 @@ export default function App() {
           holding_days: backtestHoldingDays,
         },
         strategy_backtest_comparison: strategyBacktestComparison,
+        strategy_backtest_history: strategyBacktestHistory,
         strategy_preset_comparison: strategyBacktestPresetComparison,
         review_actions: reviewActions,
         data_quality: dataQuality,
@@ -580,7 +595,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, reviewActions, selectedSymbol, strategyBacktest, strategyBacktestComparison, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, reviewActions, selectedSymbol, strategyBacktest, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1031,6 +1046,7 @@ export default function App() {
         <StrategyBacktestPanel
           report={strategyBacktest}
           comparison={strategyBacktestComparison}
+          history={strategyBacktestHistory}
           presetComparison={strategyBacktestPresetComparison}
           currentPreset={screenerPreset}
           holdingDays={backtestHoldingDays}
@@ -1043,6 +1059,7 @@ export default function App() {
           onLimitChange={setBacktestLimit}
           error={strategyBacktestError}
           comparisonError={strategyBacktestComparisonError}
+          historyError={strategyBacktestHistoryError}
           presetComparisonError={strategyBacktestPresetComparisonError}
           onRetry={loadStrategyBacktest}
         />
@@ -1072,6 +1089,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const strategyBacktest = payload.strategy_backtest ?? {}
   const strategyBacktestParameters = payload.strategy_backtest_parameters ?? {}
   const strategyBacktestComparison = payload.strategy_backtest_comparison ?? {}
+  const strategyBacktestHistory = payload.strategy_backtest_history ?? {}
   const strategyPresetComparison = payload.strategy_preset_comparison ?? {}
   const reviewActions = payload.review_actions ?? {}
   const dataTrust = payload.data_trust ?? {}
@@ -1097,6 +1115,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
     ? Math.min(...equityCurve.map((point: any) => Number(point.drawdown_pct ?? 0)))
     : 0
   const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
+  const backtestHistoryItems = Array.isArray(strategyBacktestHistory.items) ? strategyBacktestHistory.items : []
   const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
   const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
   const cacheBuckets = Array.isArray(cacheStatus.buckets) ? cacheStatus.buckets : []
@@ -1228,6 +1247,16 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       </div>
       <h4>稳定性说明</h4>
       ${stabilityNotes.map((note: any) => `<div class="row"><small>${escapeHtml(note)}</small></div>`).join("") || "<p>暂无稳定性说明</p>"}
+      <h3>历史对比</h3>
+      <p>${escapeHtml(strategyBacktestHistory.summary ?? "暂无回测历史对比")}</p>
+      <div class="grid">
+        <div class="metric"><span>平均收益变化</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktestHistory.average_return_delta ?? 0))}</strong></div>
+        <div class="metric"><span>最大回撤变化</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktestHistory.max_drawdown_delta ?? 0))}</strong></div>
+        <div class="metric"><span>稳定评分变化</span><strong>${escapeHtml(formatReportSignedNumber(strategyBacktestHistory.stability_score_delta ?? 0))} 分</strong></div>
+        <div class="metric"><span>可信度变化</span><strong>${escapeHtml(formatReportSignedNumber(strategyBacktestHistory.sample_confidence_delta ?? 0))} 分</strong></div>
+      </div>
+      <h4>最近回测</h4>
+      ${backtestHistoryItems.slice(0, 6).map((item: any) => `<div class="row"><strong>${escapeHtml(item.holding_days)} 日 · ${escapeHtml(strategyBacktestPriceSourceLabel(item.price_source))}</strong><small>${escapeHtml(item.created_at ?? "-")} · 平均收益 ${escapeHtml(formatReportSignedPercent(item.average_return_pct ?? 0))} · 最大回撤 ${escapeHtml(formatReportSignedPercent(item.max_drawdown_pct ?? 0))} · 稳定 ${escapeHtml(item.stability_score ?? 0)} · 可信 ${escapeHtml(item.sample_confidence_score ?? 0)}</small></div>`).join("") || "<p>暂无最近回测</p>"}
       <h3>周期对比</h3>
       <p>${escapeHtml(strategyBacktestComparison.summary ?? "")}</p>
       ${strategyBacktestComparison.recommendation_reason ? `<p><strong>周期推荐依据：</strong>${escapeHtml(strategyBacktestComparison.recommendation_reason)}</p>` : ""}
@@ -1316,6 +1345,12 @@ function formatReportSignedPercent(value: unknown) {
   const numeric = Number(value ?? 0)
   if (!Number.isFinite(numeric)) return '0.00%'
   return `${numeric > 0 ? '+' : ''}${numeric.toFixed(2)}%`
+}
+
+function formatReportSignedNumber(value: unknown) {
+  const numeric = Number(value ?? 0)
+  if (!Number.isFinite(numeric)) return '+0'
+  return `${numeric >= 0 ? '+' : ''}${numeric}`
 }
 
 function formatReportPercent(value: unknown) {

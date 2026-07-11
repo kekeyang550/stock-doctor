@@ -38,6 +38,7 @@ import type {
   StockSearchResult,
   StockSummary,
   StrategyBacktestComparison,
+  StrategyBacktestHistoryComparison,
   StrategyBacktestPresetComparison,
   StrategyBacktestReport,
   StorageImportPayload,
@@ -663,6 +664,7 @@ export function ScreenerPanel({
 export function StrategyBacktestPanel({
   report,
   comparison,
+  history,
   presetComparison,
   currentPreset,
   holdingDays,
@@ -675,11 +677,13 @@ export function StrategyBacktestPanel({
   onLimitChange,
   error,
   comparisonError,
+  historyError,
   presetComparisonError,
   onRetry,
 }: {
   report: StrategyBacktestReport | null
   comparison: StrategyBacktestComparison | null
+  history: StrategyBacktestHistoryComparison | null
   presetComparison: StrategyBacktestPresetComparison | null
   currentPreset: string
   holdingDays: number
@@ -692,6 +696,7 @@ export function StrategyBacktestPanel({
   onLimitChange: (value: number) => void
   error: string | null
   comparisonError: string | null
+  historyError: string | null
   presetComparisonError: string | null
   onRetry: () => void
 }) {
@@ -900,6 +905,52 @@ export function StrategyBacktestPanel({
               </span>
             ) : null}
           </div>
+          {historyError ? (
+            <div className="panel-state error-state compact-state">
+              <strong>回测历史加载失败</strong>
+              <span>{historyError}</span>
+            </div>
+          ) : history ? (
+            <div className="backtest-history-card">
+              <div className="backtest-comparison-head">
+                <strong>历史对比</strong>
+                <span>{history.summary}</span>
+              </div>
+              <div className="backtest-history-metrics">
+                <span>
+                  <small>平均收益变化</small>
+                  <b className={history.average_return_delta >= 0 ? 'up' : 'down'}>{formatSignedPercent(history.average_return_delta)}</b>
+                </span>
+                <span>
+                  <small>最大回撤变化</small>
+                  <b className={history.max_drawdown_delta >= 0 ? 'up' : 'down'}>{formatSignedPercent(history.max_drawdown_delta)}</b>
+                </span>
+                <span>
+                  <small>稳定评分变化</small>
+                  <b className={history.stability_score_delta >= 0 ? 'up' : 'down'}>
+                    {history.stability_score_delta >= 0 ? '+' : ''}{history.stability_score_delta} 分
+                  </b>
+                </span>
+                <span>
+                  <small>可信度变化</small>
+                  <b className={history.sample_confidence_delta >= 0 ? 'up' : 'down'}>
+                    {history.sample_confidence_delta >= 0 ? '+' : ''}{history.sample_confidence_delta} 分
+                  </b>
+                </span>
+              </div>
+              <strong className="backtest-history-title">最近回测</strong>
+              <div className="backtest-history-list">
+                {history.items.slice(0, 4).map((item) => (
+                  <span key={item.id}>
+                    <small>{formatShortDate(item.created_at)} · {item.holding_days} 日 · {backtestPriceSourceLabel(item.price_source)}</small>
+                    <b>
+                      平均 {formatSignedPercent(item.average_return_pct)} · 回撤 {formatSignedPercent(item.max_drawdown_pct)} · 稳定 {item.stability_score} · 可信 {item.sample_confidence_score}
+                    </b>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
           <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />
           <p className="backtest-summary">{report.summary}</p>

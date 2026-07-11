@@ -1,4 +1,4 @@
-from app.services.storage import SQLiteStateStore, create_state_store
+from app.services.storage import JsonStateStore, SQLiteStateStore, create_state_store
 
 
 def test_sqlite_watchlist_persists_across_instances(tmp_path):
@@ -28,6 +28,18 @@ def test_sqlite_persists_state_collections(tmp_path):
     assert store.load_price_alerts() == payload
     assert store.load_refresh_jobs() == payload
     assert store.load_review_action_statuses() == payload
+
+
+def test_state_stores_persist_strategy_backtests(tmp_path):
+    payload = [{"id": "bt-1", "preset": "strong", "horizon": "swing"}]
+    json_store = JsonStateStore(tmp_path / "state.json")
+    sqlite_store = SQLiteStateStore(tmp_path / "state.sqlite3")
+
+    json_store.save_strategy_backtests(payload)
+    sqlite_store.save_strategy_backtests(payload)
+
+    assert JsonStateStore(tmp_path / "state.json").load_strategy_backtests() == payload
+    assert SQLiteStateStore(tmp_path / "state.sqlite3").load_strategy_backtests() == payload
 
 
 def test_create_state_store_can_select_sqlite(tmp_path, monkeypatch):
