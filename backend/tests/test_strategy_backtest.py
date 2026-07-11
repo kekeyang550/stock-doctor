@@ -41,6 +41,10 @@ def test_strategy_backtest_reports_returns_and_drawdown():
     assert report.trade_count >= 1
     assert 0 <= report.win_rate <= 100
     assert report.best_return_pct >= report.worst_return_pct
+    assert report.positive_trade_count + report.negative_trade_count + report.flat_trade_count == report.trade_count
+    assert report.return_median_pct >= report.worst_return_pct
+    assert report.return_median_pct <= report.best_return_pct
+    assert report.return_p25_pct <= report.return_p75_pct
     assert report.max_drawdown_pct <= 0
     assert report.return_drawdown_ratio == round(report.average_return_pct / abs(report.max_drawdown_pct), 2)
     assert report.trades[0].holding_days == 5

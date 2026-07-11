@@ -687,6 +687,12 @@ class StrategyBacktestReport(BaseModel):
     average_return_pct: float
     best_return_pct: float
     worst_return_pct: float
+    positive_trade_count: int = 0
+    negative_trade_count: int = 0
+    flat_trade_count: int = 0
+    return_median_pct: float = 0
+    return_p25_pct: float = 0
+    return_p75_pct: float = 0
     max_drawdown_pct: float
     return_drawdown_ratio: float = 0
     summary: str

@@ -443,6 +443,12 @@ export type StrategyBacktestReport = {
   average_return_pct: number
   best_return_pct: number
   worst_return_pct: number
+  positive_trade_count?: number
+  negative_trade_count?: number
+  flat_trade_count?: number
+  return_median_pct?: number
+  return_p25_pct?: number
+  return_p75_pct?: number
   max_drawdown_pct: number
   return_drawdown_ratio: number
   summary: string

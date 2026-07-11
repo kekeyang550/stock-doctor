@@ -1185,6 +1185,12 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>收益回撤比</span><strong>${escapeHtml(strategyBacktest.return_drawdown_ratio ?? 0)}</strong></div>
       </div>
       <p>${escapeHtml(strategyBacktest.summary ?? "")}</p>
+      <h3>收益分布</h3>
+      <div class="grid">
+        <div class="metric"><span>胜 / 负 / 平</span><strong>胜 ${escapeHtml(strategyBacktest.positive_trade_count ?? 0)} / 负 ${escapeHtml(strategyBacktest.negative_trade_count ?? 0)} / 平 ${escapeHtml(strategyBacktest.flat_trade_count ?? 0)}</strong></div>
+        <div class="metric"><span>中位</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktest.return_median_pct ?? 0))}</strong></div>
+        <div class="metric"><span>P25 / P75</span><strong>P25 ${escapeHtml(formatReportSignedPercent(strategyBacktest.return_p25_pct ?? 0))} · P75 ${escapeHtml(formatReportSignedPercent(strategyBacktest.return_p75_pct ?? 0))}</strong></div>
+      </div>
       <h3>周期对比</h3>
       <p>${escapeHtml(strategyBacktestComparison.summary ?? "")}</p>
       ${strategyBacktestComparison.recommendation_reason ? `<p><strong>周期推荐依据：</strong>${escapeHtml(strategyBacktestComparison.recommendation_reason)}</p>` : ""}
@@ -1250,6 +1256,12 @@ function reviewActionStatusLabel(status: unknown) {
   if (status === 'watching') return '观察中'
   if (status === 'done') return '已完成'
   return '未设置'
+}
+
+function formatReportSignedPercent(value: unknown) {
+  const numeric = Number(value ?? 0)
+  if (!Number.isFinite(numeric)) return '0.00%'
+  return `${numeric > 0 ? '+' : ''}${numeric.toFixed(2)}%`
 }
 
 function readStoredBacktestParameters(): BacktestParameters {

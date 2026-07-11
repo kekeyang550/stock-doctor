@@ -552,6 +552,12 @@ const strategyBacktest = {
   average_return_pct: 1.23,
   best_return_pct: 3.4,
   worst_return_pct: -0.9,
+  positive_trade_count: 1,
+  negative_trade_count: 1,
+  flat_trade_count: 0,
+  return_median_pct: 1.25,
+  return_p25_pct: -0.9,
+  return_p75_pct: 3.4,
   max_drawdown_pct: -2.1,
   return_drawdown_ratio: 0.59,
   summary: 'strong 在样例数据中命中 2 只标的，形成 2 笔 5 日持有交易。',
@@ -1259,11 +1265,16 @@ describe('App', () => {
     expect(within(backtestPanel).getAllByText('平均收益').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('收益回撤比').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getByText('收益分布')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('2')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('50.0%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('+1.23%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('-2.10%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('0.59').length).toBeGreaterThan(0)
+    expect(backtestPanel).toHaveTextContent('胜 1 / 负 1 / 平 0')
+    expect(backtestPanel).toHaveTextContent('中位+1.25%')
+    expect(backtestPanel).toHaveTextContent('P25 -0.90%')
+    expect(backtestPanel).toHaveTextContent('P75 +3.40%')
     expect(within(backtestPanel).getByText('价格来源')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('历史K线')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('历史样本')).toBeInTheDocument()
@@ -1890,6 +1901,10 @@ describe('App', () => {
     expect(html).toContain('资金承压')
     expect(html).toContain('收益回撤比')
     expect(html).toContain('0.59')
+    expect(html).toContain('收益分布')
+    expect(html).toContain('胜 1 / 负 1 / 平 0')
+    expect(html).toContain('<span>中位</span><strong>+1.25%</strong>')
+    expect(html).toContain('P25 -0.90% · P75 +3.40%')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('复盘行动')

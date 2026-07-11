@@ -790,6 +790,21 @@ export function StrategyBacktestPanel({
             <SummaryMetric label="最大回撤" value={formatSignedPercent(report.max_drawdown_pct)} />
             <SummaryMetric label="收益回撤比" value={formatRatio(report.return_drawdown_ratio)} />
           </div>
+          <div className="backtest-cost-card">
+            <strong>收益分布</strong>
+            <span>
+              <small>胜 / 负 / 平</small>
+              <b>胜 {report.positive_trade_count ?? 0} / 负 {report.negative_trade_count ?? 0} / 平 {report.flat_trade_count ?? 0}</b>
+            </span>
+            <span>
+              <small>中位</small>
+              <b>{formatSignedPercent(report.return_median_pct ?? 0)}</b>
+            </span>
+            <span>
+              <small>P25 / P75</small>
+              <b>P25 {formatSignedPercent(report.return_p25_pct ?? 0)} · P75 {formatSignedPercent(report.return_p75_pct ?? 0)}</b>
+            </span>
+          </div>
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
           <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />
           <p className="backtest-summary">{report.summary}</p>

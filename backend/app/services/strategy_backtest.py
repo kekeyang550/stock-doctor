@@ -94,6 +94,9 @@ class StrategyBacktestService:
         win_rate = (sum(1 for value in returns if value > 0) / len(returns) * 100) if returns else 0.0
         best_return = max(returns) if returns else 0.0
         worst_return = min(returns) if returns else 0.0
+        positive_trade_count = len([value for value in returns if value > 0])
+        negative_trade_count = len([value for value in returns if value < 0])
+        flat_trade_count = len([value for value in returns if value == 0])
         max_drawdown = min((trade.max_drawdown_pct for trade in trades), default=0.0)
         return_drawdown_ratio = self._return_drawdown_ratio(average_return, max_drawdown)
 
@@ -115,6 +118,12 @@ class StrategyBacktestService:
             average_return_pct=round(average_return, 2),
             best_return_pct=round(best_return, 2),
             worst_return_pct=round(worst_return, 2),
+            positive_trade_count=positive_trade_count,
+            negative_trade_count=negative_trade_count,
+            flat_trade_count=flat_trade_count,
+            return_median_pct=self._percentile(returns, 0.5),
+            return_p25_pct=self._percentile(returns, 0.25),
+            return_p75_pct=self._percentile(returns, 0.75),
             max_drawdown_pct=round(max_drawdown, 2),
             return_drawdown_ratio=return_drawdown_ratio,
             summary=self._summary(preset, len(candidates), trades, average_return, max_drawdown),
@@ -324,6 +333,19 @@ class StrategyBacktestService:
         if max_drawdown_pct == 0:
             return 0.0
         return round(average_return_pct / abs(max_drawdown_pct), 2)
+
+    def _percentile(self, values: list[float], percentile: float) -> float:
+        if not values:
+            return 0.0
+        ordered = sorted(values)
+        if len(ordered) == 1:
+            return round(ordered[0], 2)
+        position = (len(ordered) - 1) * max(0.0, min(percentile, 1.0))
+        lower_index = int(position)
+        upper_index = min(lower_index + 1, len(ordered) - 1)
+        fraction = position - lower_index
+        value = ordered[lower_index] + (ordered[upper_index] - ordered[lower_index]) * fraction
+        return round(value, 2)
 
     def _build_trade(
         self,
