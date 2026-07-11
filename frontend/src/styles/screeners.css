@@ -705,6 +705,41 @@
   color: #2f2a1f;
 }
 
+.backtest-parameter-card {
+  display: grid;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid #dde6da;
+  border-radius: 8px;
+  padding: 9px;
+  background: #fbfdf9;
+}
+
+.backtest-parameter-card > strong {
+  align-self: center;
+  color: #1f2f25;
+  font-size: 13px;
+}
+
+.backtest-parameter-card label {
+  display: grid;
+  gap: 4px;
+  color: #6a7a70;
+  font-size: 12px;
+}
+
+.backtest-parameter-card input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cdd8ca;
+  border-radius: 6px;
+  padding: 5px 7px;
+  color: #1f2f25;
+  font: inherit;
+}
+
 .backtest-comparison,
 .backtest-comparison-state {
   display: grid;

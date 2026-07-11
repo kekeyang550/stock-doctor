@@ -532,6 +532,20 @@ def test_strategy_backtest_period_comparison_endpoint_returns_period_summaries()
     assert all("average_return_pct" in period for period in payload["periods"])
 
 
+def test_strategy_backtest_period_comparison_accepts_cost_assumptions():
+    response = client.get(
+        "/api/v1/backtests/strategy/periods?preset=breakout-volume&horizon=swing&periods=3,5&fee_bps=8&slippage_bps=12&limit=6"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [period["holding_days"] for period in payload["periods"]] == [3, 5]
+    assert payload["recommended_holding_days"] in [3, 5]
+    assert payload["summary"]
+    assert all(period["trade_count"] >= 1 for period in payload["periods"])
+    assert all("average_return_pct" in period for period in payload["periods"])
+
+
 def test_unknown_screener_preset_returns_404():
     response = client.get("/api/v1/screeners/unknown")
 

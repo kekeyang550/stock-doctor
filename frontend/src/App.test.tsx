@@ -1235,6 +1235,34 @@ describe('App', () => {
     expect(backtestPanel).toHaveTextContent('+5.20%')
   })
 
+  it('reloads strategy backtest when fee, slippage, and sample limit change', async () => {
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('策略回测')
+      return panel as HTMLElement
+    })
+
+    const feeInput = within(backtestPanel).getByLabelText('回测手续费 bps')
+    const slippageInput = within(backtestPanel).getByLabelText('回测滑点 bps')
+    const limitInput = within(backtestPanel).getByLabelText('回测样本数量')
+
+    fireEvent.change(feeInput, { target: { value: '8' } })
+    fireEvent.change(slippageInput, { target: { value: '12' } })
+    fireEvent.change(limitInput, { target: { value: '6' } })
+
+    await waitFor(() => {
+      const backtestCalls = vi.mocked(fetch).mock.calls
+        .map((call) => String(call[0]))
+        .filter((url) => url.includes('/backtests/strategy'))
+      expect(backtestCalls.some((url) => url.includes('fee_bps=8'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('slippage_bps=12'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('limit=6'))).toBe(true)
+    })
+  })
+
   it('shows a local strategy backtest error when the backtest API fails', async () => {
     const defaultFetch = vi.mocked(fetch).getMockImplementation()!
     vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
@@ -1525,6 +1553,12 @@ describe('App', () => {
     expect(exported.diagnosis.symbol).toBe('600519')
     expect(exported.portfolio_risk.risk_label).toBe('中等风险')
     expect(exported.strategy_backtest.trade_count).toBe(2)
+    expect(exported.strategy_backtest_parameters).toEqual({
+      fee_bps: 5,
+      slippage_bps: 10,
+      limit: 8,
+      holding_days: 5,
+    })
     expect(exported.portfolio_weight_inputs['600519']).toBe('80')
     expect(exported.data_trust.connector_health.active_provider).toBe('mock')
     expect(exported.data_trust.freshness.status).toBe('fresh')
@@ -1578,6 +1612,9 @@ describe('App', () => {
     expect(html).toContain('10 bps')
     expect(html).toContain('单笔成本')
     expect(html).toContain('0.3%')
+    expect(html).toContain('参数口径')
+    expect(html).toContain('样本数量')
+    expect(html).toContain('8')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('数据可信度')

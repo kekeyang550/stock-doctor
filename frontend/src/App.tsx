@@ -197,6 +197,9 @@ export default function App() {
   const [hotspotMode, setHotspotMode] = useState('balanced')
   const [portfolioWeights, setPortfolioWeights] = useState<Record<string, string>>({})
   const [backtestHoldingDays, setBacktestHoldingDays] = useState(5)
+  const [backtestFeeBps, setBacktestFeeBps] = useState(5)
+  const [backtestSlippageBps, setBacktestSlippageBps] = useState(10)
+  const [backtestLimit, setBacktestLimit] = useState(8)
   const [selectedSymbol, setSelectedSymbol] = useState('600519')
   const [horizon, setHorizon] = useState('swing')
   const [query, setQuery] = useState('')
@@ -316,10 +319,10 @@ export default function App() {
     setStrategyBacktestError(null)
     setStrategyBacktestComparisonError(null)
     try {
-      const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays)
+      const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
       setStrategyBacktest(report)
       try {
-        const comparison = await fetchStrategyBacktestComparison(screenerPreset, horizon)
+        const comparison = await fetchStrategyBacktestComparison(screenerPreset, horizon, backtestFeeBps, backtestSlippageBps, backtestLimit)
         setStrategyBacktestComparison(comparison)
       } catch (err) {
         const message = err instanceof Error ? err.message : '周期对比加载失败'
@@ -333,7 +336,7 @@ export default function App() {
       setStrategyBacktestComparison(null)
       setError(message)
     }
-  }, [backtestHoldingDays, horizon, screenerPreset])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, horizon, screenerPreset])
 
   const setPortfolioWeight = useCallback((symbol: string, value: string) => {
     setPortfolioWeights((current) => {
@@ -520,6 +523,12 @@ export default function App() {
         portfolio_risk: portfolioRisk,
         portfolio_weight_inputs: portfolioWeights,
         strategy_backtest: strategyBacktest,
+        strategy_backtest_parameters: {
+          fee_bps: backtestFeeBps,
+          slippage_bps: backtestSlippageBps,
+          limit: backtestLimit,
+          holding_days: backtestHoldingDays,
+        },
         data_quality: dataQuality,
         data_trust: {
           sources: dataSources,
@@ -528,7 +537,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, selectedSymbol, strategyBacktest])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, selectedSymbol, strategyBacktest])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -980,7 +989,13 @@ export default function App() {
           report={strategyBacktest}
           comparison={strategyBacktestComparison}
           holdingDays={backtestHoldingDays}
+          feeBps={backtestFeeBps}
+          slippageBps={backtestSlippageBps}
+          limit={backtestLimit}
           onHoldingDaysChange={setBacktestHoldingDays}
+          onFeeBpsChange={setBacktestFeeBps}
+          onSlippageBpsChange={setBacktestSlippageBps}
+          onLimitChange={setBacktestLimit}
           error={strategyBacktestError}
           comparisonError={strategyBacktestComparisonError}
           onRetry={loadStrategyBacktest}
@@ -1006,6 +1021,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const score = diagnosis.score ?? {}
   const portfolioRisk = payload.portfolio_risk ?? {}
   const strategyBacktest = payload.strategy_backtest ?? {}
+  const strategyBacktestParameters = payload.strategy_backtest_parameters ?? {}
   const dataTrust = payload.data_trust ?? {}
   const connectorHealth = dataTrust.connector_health ?? {}
   const freshness = dataTrust.freshness ?? {}
@@ -1071,6 +1087,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>历史样本</span><strong>${escapeHtml(strategyBacktest.history_bar_count ? `${strategyBacktest.history_bar_count} 根` : "-")}</strong></div>
         <div class="metric"><span>最后交易日</span><strong>${escapeHtml(strategyBacktest.history_last_date ?? "-")}</strong></div>
         <div class="metric"><span>Fallback</span><strong>${escapeHtml(strategyBacktest.fallback_reason ?? "未发生 fallback")}</strong></div>
+        <div class="metric"><span>参数口径</span><strong>${escapeHtml(strategyBacktestParameters.holding_days ?? strategyBacktest.holding_days ?? "-")} 日</strong></div>
+        <div class="metric"><span>样本数量</span><strong>${escapeHtml(strategyBacktestParameters.limit ?? "-")}</strong></div>
         <div class="metric"><span>成本口径</span><strong>${escapeHtml(strategyBacktest.round_trip_cost_pct ?? 0)}%</strong></div>
         <div class="metric"><span>手续费</span><strong>${escapeHtml(strategyBacktest.fee_bps ?? 0)} bps</strong></div>
         <div class="metric"><span>滑点</span><strong>${escapeHtml(strategyBacktest.slippage_bps ?? 0)} bps</strong></div>

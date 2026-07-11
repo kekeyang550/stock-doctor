@@ -303,12 +303,29 @@ export function fetchScreener(preset: string, horizon: string): Promise<ScreenCa
   return getJson<ScreenCandidate[]>(`/api/v1/screeners/${preset}?horizon=${horizon}&limit=8`)
 }
 
-export function fetchStrategyBacktest(preset: string, horizon: string, holdingDays = 5): Promise<StrategyBacktestReport> {
-  return getJson<StrategyBacktestReport>(`/api/v1/backtests/strategy?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=8`)
+export function fetchStrategyBacktest(
+  preset: string,
+  horizon: string,
+  holdingDays = 5,
+  feeBps = 5,
+  slippageBps = 10,
+  limit = 8,
+): Promise<StrategyBacktestReport> {
+  return getJson<StrategyBacktestReport>(
+    `/api/v1/backtests/strategy?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+  )
 }
 
-export function fetchStrategyBacktestComparison(preset: string, horizon: string): Promise<StrategyBacktestComparison> {
-  return getJson<StrategyBacktestComparison>(`/api/v1/backtests/strategy/periods?preset=${preset}&horizon=${horizon}&periods=3,5,10,20&limit=8`)
+export function fetchStrategyBacktestComparison(
+  preset: string,
+  horizon: string,
+  feeBps = 5,
+  slippageBps = 10,
+  limit = 8,
+): Promise<StrategyBacktestComparison> {
+  return getJson<StrategyBacktestComparison>(
+    `/api/v1/backtests/strategy/periods?preset=${preset}&horizon=${horizon}&periods=3,5,10,20&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+  )
 }
 
 export function fetchAlerts(horizon: string, scope = 'watchlist'): Promise<AlertItem[]> {

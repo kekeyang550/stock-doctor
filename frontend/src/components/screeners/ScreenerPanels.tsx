@@ -622,7 +622,13 @@ export function StrategyBacktestPanel({
   report,
   comparison,
   holdingDays,
+  feeBps,
+  slippageBps,
+  limit,
   onHoldingDaysChange,
+  onFeeBpsChange,
+  onSlippageBpsChange,
+  onLimitChange,
   error,
   comparisonError,
   onRetry,
@@ -630,7 +636,13 @@ export function StrategyBacktestPanel({
   report: StrategyBacktestReport | null
   comparison: StrategyBacktestComparison | null
   holdingDays: number
+  feeBps: number
+  slippageBps: number
+  limit: number
   onHoldingDaysChange: (days: number) => void
+  onFeeBpsChange: (value: number) => void
+  onSlippageBpsChange: (value: number) => void
+  onLimitChange: (value: number) => void
   error: string | null
   comparisonError: string | null
   onRetry: () => void
@@ -702,6 +714,45 @@ export function StrategyBacktestPanel({
               <b>{formatPlainPercent(report.round_trip_cost_pct)}</b>
             </span>
           </div>
+          <div className="backtest-parameter-card">
+            <strong>参数</strong>
+            <label>
+              <span>手续费 bps</span>
+              <input
+                aria-label="回测手续费 bps"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={feeBps}
+                onChange={(event) => onFeeBpsChange(clampNumber(event.target.value, 0, 100, 5))}
+              />
+            </label>
+            <label>
+              <span>滑点 bps</span>
+              <input
+                aria-label="回测滑点 bps"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={slippageBps}
+                onChange={(event) => onSlippageBpsChange(clampNumber(event.target.value, 0, 100, 10))}
+              />
+            </label>
+            <label>
+              <span>样本数量</span>
+              <input
+                aria-label="回测样本数量"
+                type="number"
+                min="1"
+                max="30"
+                step="1"
+                value={limit}
+                onChange={(event) => onLimitChange(clampNumber(event.target.value, 1, 30, 8))}
+              />
+            </label>
+          </div>
           <div className="portfolio-metrics backtest-metrics">
             <SummaryMetric label="样例交易" value={report.trade_count} />
             <SummaryMetric label="胜率" value={`${report.win_rate.toFixed(1)}%`} />
@@ -755,6 +806,12 @@ function formatBps(value: number) {
 
 function formatPlainPercent(value: number) {
   return `${value.toFixed(2)}%`
+}
+
+function clampNumber(value: string, min: number, max: number, fallback: number) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(max, Math.max(min, parsed))
 }
 
 function BacktestPeriodComparison({
