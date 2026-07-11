@@ -699,6 +699,7 @@ export function StrategyBacktestPanel({
   const latestEquityPoint = equityCurve[equityCurve.length - 1]
   const maxPathDrawdown = equityCurve.length ? Math.min(...equityCurve.map((point) => point.drawdown_pct)) : 0
   const stabilityNotes = Array.isArray(report?.stability_notes) ? report.stability_notes : []
+  const sampleConfidenceNotes = Array.isArray(report?.sample_confidence_notes) ? report.sample_confidence_notes : []
 
   return (
     <section className="panel strategy-backtest-panel">
@@ -750,7 +751,24 @@ export function StrategyBacktestPanel({
               <small>最后交易日</small>
               <strong>{report.history_last_date ?? '-'}</strong>
             </span>
-            <em>{report.fallback_reason ?? '未发生 fallback'}</em>
+            <span>
+              <small>样本可信度</small>
+              <strong>{report.sample_confidence_score ?? 0}</strong>
+            </span>
+            <span>
+              <small>可信等级</small>
+              <strong>{report.sample_confidence_label ?? '暂无评估'}</strong>
+            </span>
+            <em>
+              {sampleConfidenceNotes.length ? (
+                <>
+                  <small>可信度说明</small>
+                  <b>{sampleConfidenceNotes.slice(0, 2).join(' · ')}</b>
+                </>
+              ) : (
+                report.fallback_reason ?? '未发生 fallback'
+              )}
+            </em>
           </div>
           <div className="backtest-cost-card">
             <strong>成本口径</strong>

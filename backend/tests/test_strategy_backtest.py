@@ -56,6 +56,10 @@ def test_strategy_backtest_reports_returns_and_drawdown():
     assert report.stability_label in {"稳定", "需观察", "波动偏高"}
     assert report.stability_notes
     assert any("收益" in note or "亏损" in note or "波动" in note for note in report.stability_notes)
+    assert 0 <= report.sample_confidence_score <= 100
+    assert report.sample_confidence_label in {"高", "中", "低"}
+    assert report.sample_confidence_notes
+    assert any("样本" in note or "行情" in note or "fallback" in note for note in report.sample_confidence_notes)
     assert report.equity_curve
     assert report.equity_curve[0].step == 0
     assert report.equity_curve[0].label == "起点"

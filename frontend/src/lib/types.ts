@@ -486,6 +486,9 @@ export type StrategyBacktestReport = {
   stability_score?: number
   stability_label?: string
   stability_notes?: string[]
+  sample_confidence_score?: number
+  sample_confidence_label?: string
+  sample_confidence_notes?: string[]
   summary: string
   rule_notes: string[]
   equity_curve?: StrategyBacktestCurvePoint[]

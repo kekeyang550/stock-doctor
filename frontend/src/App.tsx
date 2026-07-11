@@ -1089,6 +1089,9 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
   const equityCurve = Array.isArray(strategyBacktest.equity_curve) ? strategyBacktest.equity_curve : []
   const stabilityNotes = Array.isArray(strategyBacktest.stability_notes) ? strategyBacktest.stability_notes : []
+  const sampleConfidenceNotes = Array.isArray(strategyBacktest.sample_confidence_notes)
+    ? strategyBacktest.sample_confidence_notes
+    : []
   const latestEquityPoint = equityCurve.length ? equityCurve[equityCurve.length - 1] : null
   const maxPathDrawdown = equityCurve.length
     ? Math.min(...equityCurve.map((point: any) => Number(point.drawdown_pct ?? 0)))
@@ -1185,6 +1188,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>历史样本</span><strong>${escapeHtml(strategyBacktest.history_bar_count ? `${strategyBacktest.history_bar_count} 根` : "-")}</strong></div>
         <div class="metric"><span>最后交易日</span><strong>${escapeHtml(strategyBacktest.history_last_date ?? "-")}</strong></div>
         <div class="metric"><span>Fallback</span><strong>${escapeHtml(strategyBacktest.fallback_reason ?? "未发生 fallback")}</strong></div>
+        <div class="metric"><span>样本可信度</span><strong>${escapeHtml(strategyBacktest.sample_confidence_score ?? 0)}</strong></div>
+        <div class="metric"><span>可信等级</span><strong>${escapeHtml(strategyBacktest.sample_confidence_label ?? "暂无评估")}</strong></div>
         <div class="metric"><span>参数口径</span><strong>${escapeHtml(strategyBacktestParameters.holding_days ?? strategyBacktest.holding_days ?? "-")} 日</strong></div>
         <div class="metric"><span>样本数量</span><strong>${escapeHtml(strategyBacktestParameters.limit ?? "-")}</strong></div>
         <div class="metric"><span>成本口径</span><strong>${escapeHtml(strategyBacktest.round_trip_cost_pct ?? 0)}%</strong></div>
@@ -1198,6 +1203,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>收益回撤比</span><strong>${escapeHtml(strategyBacktest.return_drawdown_ratio ?? 0)}</strong></div>
       </div>
       <p>${escapeHtml(strategyBacktest.summary ?? "")}</p>
+      <h4>可信度说明</h4>
+      ${sampleConfidenceNotes.map((note: any) => `<div class="row"><small>${escapeHtml(note)}</small></div>`).join("") || "<p>暂无可信度说明</p>"}
       <h3>收益分布</h3>
       <div class="grid">
         <div class="metric"><span>胜 / 负 / 平</span><strong>胜 ${escapeHtml(strategyBacktest.positive_trade_count ?? 0)} / 负 ${escapeHtml(strategyBacktest.negative_trade_count ?? 0)} / 平 ${escapeHtml(strategyBacktest.flat_trade_count ?? 0)}</strong></div>

@@ -649,7 +649,7 @@
 
 .backtest-lineage-card {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
   gap: 8px;
   margin-top: 10px;
   border: 1px solid #dde6da;
@@ -675,6 +675,16 @@
   color: #4f6256;
   font-size: 12px;
   font-style: normal;
+}
+
+.backtest-lineage-card em small,
+.backtest-lineage-card em b {
+  display: block;
+}
+
+.backtest-lineage-card em b {
+  margin-top: 2px;
+  color: #24362b;
 }
 
 .backtest-cost-card {

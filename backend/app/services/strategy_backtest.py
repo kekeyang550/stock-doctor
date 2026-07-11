@@ -105,21 +105,31 @@ class StrategyBacktestService:
         max_consecutive_loss_count = self._max_consecutive_loss_count(chronological_trades)
         best_path_gain = self._best_path_gain(chronological_trades)
         worst_path_loss = self._worst_path_loss(chronological_trades)
+        price_source = "historical-kline" if used_historical else "synthetic-trend"
+        history_bar_count = min(historical_counts) if historical_counts else 0
+        history_last_date = max(historical_last_dates) if historical_last_dates else None
+        fallback_reason = self._fallback_reason(used_historical, fallback_reasons)
         stability_score = self._stability_score(
             return_volatility,
             max_consecutive_loss_count,
             worst_path_loss,
             average_return,
         )
+        sample_confidence_score = self._sample_confidence_score(
+            len(trades),
+            price_source,
+            history_bar_count,
+            fallback_reason,
+        )
 
         return StrategyBacktestReport(
             preset=preset,
             horizon=horizon,
             holding_days=holding_days,
-            price_source="historical-kline" if used_historical else "synthetic-trend",
-            history_bar_count=min(historical_counts) if historical_counts else 0,
-            history_last_date=max(historical_last_dates) if historical_last_dates else None,
-            fallback_reason=self._fallback_reason(used_historical, fallback_reasons),
+            price_source=price_source,
+            history_bar_count=history_bar_count,
+            history_last_date=history_last_date,
+            fallback_reason=fallback_reason,
             fee_bps=fee_bps,
             slippage_bps=slippage_bps,
             round_trip_cost_pct=round(round_trip_cost_pct, 2),
@@ -149,6 +159,14 @@ class StrategyBacktestService:
                 max_consecutive_loss_count,
                 worst_path_loss,
                 average_return,
+            ),
+            sample_confidence_score=sample_confidence_score,
+            sample_confidence_label=self._sample_confidence_label(sample_confidence_score),
+            sample_confidence_notes=self._sample_confidence_notes(
+                len(trades),
+                price_source,
+                history_bar_count,
+                fallback_reason,
             ),
             summary=self._summary(preset, len(candidates), trades, average_return, max_drawdown),
             rule_notes=self._rule_notes(preset),
@@ -455,6 +473,63 @@ class StrategyBacktestService:
         else:
             notes.append(f"平均收益 {average_return_pct:.2f}%，样例期望为负。")
         return notes
+
+    def _sample_confidence_score(
+        self,
+        trade_count: int,
+        price_source: str,
+        history_bar_count: int,
+        fallback_reason: str | None,
+    ) -> int:
+        if trade_count >= 8:
+            sample_score = 40
+        elif trade_count >= 5:
+            sample_score = 30
+        elif trade_count >= 3:
+            sample_score = 20
+        elif trade_count > 0:
+            sample_score = 10
+        else:
+            sample_score = 0
+        source_score = 35 if price_source == "historical-kline" else 15
+        coverage_score = 15 if history_bar_count >= 40 else 8 if history_bar_count > 0 else 0
+        fallback_score = 10 if fallback_reason is None else 0
+        return max(0, min(100, sample_score + source_score + coverage_score + fallback_score))
+
+    def _sample_confidence_label(self, score: int) -> str:
+        if score >= 75:
+            return "高"
+        if score >= 50:
+            return "中"
+        return "低"
+
+    def _sample_confidence_notes(
+        self,
+        trade_count: int,
+        price_source: str,
+        history_bar_count: int,
+        fallback_reason: str | None,
+    ) -> list[str]:
+        if trade_count >= 8:
+            sample_note = f"回测交易 {trade_count} 笔，样本量较充足，适合辅助观察。"
+        elif trade_count >= 3:
+            sample_note = f"回测交易 {trade_count} 笔，样本量中等，结论需结合候选质量复核。"
+        elif trade_count > 0:
+            sample_note = f"回测交易 {trade_count} 笔，样本偏少，仅适合做方向参考。"
+        else:
+            sample_note = "暂无可回测交易，样本可信度较低。"
+
+        if price_source == "historical-kline":
+            source_note = f"使用历史 K 线样本 {history_bar_count} 根，行情口径更接近真实路径。"
+        else:
+            source_note = "使用样例趋势生成路径，适合验证交互和规则雏形。"
+
+        fallback_note = (
+            "未发生 fallback，当前回测口径较完整。"
+            if fallback_reason is None
+            else f"发生 fallback：{fallback_reason}。"
+        )
+        return [sample_note, source_note, fallback_note]
 
     def _equity_curve(self, trades: list[StrategyBacktestTrade]) -> list[StrategyBacktestCurvePoint]:
         curve = [

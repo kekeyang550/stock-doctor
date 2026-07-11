@@ -745,6 +745,9 @@ class StrategyBacktestReport(BaseModel):
     stability_score: int = 0
     stability_label: str = "暂无评估"
     stability_notes: list[str] = Field(default_factory=list)
+    sample_confidence_score: int = 0
+    sample_confidence_label: str = "暂无评估"
+    sample_confidence_notes: list[str] = Field(default_factory=list)
     summary: str
     rule_notes: list[str]
     equity_curve: list[StrategyBacktestCurvePoint] = Field(default_factory=list)
