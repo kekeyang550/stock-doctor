@@ -47,6 +47,11 @@ def test_strategy_backtest_reports_returns_and_drawdown():
     assert report.return_p25_pct <= report.return_p75_pct
     assert report.max_drawdown_pct <= 0
     assert report.return_drawdown_ratio == round(report.average_return_pct / abs(report.max_drawdown_pct), 2)
+    assert report.return_volatility_pct >= 0
+    assert isinstance(report.max_consecutive_loss_count, int)
+    assert report.max_consecutive_loss_count >= 0
+    assert report.best_path_gain_pct >= report.best_return_pct or report.best_return_pct <= 0
+    assert report.worst_path_loss_pct <= report.worst_return_pct or report.worst_return_pct >= 0
     assert report.equity_curve
     assert report.equity_curve[0].step == 0
     assert report.equity_curve[0].label == "起点"

@@ -848,6 +848,25 @@ export function StrategyBacktestPanel({
               ))}
             </div>
           ) : null}
+          <div className="backtest-cost-card">
+            <strong>稳定性</strong>
+            <span>
+              <small>收益波动</small>
+              <b>{formatPlainPercent(report.return_volatility_pct ?? 0)}</b>
+            </span>
+            <span>
+              <small>最长连续亏损</small>
+              <b>{report.max_consecutive_loss_count ?? 0} 笔</b>
+            </span>
+            <span>
+              <small>最佳连续收益</small>
+              <b className={(report.best_path_gain_pct ?? 0) >= 0 ? 'up' : 'down'}>{formatSignedPercent(report.best_path_gain_pct ?? 0)}</b>
+            </span>
+            <span>
+              <small>最差连续亏损</small>
+              <b className="down">{formatSignedPercent(report.worst_path_loss_pct ?? 0)}</b>
+            </span>
+          </div>
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
           <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />
           <p className="backtest-summary">{report.summary}</p>

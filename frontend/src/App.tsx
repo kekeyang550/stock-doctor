@@ -1209,6 +1209,13 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>路径最大回撤</span><strong>${escapeHtml(formatReportSignedPercent(maxPathDrawdown))}</strong></div>
       </div>
       ${equityCurve.slice(1, 7).map((point: any) => `<div class="row"><strong>${escapeHtml(point.label ?? point.name ?? point.symbol ?? "-")}</strong><small>${escapeHtml(point.symbol ?? "")} · 累计 ${escapeHtml(formatReportSignedPercent(point.equity_pct ?? 0))} · 单笔 ${escapeHtml(formatReportSignedPercent(point.trade_return_pct ?? 0))} · 路径回撤 ${escapeHtml(formatReportSignedPercent(point.drawdown_pct ?? 0))}</small></div>`).join("") || "<p>暂无权益曲线</p>"}
+      <h3>稳定性</h3>
+      <div class="grid">
+        <div class="metric"><span>收益波动</span><strong>${escapeHtml(strategyBacktest.return_volatility_pct ?? 0)}%</strong></div>
+        <div class="metric"><span>最长连续亏损</span><strong>${escapeHtml(strategyBacktest.max_consecutive_loss_count ?? 0)} 笔</strong></div>
+        <div class="metric"><span>最佳连续收益</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktest.best_path_gain_pct ?? 0))}</strong></div>
+        <div class="metric"><span>最差连续亏损</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktest.worst_path_loss_pct ?? 0))}</strong></div>
+      </div>
       <h3>周期对比</h3>
       <p>${escapeHtml(strategyBacktestComparison.summary ?? "")}</p>
       ${strategyBacktestComparison.recommendation_reason ? `<p><strong>周期推荐依据：</strong>${escapeHtml(strategyBacktestComparison.recommendation_reason)}</p>` : ""}

@@ -738,6 +738,10 @@ class StrategyBacktestReport(BaseModel):
     return_p75_pct: float = 0
     max_drawdown_pct: float
     return_drawdown_ratio: float = 0
+    return_volatility_pct: float = 0
+    max_consecutive_loss_count: int = 0
+    best_path_gain_pct: float = 0
+    worst_path_loss_pct: float = 0
     summary: str
     rule_notes: list[str]
     equity_curve: list[StrategyBacktestCurvePoint] = Field(default_factory=list)

@@ -100,6 +100,7 @@ class StrategyBacktestService:
         flat_trade_count = len([value for value in returns if value == 0])
         max_drawdown = min((trade.max_drawdown_pct for trade in trades), default=0.0)
         return_drawdown_ratio = self._return_drawdown_ratio(average_return, max_drawdown)
+        chronological_trades = self._chronological_trades(trades)
 
         return StrategyBacktestReport(
             preset=preset,
@@ -127,9 +128,13 @@ class StrategyBacktestService:
             return_p75_pct=self._percentile(returns, 0.75),
             max_drawdown_pct=round(max_drawdown, 2),
             return_drawdown_ratio=return_drawdown_ratio,
+            return_volatility_pct=self._return_volatility(returns),
+            max_consecutive_loss_count=self._max_consecutive_loss_count(chronological_trades),
+            best_path_gain_pct=self._best_path_gain(chronological_trades),
+            worst_path_loss_pct=self._worst_path_loss(chronological_trades),
             summary=self._summary(preset, len(candidates), trades, average_return, max_drawdown),
             rule_notes=self._rule_notes(preset),
-            equity_curve=self._equity_curve(trades),
+            equity_curve=self._equity_curve(chronological_trades),
             trades=sorted(trades, key=lambda item: item.return_pct, reverse=True),
         )
 
@@ -349,6 +354,43 @@ class StrategyBacktestService:
         value = ordered[lower_index] + (ordered[upper_index] - ordered[lower_index]) * fraction
         return round(value, 2)
 
+    def _chronological_trades(self, trades: list[StrategyBacktestTrade]) -> list[StrategyBacktestTrade]:
+        return sorted(trades, key=lambda item: (item.exit_date, item.symbol))
+
+    def _return_volatility(self, values: list[float]) -> float:
+        if len(values) <= 1:
+            return 0.0
+        average = sum(values) / len(values)
+        variance = sum((value - average) ** 2 for value in values) / len(values)
+        return round(variance ** 0.5, 2)
+
+    def _max_consecutive_loss_count(self, trades: list[StrategyBacktestTrade]) -> int:
+        longest = 0
+        current = 0
+        for trade in trades:
+            if trade.return_pct < 0:
+                current += 1
+                longest = max(longest, current)
+            else:
+                current = 0
+        return longest
+
+    def _best_path_gain(self, trades: list[StrategyBacktestTrade]) -> float:
+        best = 0.0
+        current = 0.0
+        for trade in trades:
+            current = max(trade.return_pct, current + trade.return_pct)
+            best = max(best, current)
+        return round(best, 2)
+
+    def _worst_path_loss(self, trades: list[StrategyBacktestTrade]) -> float:
+        worst = 0.0
+        current = 0.0
+        for trade in trades:
+            current = min(trade.return_pct, current + trade.return_pct)
+            worst = min(worst, current)
+        return round(worst, 2)
+
     def _equity_curve(self, trades: list[StrategyBacktestTrade]) -> list[StrategyBacktestCurvePoint]:
         curve = [
             StrategyBacktestCurvePoint(
@@ -363,7 +405,7 @@ class StrategyBacktestService:
         ]
         equity = 0.0
         peak = 0.0
-        for index, trade in enumerate(sorted(trades, key=lambda item: (item.exit_date, item.symbol)), start=1):
+        for index, trade in enumerate(trades, start=1):
             equity += trade.return_pct
             peak = max(peak, equity)
             curve.append(

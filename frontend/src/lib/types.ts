@@ -479,6 +479,10 @@ export type StrategyBacktestReport = {
   return_p75_pct?: number
   max_drawdown_pct: number
   return_drawdown_ratio: number
+  return_volatility_pct?: number
+  max_consecutive_loss_count?: number
+  best_path_gain_pct?: number
+  worst_path_loss_pct?: number
   summary: string
   rule_notes: string[]
   equity_curve?: StrategyBacktestCurvePoint[]
