@@ -1,6 +1,9 @@
+from datetime import date, timedelta
+
 from app.schemas.diagnosis import (
     CapitalSnapshot,
     FundamentalSnapshot,
+    HistoricalPriceBar,
     MarketOverview,
     RiskSnapshot,
     StockSnapshot,
@@ -161,6 +164,32 @@ class MockMarketDataProvider:
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
         normalized = symbol.strip().upper()
         return self._snapshots.get(normalized)
+
+    def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
+        snapshot = self.get_snapshot(symbol)
+        if snapshot is None:
+            return []
+        days = max(2, min(days, 240))
+        end_date = date.fromisoformat(snapshot.as_of)
+        trend_bias = 1 if snapshot.last_price >= snapshot.technical.ma20 else -1
+        volatility = max(0.006, abs(snapshot.change_pct) / 100 / 2)
+        start_price = snapshot.last_price / (1 + trend_bias * 0.08)
+        bars: list[HistoricalPriceBar] = []
+        for index in range(days):
+            progress = index / max(days - 1, 1)
+            wave = ((index % 7) - 3) * volatility
+            drift = trend_bias * 0.08 * progress
+            close = start_price * (1 + drift + wave)
+            current_date = end_date - timedelta(days=days - 1 - index)
+            bars.append(
+                HistoricalPriceBar(
+                    date=current_date.isoformat(),
+                    close=round(close, 2),
+                    volume=round(1_000_000 * max(0.5, snapshot.technical.volume_ratio + ((index % 5) - 2) * 0.04), 2),
+                )
+            )
+        bars[-1] = HistoricalPriceBar(date=snapshot.as_of, close=round(snapshot.last_price, 2), volume=bars[-1].volume)
+        return bars
 
     def warm_cache(self, scope: str = "all") -> int:
         stocks = self.get_watchlist() if scope == "watchlist" else self.list_stocks()

@@ -3,6 +3,7 @@ from datetime import date
 from app.schemas.diagnosis import (
     CapitalSnapshot,
     FundamentalSnapshot,
+    HistoricalPriceBar,
     MarketOverview,
     RiskSnapshot,
     StockSnapshot,
@@ -131,6 +132,19 @@ class AkshareMarketDataProvider:
         snapshot = self._summary_to_conservative_snapshot(summary)
         self._snapshot_cache[normalized] = snapshot
         return snapshot
+
+    def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
+        normalized = symbol.strip().upper()
+        rows = self._call_history_rows(normalized)
+        bars: list[HistoricalPriceBar] = []
+        for row in rows:
+            close = self._first_float(row, "收盘", "close", "Close", default=0)
+            volume = self._first_float(row, "成交量", "volume", "Volume", default=0)
+            trade_date = self._first_text(row, "日期", "date", "trade_date")
+            if close > 0 and trade_date:
+                bars.append(HistoricalPriceBar(date=trade_date, close=close, volume=max(0, volume)))
+        days = max(2, min(days, 240))
+        return bars[-days:]
 
     def warm_cache(self, scope: str = "all") -> int:
         stocks = self.get_watchlist() if scope == "watchlist" else self.list_stocks()

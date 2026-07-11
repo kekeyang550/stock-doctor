@@ -672,6 +672,10 @@ export function StrategyBacktestPanel({
         </div>
       ) : (
         <>
+          <div className="backtest-source-badge">
+            <span>价格来源</span>
+            <strong>{backtestPriceSourceLabel(report.price_source)}</strong>
+          </div>
           <div className="portfolio-metrics backtest-metrics">
             <SummaryMetric label="样例交易" value={report.trade_count} />
             <SummaryMetric label="胜率" value={`${report.win_rate.toFixed(1)}%`} />
@@ -708,6 +712,10 @@ export function StrategyBacktestPanel({
       )}
     </section>
   )
+}
+
+function backtestPriceSourceLabel(source: StrategyBacktestReport['price_source']) {
+  return source === 'historical-kline' ? '历史K线' : '样例趋势'
 }
 
 function BacktestPeriodComparison({

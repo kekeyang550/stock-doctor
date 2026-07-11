@@ -100,7 +100,11 @@ hotspot_review_action_service = HotspotReviewActionService()
 risk_exposure_service = RiskExposureService()
 portfolio_risk_service = PortfolioRiskService()
 screener_service = ScreenerService()
-strategy_backtest_service = StrategyBacktestService(screener_service=screener_service, trend_service=trend_service)
+strategy_backtest_service = StrategyBacktestService(
+    screener_service=screener_service,
+    trend_service=trend_service,
+    market_data_provider=data_provider,
+)
 price_alert_service = PriceAlertService()
 data_connector_health_service = DataConnectorHealthService()
 refresh_job_service = DataRefreshJobService()

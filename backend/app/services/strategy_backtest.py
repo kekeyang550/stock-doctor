@@ -1,12 +1,15 @@
 from app.schemas.diagnosis import (
     DiagnosisResponse,
+    HistoricalPriceBar,
     StockSnapshot,
     StrategyBacktestComparison,
     StrategyBacktestPeriodSummary,
     StrategyBacktestReport,
     StrategyBacktestTrade,
     TrendPoint,
+    TrendSeries,
 )
+from app.services.providers import MarketDataProvider
 from app.services.screener import ScreenerService
 from app.services.trend import TrendService
 
@@ -14,9 +17,15 @@ from app.services.trend import TrendService
 class StrategyBacktestService:
     DEFAULT_PERIODS = [3, 5, 10, 20]
 
-    def __init__(self, screener_service: ScreenerService | None = None, trend_service: TrendService | None = None) -> None:
+    def __init__(
+        self,
+        screener_service: ScreenerService | None = None,
+        trend_service: TrendService | None = None,
+        market_data_provider: MarketDataProvider | None = None,
+    ) -> None:
         self._screener_service = screener_service or ScreenerService()
         self._trend_service = trend_service or TrendService()
+        self._market_data_provider = market_data_provider
 
     def run(
         self,
@@ -32,12 +41,14 @@ class StrategyBacktestService:
         snapshot_by_symbol = {item.symbol: item for item in snapshots}
         candidates = self._screener_service.screen(snapshots=snapshots, diagnoses=diagnoses, preset=preset)
         trades: list[StrategyBacktestTrade] = []
+        used_historical = False
 
         for candidate in candidates[:limit]:
             snapshot = snapshot_by_symbol.get(candidate.symbol)
             if snapshot is None:
                 continue
-            series = self._trend_service.build_series(snapshot=snapshot, days=max(holding_days + 5, 20))
+            series, source = self._price_series(snapshot, holding_days)
+            used_historical = used_historical or source == "historical-kline"
             trade = self._build_trade(snapshot, candidate.reason, candidate.rule_tags, series.points, holding_days)
             if trade is not None:
                 trades.append(trade)
@@ -53,6 +64,7 @@ class StrategyBacktestService:
             preset=preset,
             horizon=horizon,
             holding_days=holding_days,
+            price_source="historical-kline" if used_historical else "synthetic-trend",
             sample_size=len(snapshots),
             match_count=len(candidates),
             trade_count=len(trades),
@@ -90,6 +102,7 @@ class StrategyBacktestService:
         summaries = [
             StrategyBacktestPeriodSummary(
                 holding_days=report.holding_days,
+                price_source=report.price_source,
                 trade_count=report.trade_count,
                 win_rate=report.win_rate,
                 average_return_pct=report.average_return_pct,
@@ -181,6 +194,66 @@ class StrategyBacktestService:
             rule_tags=rule_tags,
             signal_reason=signal_reason,
         )
+
+    def _price_series(self, snapshot: StockSnapshot, holding_days: int):
+        historical_points = self._historical_points(snapshot.symbol, days=max(holding_days + 5, 60))
+        if len(historical_points) >= holding_days + 1:
+            return self._series_from_points(snapshot, historical_points), "historical-kline"
+        return self._trend_service.build_series(snapshot=snapshot, days=max(holding_days + 5, 20)), "synthetic-trend"
+
+    def _historical_points(self, symbol: str, days: int) -> list[TrendPoint]:
+        if self._market_data_provider is None:
+            return []
+        try:
+            bars = self._market_data_provider.get_price_history(symbol, days=days)
+        except Exception:
+            return []
+        return self._bars_to_points(bars)
+
+    def _bars_to_points(self, bars: list[HistoricalPriceBar]) -> list[TrendPoint]:
+        points: list[TrendPoint] = []
+        closes: list[float] = []
+        volumes: list[float] = []
+        for bar in bars:
+            if bar.close <= 0:
+                continue
+            closes.append(bar.close)
+            volumes.append(max(0, bar.volume))
+            index = len(closes) - 1
+            ma5 = sum(closes[max(0, index - 4): index + 1]) / len(closes[max(0, index - 4): index + 1])
+            ma20 = sum(closes[max(0, index - 19): index + 1]) / len(closes[max(0, index - 19): index + 1])
+            volume_ratio = self._volume_ratio(volumes)
+            points.append(
+                TrendPoint(
+                    date=bar.date,
+                    close=round(bar.close, 2),
+                    ma5=round(ma5, 2),
+                    ma20=round(ma20, 2),
+                    volume_ratio=round(volume_ratio, 2),
+                )
+            )
+        return points
+
+    def _series_from_points(self, snapshot: StockSnapshot, points: list[TrendPoint]):
+        change_pct = ((points[-1].close - points[0].close) / points[0].close) * 100 if points and points[0].close > 0 else 0
+        return TrendSeries(
+            symbol=snapshot.symbol,
+            name=snapshot.name,
+            as_of=points[-1].date,
+            points=points,
+            change_30d_pct=round(change_pct, 2),
+            high=max(point.close for point in points),
+            low=min(point.close for point in points),
+        )
+
+    def _volume_ratio(self, volumes: list[float]) -> float:
+        if len(volumes) < 2:
+            return 1
+        history = volumes[max(0, len(volumes) - 6):-1]
+        average = sum(history) / len(history) if history else 0
+        if average <= 0:
+            return 1
+        return max(0.1, volumes[-1] / average)
 
     def _max_drawdown(self, points: list[TrendPoint]) -> float:
         peak = points[0].close

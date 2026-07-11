@@ -523,6 +523,7 @@ const strategyBacktest = {
   preset: 'strong',
   horizon: 'swing',
   holding_days: 5,
+  price_source: 'historical-kline',
   sample_size: 4,
   match_count: 2,
   trade_count: 2,
@@ -1122,6 +1123,8 @@ describe('App', () => {
     expect(within(backtestPanel).getAllByText('50.0%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('+1.23%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('-2.10%').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getByText('价格来源')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('历史K线')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('贵州茅台')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('600519 · 白酒 · 5 日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('综合高分')).toBeInTheDocument()

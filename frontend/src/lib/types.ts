@@ -418,6 +418,7 @@ export type StrategyBacktestReport = {
   preset: string
   horizon: 'intraday' | 'swing' | 'position'
   holding_days: number
+  price_source: 'historical-kline' | 'synthetic-trend'
   sample_size: number
   match_count: number
   trade_count: number
@@ -433,6 +434,7 @@ export type StrategyBacktestReport = {
 
 export type StrategyBacktestPeriodSummary = {
   holding_days: number
+  price_source: 'historical-kline' | 'synthetic-trend'
   trade_count: number
   win_rate: number
   average_return_pct: number

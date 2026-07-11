@@ -51,6 +51,12 @@ class MarketOverview(BaseModel):
     risk_notes: list[str]
 
 
+class HistoricalPriceBar(BaseModel):
+    date: str
+    close: float
+    volume: float = 0
+
+
 class DataConnectorStatus(BaseModel):
     name: str
     status: str = Field(pattern="^(online|fallback|missing-package|planned|error)$")
@@ -636,6 +642,7 @@ class StrategyBacktestReport(BaseModel):
     preset: str
     horizon: str = Field(pattern="^(intraday|swing|position)$")
     holding_days: int
+    price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
     sample_size: int
     match_count: int
     trade_count: int
@@ -651,6 +658,7 @@ class StrategyBacktestReport(BaseModel):
 
 class StrategyBacktestPeriodSummary(BaseModel):
     holding_days: int
+    price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
     trade_count: int
     win_rate: float = Field(ge=0, le=100)
     average_return_pct: float

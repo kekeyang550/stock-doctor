@@ -1,6 +1,15 @@
 from app.services.diagnosis import DiagnosisEngine
 from app.services.market_data import MockMarketDataProvider
 from app.services.strategy_backtest import StrategyBacktestService
+from app.schemas.diagnosis import HistoricalPriceBar
+
+
+class FakeHistoricalProvider:
+    def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
+        return [
+            HistoricalPriceBar(date=f"2026-06-{day:02d}", close=100 + day, volume=1000 + day)
+            for day in range(1, 31)
+        ][-days:]
 
 
 def test_strategy_backtest_reports_returns_and_drawdown():
@@ -28,6 +37,26 @@ def test_strategy_backtest_reports_returns_and_drawdown():
     assert report.max_drawdown_pct <= 0
     assert report.trades[0].holding_days == 5
     assert report.trades[0].rule_tags
+
+
+def test_strategy_backtest_prefers_provider_price_history():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FakeHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+    )
+
+    assert report.price_source == "historical-kline"
+    assert report.trades[0].entry_price == 125
+    assert report.trades[0].exit_price == 130
+    assert report.trades[0].return_pct == 4
 
 
 def test_strategy_backtest_compares_multiple_holding_periods():

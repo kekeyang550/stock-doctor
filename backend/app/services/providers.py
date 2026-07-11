@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from app.schemas.diagnosis import MarketOverview, StockSnapshot, StockSummary
+from app.schemas.diagnosis import HistoricalPriceBar, MarketOverview, StockSnapshot, StockSummary
 
 
 class MarketDataProvider(Protocol):
@@ -26,6 +26,9 @@ class MarketDataProvider(Protocol):
         ...
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
+        ...
+
+    def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
         ...
 
     def warm_cache(self, scope: str = "all") -> int:

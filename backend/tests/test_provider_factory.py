@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from app.services.akshare_provider import AkshareMarketDataProvider
+from app.services.market_data import MockMarketDataProvider
 from app.services.storage import JsonStateStore
 
 
@@ -209,6 +210,33 @@ def test_akshare_provider_enriches_technical_snapshot_from_history():
     assert snapshot.technical.macd > 0
     assert snapshot.technical.volume_ratio == 1.02
     assert snapshot.fundamental.pe_ttm == 0
+    assert akshare.history_calls == 1
+
+
+def test_mock_provider_returns_deterministic_price_history():
+    provider = MockMarketDataProvider()
+
+    bars = provider.get_price_history("600519", days=30)
+    snapshot = provider.get_snapshot("600519")
+
+    assert snapshot is not None
+    assert len(bars) == 30
+    assert bars[-1].date == snapshot.as_of
+    assert bars[-1].close == snapshot.last_price
+    assert all(bar.close > 0 for bar in bars)
+
+
+def test_akshare_provider_exposes_price_history_rows():
+    akshare = FakeAkshareWithHistory()
+    provider = AkshareMarketDataProvider(ak_module=akshare)
+
+    bars = provider.get_price_history("688002", days=10)
+
+    assert len(bars) == 10
+    assert bars[0].date == "2026-05-21"
+    assert bars[-1].date == "2026-05-30"
+    assert bars[-1].close == 15.9
+    assert bars[-1].volume == 1590
     assert akshare.history_calls == 1
 
 
