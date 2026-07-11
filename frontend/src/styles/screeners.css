@@ -781,7 +781,22 @@
   gap: 8px;
 }
 
+.backtest-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
 .backtest-period-grid article {
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid #dde6da;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.backtest-preset-grid article {
   display: grid;
   gap: 6px;
   padding: 9px;
@@ -795,7 +810,23 @@
   background: #f4fbf2;
 }
 
+.backtest-preset-grid article.recommended {
+  border-color: #8abf8b;
+  background: #f4fbf2;
+}
+
+.backtest-preset-grid article.current {
+  box-shadow: inset 0 0 0 1px #2d7d46;
+}
+
 .backtest-period-grid article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.backtest-preset-grid article > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -806,13 +837,33 @@
   color: #1f2f25;
 }
 
-.backtest-period-grid article > div em {
+.backtest-preset-grid article > div strong {
+  color: #1f2f25;
+}
+
+.backtest-preset-grid article > div span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.backtest-period-grid article > div em,
+.backtest-preset-grid article > div em {
   border-radius: 999px;
   padding: 2px 7px;
   background: #2d7d46;
   color: #ffffff;
   font-size: 11px;
   font-style: normal;
+  font-weight: 800;
+}
+
+.backtest-preset-grid article > div small {
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: #e7f0e3;
+  color: #2d5d3b;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -825,7 +876,20 @@
   font-size: 12px;
 }
 
+.backtest-preset-grid > article > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #6a7a70;
+  font-size: 12px;
+}
+
 .backtest-period-grid b {
+  color: #1f2f25;
+}
+
+.backtest-preset-grid b {
   color: #1f2f25;
 }
 

@@ -6,6 +6,8 @@ from app.schemas.diagnosis import (
     StockSnapshot,
     StrategyBacktestComparison,
     StrategyBacktestPeriodSummary,
+    StrategyBacktestPresetComparison,
+    StrategyBacktestPresetSummary,
     StrategyBacktestReport,
     StrategyBacktestTrade,
     TrendPoint,
@@ -27,6 +29,15 @@ class PriceSeriesResult:
 
 class StrategyBacktestService:
     DEFAULT_PERIODS = [3, 5, 10, 20]
+    DEFAULT_PRESETS = ["strong", "value", "capital-risk"]
+    PRESET_LABELS = {
+        "strong": "强势关注",
+        "value": "低估值观察",
+        "capital-risk": "资金承压",
+        "breakout-volume": "放量突破",
+        "capital-return": "资金回流",
+        "risk-avoidance": "风险回避",
+    }
 
     def __init__(
         self,
@@ -159,6 +170,58 @@ class StrategyBacktestService:
             summary=self._comparison_summary(preset, summaries, recommended),
         )
 
+    def compare_presets(
+        self,
+        presets: list[str] | None,
+        horizon: str,
+        snapshots: list[StockSnapshot],
+        diagnoses: list[DiagnosisResponse],
+        holding_days: int = 5,
+        limit: int = 8,
+        fee_bps: float = 5,
+        slippage_bps: float = 10,
+    ) -> StrategyBacktestPresetComparison:
+        selected_presets = self._normalize_presets(presets)
+        reports = [
+            self.run(
+                preset=preset,
+                horizon=horizon,
+                snapshots=snapshots,
+                diagnoses=diagnoses,
+                holding_days=holding_days,
+                limit=limit,
+                fee_bps=fee_bps,
+                slippage_bps=slippage_bps,
+            )
+            for preset in selected_presets
+        ]
+        summaries = [
+            StrategyBacktestPresetSummary(
+                preset=report.preset,
+                label=self.PRESET_LABELS.get(report.preset, report.preset),
+                holding_days=report.holding_days,
+                price_source=report.price_source,
+                history_bar_count=report.history_bar_count,
+                history_last_date=report.history_last_date,
+                fallback_reason=report.fallback_reason,
+                match_count=report.match_count,
+                trade_count=report.trade_count,
+                win_rate=report.win_rate,
+                average_return_pct=report.average_return_pct,
+                max_drawdown_pct=report.max_drawdown_pct,
+            )
+            for report in reports
+        ]
+        recommended = self._recommend_preset(summaries)
+        return StrategyBacktestPresetComparison(
+            horizon=horizon,
+            holding_days=reports[0].holding_days if reports else max(1, min(holding_days, 20)),
+            sample_size=reports[0].sample_size if reports else len(snapshots),
+            recommended_preset=recommended.preset if recommended else None,
+            presets=summaries,
+            summary=self._preset_comparison_summary(summaries, recommended),
+        )
+
     def _normalize_periods(self, periods: list[int] | None) -> list[int]:
         selected: list[int] = []
         for value in periods or self.DEFAULT_PERIODS:
@@ -166,6 +229,14 @@ class StrategyBacktestService:
             if holding_days not in selected:
                 selected.append(holding_days)
         return selected or self.DEFAULT_PERIODS.copy()
+
+    def _normalize_presets(self, presets: list[str] | None) -> list[str]:
+        selected: list[str] = []
+        for preset in presets or self.DEFAULT_PRESETS:
+            value = preset.strip()
+            if value and value not in selected:
+                selected.append(value)
+        return selected or self.DEFAULT_PRESETS.copy()
 
     def _recommend_period(self, periods: list[StrategyBacktestPeriodSummary]) -> StrategyBacktestPeriodSummary | None:
         if not periods:
@@ -177,6 +248,19 @@ class StrategyBacktestService:
                 period.max_drawdown_pct,
                 period.win_rate,
                 -period.holding_days,
+            ),
+        )
+
+    def _recommend_preset(self, presets: list[StrategyBacktestPresetSummary]) -> StrategyBacktestPresetSummary | None:
+        if not presets:
+            return None
+        return max(
+            presets,
+            key=lambda preset: (
+                preset.average_return_pct,
+                preset.max_drawdown_pct,
+                preset.win_rate,
+                preset.trade_count,
             ),
         )
 
@@ -193,6 +277,20 @@ class StrategyBacktestService:
         return (
             f"{preset} 已比较 {len(periods)} 个持有周期，"
             f"当前样例推荐 {recommended.holding_days} 日，"
+            f"平均收益 {recommended.average_return_pct:.2f}%，最大回撤 {recommended.max_drawdown_pct:.2f}%。"
+        )
+
+    def _preset_comparison_summary(
+        self,
+        presets: list[StrategyBacktestPresetSummary],
+        recommended: StrategyBacktestPresetSummary | None,
+    ) -> str:
+        if not presets:
+            return "暂无可比较的策略样例。"
+        if recommended is None:
+            return f"已生成 {len(presets)} 个策略样例摘要，暂无推荐策略。"
+        return (
+            f"已比较 {len(presets)} 个策略，当前样例推荐 {recommended.label}，"
             f"平均收益 {recommended.average_return_pct:.2f}%，最大回撤 {recommended.max_drawdown_pct:.2f}%。"
         )
 

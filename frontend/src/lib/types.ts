@@ -466,6 +466,30 @@ export type StrategyBacktestComparison = {
   summary: string
 }
 
+export type StrategyBacktestPresetSummary = {
+  preset: string
+  label: string
+  holding_days: number
+  price_source: 'historical-kline' | 'synthetic-trend'
+  history_bar_count: number
+  history_last_date: string | null
+  fallback_reason: string | null
+  match_count: number
+  trade_count: number
+  win_rate: number
+  average_return_pct: number
+  max_drawdown_pct: number
+}
+
+export type StrategyBacktestPresetComparison = {
+  horizon: 'intraday' | 'swing' | 'position'
+  holding_days: number
+  sample_size: number
+  recommended_preset: string | null
+  presets: StrategyBacktestPresetSummary[]
+  summary: string
+}
+
 export type AlertItem = {
   id: string
   symbol: string

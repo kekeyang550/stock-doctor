@@ -63,6 +63,7 @@ import {
   fetchScreener,
   fetchStrategyBacktest,
   fetchStrategyBacktestComparison,
+  fetchStrategyBacktestPresetComparison,
   fetchStockSearch,
   fetchStocks,
   fetchStorageExport,
@@ -118,6 +119,7 @@ import type {
   StockSearchResult,
   StockSummary,
   StrategyBacktestComparison,
+  StrategyBacktestPresetComparison,
   StrategyBacktestReport,
   StorageImportPayload,
   StorageImportPreview,
@@ -193,6 +195,7 @@ export default function App() {
   const [screenCandidates, setScreenCandidates] = useState<ScreenCandidate[]>([])
   const [strategyBacktest, setStrategyBacktest] = useState<StrategyBacktestReport | null>(null)
   const [strategyBacktestComparison, setStrategyBacktestComparison] = useState<StrategyBacktestComparison | null>(null)
+  const [strategyBacktestPresetComparison, setStrategyBacktestPresetComparison] = useState<StrategyBacktestPresetComparison | null>(null)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [watchlistSummary, setWatchlistSummary] = useState<WatchlistSummary | null>(null)
   const [reviewActionOverview, setReviewActionOverview] = useState<ReviewActionOverview | null>(null)
@@ -232,6 +235,7 @@ export default function App() {
   const [screenerError, setScreenerError] = useState<string | null>(null)
   const [strategyBacktestError, setStrategyBacktestError] = useState<string | null>(null)
   const [strategyBacktestComparisonError, setStrategyBacktestComparisonError] = useState<string | null>(null)
+  const [strategyBacktestPresetComparisonError, setStrategyBacktestPresetComparisonError] = useState<string | null>(null)
   const [refreshingScope, setRefreshingScope] = useState<'all' | 'watchlist' | null>(null)
   const [updatingWatchlist, setUpdatingWatchlist] = useState(false)
   const [savingReport, setSavingReport] = useState(false)
@@ -344,6 +348,7 @@ export default function App() {
   const loadStrategyBacktest = useCallback(async () => {
     setStrategyBacktestError(null)
     setStrategyBacktestComparisonError(null)
+    setStrategyBacktestPresetComparisonError(null)
     try {
       const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
       setStrategyBacktest(report)
@@ -355,11 +360,20 @@ export default function App() {
         setStrategyBacktestComparisonError(message)
         setStrategyBacktestComparison(null)
       }
+      try {
+        const presetComparison = await fetchStrategyBacktestPresetComparison(horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
+        setStrategyBacktestPresetComparison(presetComparison)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '策略对比加载失败'
+        setStrategyBacktestPresetComparisonError(message)
+        setStrategyBacktestPresetComparison(null)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : '策略回测加载失败'
       setStrategyBacktestError(message)
       setStrategyBacktest(null)
       setStrategyBacktestComparison(null)
+      setStrategyBacktestPresetComparison(null)
       setError(message)
     }
   }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, horizon, screenerPreset])
@@ -555,6 +569,7 @@ export default function App() {
           limit: backtestLimit,
           holding_days: backtestHoldingDays,
         },
+        strategy_preset_comparison: strategyBacktestPresetComparison,
         data_quality: dataQuality,
         data_trust: {
           sources: dataSources,
@@ -563,7 +578,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, selectedSymbol, strategyBacktest])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, selectedSymbol, strategyBacktest, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1014,6 +1029,8 @@ export default function App() {
         <StrategyBacktestPanel
           report={strategyBacktest}
           comparison={strategyBacktestComparison}
+          presetComparison={strategyBacktestPresetComparison}
+          currentPreset={screenerPreset}
           holdingDays={backtestHoldingDays}
           feeBps={backtestFeeBps}
           slippageBps={backtestSlippageBps}
@@ -1024,6 +1041,7 @@ export default function App() {
           onLimitChange={setBacktestLimit}
           error={strategyBacktestError}
           comparisonError={strategyBacktestComparisonError}
+          presetComparisonError={strategyBacktestPresetComparisonError}
           onRetry={loadStrategyBacktest}
         />
         <ResearchNotesPanel
@@ -1048,12 +1066,14 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const portfolioRisk = payload.portfolio_risk ?? {}
   const strategyBacktest = payload.strategy_backtest ?? {}
   const strategyBacktestParameters = payload.strategy_backtest_parameters ?? {}
+  const strategyPresetComparison = payload.strategy_preset_comparison ?? {}
   const dataTrust = payload.data_trust ?? {}
   const connectorHealth = dataTrust.connector_health ?? {}
   const freshness = dataTrust.freshness ?? {}
   const weightInputs = payload.portfolio_weight_inputs ?? {}
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
+  const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -1125,6 +1145,9 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>最大回撤</span><strong>${escapeHtml(strategyBacktest.max_drawdown_pct ?? 0)}%</strong></div>
       </div>
       <p>${escapeHtml(strategyBacktest.summary ?? "")}</p>
+      <h3>策略横向对比</h3>
+      <p>${escapeHtml(strategyPresetComparison.summary ?? "")}</p>
+      ${presetSummaries.slice(0, 6).map((preset: any) => `<div class="row"><strong>${escapeHtml(preset.label ?? preset.preset)}</strong><small>${escapeHtml(preset.preset)} · 命中 ${escapeHtml(preset.match_count ?? 0)} · 交易 ${escapeHtml(preset.trade_count ?? 0)} · 胜率 ${escapeHtml(preset.win_rate ?? 0)}% · 平均收益 ${escapeHtml(preset.average_return_pct ?? 0)}% · 最大回撤 ${escapeHtml(preset.max_drawdown_pct ?? 0)}%${preset.preset === strategyPresetComparison.recommended_preset ? " · 推荐" : ""}</small></div>`).join("") || "<p>暂无策略对比</p>"}
       ${trades.slice(0, 6).map((trade: any) => `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · 净收益 ${escapeHtml(trade.return_pct)}% · 毛收益 ${escapeHtml(trade.gross_return_pct ?? trade.return_pct)}% · 成本 ${escapeHtml(trade.cost_pct ?? 0)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%</small></div>`).join("") || "<p>暂无样例交易</p>"}
     </section>
 

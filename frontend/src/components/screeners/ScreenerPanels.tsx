@@ -38,6 +38,7 @@ import type {
   StockSearchResult,
   StockSummary,
   StrategyBacktestComparison,
+  StrategyBacktestPresetComparison,
   StrategyBacktestReport,
   StorageImportPayload,
   StorageImportPreview,
@@ -621,6 +622,8 @@ export function ScreenerPanel({
 export function StrategyBacktestPanel({
   report,
   comparison,
+  presetComparison,
+  currentPreset,
   holdingDays,
   feeBps,
   slippageBps,
@@ -631,10 +634,13 @@ export function StrategyBacktestPanel({
   onLimitChange,
   error,
   comparisonError,
+  presetComparisonError,
   onRetry,
 }: {
   report: StrategyBacktestReport | null
   comparison: StrategyBacktestComparison | null
+  presetComparison: StrategyBacktestPresetComparison | null
+  currentPreset: string
   holdingDays: number
   feeBps: number
   slippageBps: number
@@ -645,6 +651,7 @@ export function StrategyBacktestPanel({
   onLimitChange: (value: number) => void
   error: string | null
   comparisonError: string | null
+  presetComparisonError: string | null
   onRetry: () => void
 }) {
   return (
@@ -760,6 +767,7 @@ export function StrategyBacktestPanel({
             <SummaryMetric label="最大回撤" value={formatSignedPercent(report.max_drawdown_pct)} />
           </div>
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
+          <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />
           <p className="backtest-summary">{report.summary}</p>
           <div className="backtest-trade-list">
             {report.trades.slice(0, 4).map((trade) => (
@@ -860,6 +868,72 @@ function BacktestPeriodComparison({
             </span>
             <small className="backtest-period-source">
               {backtestPriceSourceLabel(period.price_source)} · {formatBacktestHistoryCount(period.history_bar_count)}
+            </small>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function BacktestPresetComparison({
+  comparison,
+  error,
+  currentPreset,
+}: {
+  comparison: StrategyBacktestPresetComparison | null
+  error: string | null
+  currentPreset: string
+}) {
+  if (error) {
+    return (
+      <div className="backtest-comparison-state">
+        <strong>策略对比暂不可用</strong>
+        <span>{error}</span>
+      </div>
+    )
+  }
+  if (!comparison || !Array.isArray(comparison.presets)) return null
+  return (
+    <div className="backtest-comparison backtest-preset-comparison">
+      <div className="backtest-comparison-head">
+        <strong>策略对比</strong>
+        <span>{comparison.summary}</span>
+      </div>
+      <div className="backtest-preset-grid">
+        {comparison.presets.map((preset) => (
+          <article
+            key={preset.preset}
+            className={[
+              preset.preset === comparison.recommended_preset ? 'recommended' : '',
+              preset.preset === currentPreset ? 'current' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            <div>
+              <strong>{preset.label}</strong>
+              <span>
+                {preset.preset === comparison.recommended_preset ? <em>策略推荐</em> : null}
+                {preset.preset === currentPreset ? <small>当前</small> : null}
+              </span>
+            </div>
+            <span>
+              <small>命中 / 交易</small>
+              <b>{preset.match_count} / {preset.trade_count}</b>
+            </span>
+            <span>
+              <small>胜率</small>
+              <b>{preset.win_rate.toFixed(1)}%</b>
+            </span>
+            <span>
+              <small>平均收益</small>
+              <b className={preset.average_return_pct >= 0 ? 'up' : 'down'}>{formatSignedPercent(preset.average_return_pct)}</b>
+            </span>
+            <span>
+              <small>最大回撤</small>
+              <b className="down">{formatSignedPercent(preset.max_drawdown_pct)}</b>
+            </span>
+            <small className="backtest-period-source">
+              {backtestPriceSourceLabel(preset.price_source)} · {formatBacktestHistoryCount(preset.history_bar_count)}
             </small>
           </article>
         ))}

@@ -579,6 +579,58 @@ const strategyBacktestComparison = {
   ],
 }
 
+const strategyBacktestPresetComparison = {
+  horizon: 'swing',
+  holding_days: 5,
+  sample_size: 4,
+  recommended_preset: 'strong',
+  summary: '已比较 3 个策略，当前样例推荐 强势关注。',
+  presets: [
+    {
+      preset: 'strong',
+      label: '强势关注',
+      holding_days: 5,
+      price_source: 'historical-kline',
+      history_bar_count: 30,
+      history_last_date: '2026-06-30',
+      fallback_reason: null,
+      match_count: 2,
+      trade_count: 2,
+      win_rate: 50,
+      average_return_pct: 1.23,
+      max_drawdown_pct: -2.1,
+    },
+    {
+      preset: 'value',
+      label: '低估值观察',
+      holding_days: 5,
+      price_source: 'historical-kline',
+      history_bar_count: 30,
+      history_last_date: '2026-06-30',
+      fallback_reason: null,
+      match_count: 1,
+      trade_count: 1,
+      win_rate: 100,
+      average_return_pct: 0.88,
+      max_drawdown_pct: -1.4,
+    },
+    {
+      preset: 'capital-risk',
+      label: '资金承压',
+      holding_days: 5,
+      price_source: 'historical-kline',
+      history_bar_count: 30,
+      history_last_date: '2026-06-30',
+      fallback_reason: null,
+      match_count: 1,
+      trade_count: 1,
+      win_rate: 0,
+      average_return_pct: -0.42,
+      max_drawdown_pct: -3.2,
+    },
+  ],
+}
+
 const watchlistSummary = {
   as_of: '2026-07-10',
   stock_count: 3,
@@ -755,6 +807,9 @@ describe('App', () => {
       }
       if (url.includes('/rankings')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(rankings) })
+      }
+      if (url.includes('/backtests/strategy/presets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestPresetComparison) })
       }
       if (url.includes('/backtests/strategy/periods')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestComparison) })
@@ -1171,7 +1226,7 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('3日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('10日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('20日')).toBeInTheDocument()
-    expect(within(backtestPanel).getByText('推荐')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('策略推荐')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('平均收益').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('+5.20%')).toBeInTheDocument()
@@ -1263,6 +1318,32 @@ describe('App', () => {
       expect(backtestCalls.some((url) => url.includes('slippage_bps=12'))).toBe(true)
       expect(backtestCalls.some((url) => url.includes('limit=6'))).toBe(true)
     })
+  })
+
+  it('shows strategy preset comparison with the current backtest parameters', async () => {
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('策略对比')
+      return panel as HTMLElement
+    })
+
+    expect(within(backtestPanel).getByText('强势关注')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('低估值观察')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('资金承压')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('策略推荐')).toBeInTheDocument()
+
+    const backtestCalls = vi.mocked(fetch).mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.includes('/backtests/strategy/presets'))
+    expect(backtestCalls.some((url) => (
+      url.includes('holding_days=5')
+      && url.includes('fee_bps=5')
+      && url.includes('slippage_bps=10')
+      && url.includes('limit=8')
+    ))).toBe(true)
   })
 
   it('uses saved strategy backtest parameters on first load', async () => {
@@ -1642,6 +1723,12 @@ describe('App', () => {
       limit: 8,
       holding_days: 5,
     })
+    expect(exported.strategy_preset_comparison.recommended_preset).toBe('strong')
+    expect(exported.strategy_preset_comparison.presets.map((item: { label: string }) => item.label)).toEqual([
+      '强势关注',
+      '低估值观察',
+      '资金承压',
+    ])
     expect(exported.portfolio_weight_inputs['600519']).toBe('80')
     expect(exported.data_trust.connector_health.active_provider).toBe('mock')
     expect(exported.data_trust.freshness.status).toBe('fresh')
@@ -1698,6 +1785,10 @@ describe('App', () => {
     expect(html).toContain('参数口径')
     expect(html).toContain('样本数量')
     expect(html).toContain('8')
+    expect(html).toContain('策略横向对比')
+    expect(html).toContain('强势关注')
+    expect(html).toContain('低估值观察')
+    expect(html).toContain('资金承压')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('数据可信度')

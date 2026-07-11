@@ -150,3 +150,32 @@ def test_strategy_backtest_compares_multiple_holding_periods():
     assert comparison.summary
     assert all(period.trade_count >= 0 for period in comparison.periods)
     assert all(period.history_bar_count >= 0 for period in comparison.periods)
+
+
+def test_strategy_backtest_compares_multiple_presets():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    comparison = StrategyBacktestService().compare_presets(
+        presets=["strong", "value", "capital-risk"],
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=6,
+        fee_bps=8,
+        slippage_bps=12,
+    )
+
+    assert comparison.horizon == "swing"
+    assert comparison.holding_days == 5
+    assert comparison.sample_size == len(snapshots)
+    assert [item.preset for item in comparison.presets] == ["strong", "value", "capital-risk"]
+    assert comparison.recommended_preset in {"strong", "value", "capital-risk"}
+    assert comparison.summary
+    assert all(item.label for item in comparison.presets)
+    assert all(item.trade_count >= 0 for item in comparison.presets)
+    assert all(item.match_count >= 0 for item in comparison.presets)
+    assert all(0 <= item.win_rate <= 100 for item in comparison.presets)
+    assert all(item.holding_days == 5 for item in comparison.presets)

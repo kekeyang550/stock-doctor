@@ -546,6 +546,24 @@ def test_strategy_backtest_period_comparison_accepts_cost_assumptions():
     assert all("average_return_pct" in period for period in payload["periods"])
 
 
+def test_strategy_backtest_preset_comparison_endpoint_returns_preset_summaries():
+    response = client.get(
+        "/api/v1/backtests/strategy/presets?horizon=swing&presets=strong,value,capital-risk&holding_days=10&fee_bps=8&slippage_bps=12&limit=6"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["horizon"] == "swing"
+    assert payload["holding_days"] == 10
+    assert payload["recommended_preset"] in ["strong", "value", "capital-risk"]
+    assert [item["preset"] for item in payload["presets"]] == ["strong", "value", "capital-risk"]
+    assert all(item["label"] for item in payload["presets"])
+    assert all(item["trade_count"] >= 0 for item in payload["presets"])
+    assert all(item["holding_days"] == 10 for item in payload["presets"])
+    assert all("average_return_pct" in item for item in payload["presets"])
+    assert payload["summary"]
+
+
 def test_unknown_screener_preset_returns_404():
     response = client.get("/api/v1/screeners/unknown")
 

@@ -35,6 +35,7 @@ from app.schemas.diagnosis import (
     ReportRequest,
     ScreenCandidate,
     StrategyBacktestComparison,
+    StrategyBacktestPresetComparison,
     StrategyBacktestReport,
     StockSummary,
     StockSearchResult,
@@ -652,6 +653,15 @@ def _parse_holding_periods(value: str | None) -> list[int]:
     return periods or [3, 5, 10, 20]
 
 
+def _parse_backtest_presets(value: str | None) -> list[str]:
+    presets: list[str] = []
+    for chunk in (value or "strong,value,capital-risk").split(","):
+        preset = chunk.strip()
+        if preset and preset not in presets:
+            presets.append(preset)
+    return presets or ["strong", "value", "capital-risk"]
+
+
 @router.get("/screeners/{preset}", response_model=list[ScreenCandidate])
 async def screener(
     preset: str,
@@ -680,6 +690,32 @@ async def strategy_backtest(
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
     return strategy_backtest_service.run(
         preset=preset,
+        horizon=horizon,
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+    )
+
+
+@router.get("/backtests/strategy/presets", response_model=StrategyBacktestPresetComparison)
+async def strategy_backtest_presets(
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    presets: str = Query(default="strong,value,capital-risk"),
+    holding_days: int = Query(default=5, ge=1, le=20),
+    limit: int = Query(default=8, ge=1, le=30),
+    fee_bps: float = Query(default=5, ge=0, le=100),
+    slippage_bps: float = Query(default=10, ge=0, le=100),
+) -> StrategyBacktestPresetComparison:
+    selected_presets = _parse_backtest_presets(presets)
+    if any(preset not in SCREENER_PRESETS for preset in selected_presets):
+        raise HTTPException(status_code=404, detail="Screener preset not found")
+    snapshots = _all_snapshots()
+    diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    return strategy_backtest_service.compare_presets(
+        presets=selected_presets,
         horizon=horizon,
         snapshots=snapshots,
         diagnoses=diagnoses,

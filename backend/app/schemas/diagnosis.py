@@ -690,6 +690,30 @@ class StrategyBacktestComparison(BaseModel):
     summary: str
 
 
+class StrategyBacktestPresetSummary(BaseModel):
+    preset: str
+    label: str
+    holding_days: int
+    price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
+    history_bar_count: int = 0
+    history_last_date: str | None = None
+    fallback_reason: str | None = None
+    match_count: int
+    trade_count: int
+    win_rate: float = Field(ge=0, le=100)
+    average_return_pct: float
+    max_drawdown_pct: float
+
+
+class StrategyBacktestPresetComparison(BaseModel):
+    horizon: str = Field(pattern="^(intraday|swing|position)$")
+    holding_days: int
+    sample_size: int
+    recommended_preset: str | None
+    presets: list[StrategyBacktestPresetSummary]
+    summary: str
+
+
 class TrendPoint(BaseModel):
     date: str
     close: float
