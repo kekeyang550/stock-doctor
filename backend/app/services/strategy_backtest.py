@@ -46,9 +46,14 @@ class StrategyBacktestService:
         diagnoses: list[DiagnosisResponse],
         holding_days: int = 5,
         limit: int = 8,
+        fee_bps: float = 5,
+        slippage_bps: float = 10,
     ) -> StrategyBacktestReport:
         holding_days = max(1, min(holding_days, 20))
         limit = max(1, min(limit, 30))
+        fee_bps = max(0.0, min(float(fee_bps), 100.0))
+        slippage_bps = max(0.0, min(float(slippage_bps), 100.0))
+        round_trip_cost_pct = self._round_trip_cost_pct(fee_bps, slippage_bps)
         snapshot_by_symbol = {item.symbol: item for item in snapshots}
         candidates = self._screener_service.screen(snapshots=snapshots, diagnoses=diagnoses, preset=preset)
         trades: list[StrategyBacktestTrade] = []
@@ -69,7 +74,7 @@ class StrategyBacktestService:
                     historical_last_dates.append(price_series.history_last_date)
             elif price_series.fallback_reason:
                 fallback_reasons.append(price_series.fallback_reason)
-            trade = self._build_trade(snapshot, candidate.reason, candidate.rule_tags, price_series.series.points, holding_days)
+            trade = self._build_trade(snapshot, candidate.reason, candidate.rule_tags, price_series, holding_days, round_trip_cost_pct)
             if trade is not None:
                 trades.append(trade)
 
@@ -88,6 +93,9 @@ class StrategyBacktestService:
             history_bar_count=min(historical_counts) if historical_counts else 0,
             history_last_date=max(historical_last_dates) if historical_last_dates else None,
             fallback_reason=self._fallback_reason(used_historical, fallback_reasons),
+            fee_bps=fee_bps,
+            slippage_bps=slippage_bps,
+            round_trip_cost_pct=round(round_trip_cost_pct, 2),
             sample_size=len(snapshots),
             match_count=len(candidates),
             trade_count=len(trades),
@@ -109,6 +117,8 @@ class StrategyBacktestService:
         diagnoses: list[DiagnosisResponse],
         periods: list[int] | None = None,
         limit: int = 8,
+        fee_bps: float = 5,
+        slippage_bps: float = 10,
     ) -> StrategyBacktestComparison:
         normalized_periods = self._normalize_periods(periods)
         reports = [
@@ -119,6 +129,8 @@ class StrategyBacktestService:
                 diagnoses=diagnoses,
                 holding_days=holding_days,
                 limit=limit,
+                fee_bps=fee_bps,
+                slippage_bps=slippage_bps,
             )
             for holding_days in normalized_periods
         ]
@@ -189,9 +201,11 @@ class StrategyBacktestService:
         snapshot: StockSnapshot,
         signal_reason: str,
         rule_tags: list[str],
-        points: list[TrendPoint],
+        price_series: PriceSeriesResult,
         holding_days: int,
+        cost_pct: float,
     ) -> StrategyBacktestTrade | None:
+        points = price_series.series.points
         if len(points) < 2:
             return None
 
@@ -203,7 +217,8 @@ class StrategyBacktestService:
             return None
 
         window = points[entry_index:exit_index + 1]
-        return_pct = ((exit_point.close - entry.close) / entry.close) * 100
+        gross_return_pct = ((exit_point.close - entry.close) / entry.close) * 100
+        return_pct = gross_return_pct - cost_pct
         max_drawdown_pct = self._max_drawdown(window)
 
         return StrategyBacktestTrade(
@@ -214,9 +229,15 @@ class StrategyBacktestService:
             exit_date=exit_point.date,
             entry_price=entry.close,
             exit_price=exit_point.close,
+            gross_return_pct=round(gross_return_pct, 2),
+            cost_pct=round(cost_pct, 2),
             return_pct=round(return_pct, 2),
             max_drawdown_pct=round(max_drawdown_pct, 2),
             holding_days=exit_index - entry_index,
+            price_source=price_series.source,
+            history_bar_count=price_series.history_bar_count,
+            history_last_date=price_series.history_last_date,
+            fallback_reason=price_series.fallback_reason,
             rule_tags=rule_tags,
             signal_reason=signal_reason,
         )
@@ -256,6 +277,9 @@ class StrategyBacktestService:
         if used_historical:
             return "部分标的历史K线不可用，已混合使用样例趋势"
         return reasons[0]
+
+    def _round_trip_cost_pct(self, fee_bps: float, slippage_bps: float) -> float:
+        return (fee_bps + slippage_bps) * 2 / 100
 
     def _bars_to_points(self, bars: list[HistoricalPriceBar]) -> list[TrendPoint]:
         points: list[TrendPoint] = []

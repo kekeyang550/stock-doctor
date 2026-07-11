@@ -1,3 +1,5 @@
+import pytest
+
 from app.services.diagnosis import DiagnosisEngine
 from app.services.market_data import MockMarketDataProvider
 from app.services.strategy_backtest import StrategyBacktestService
@@ -59,12 +61,45 @@ def test_strategy_backtest_prefers_provider_price_history():
     )
 
     assert report.price_source == "historical-kline"
+    assert report.fee_bps == 5
+    assert report.slippage_bps == 10
+    assert report.round_trip_cost_pct == 0.3
     assert report.history_bar_count == 30
     assert report.history_last_date == "2026-06-30"
     assert report.fallback_reason is None
     assert report.trades[0].entry_price == 125
     assert report.trades[0].exit_price == 130
-    assert report.trades[0].return_pct == 4
+    assert report.trades[0].gross_return_pct == 4
+    assert report.trades[0].cost_pct == 0.3
+    assert report.trades[0].return_pct == pytest.approx(3.7)
+    assert report.trades[0].price_source == "historical-kline"
+    assert report.trades[0].history_bar_count == 30
+    assert report.trades[0].history_last_date == "2026-06-30"
+    assert report.trades[0].fallback_reason is None
+
+
+def test_strategy_backtest_accepts_custom_cost_assumptions():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FakeHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        fee_bps=8,
+        slippage_bps=12,
+    )
+
+    assert report.fee_bps == 8
+    assert report.slippage_bps == 12
+    assert report.round_trip_cost_pct == 0.4
+    assert report.trades[0].gross_return_pct == 4
+    assert report.trades[0].cost_pct == 0.4
+    assert report.trades[0].return_pct == pytest.approx(3.6)
 
 
 def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails():
@@ -85,6 +120,10 @@ def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails()
     assert report.history_bar_count == 0
     assert report.history_last_date is None
     assert report.fallback_reason == "历史行情读取失败，已回退样例趋势"
+    assert report.trades[0].price_source == "synthetic-trend"
+    assert report.trades[0].history_bar_count == 0
+    assert report.trades[0].history_last_date is None
+    assert report.trades[0].fallback_reason == "历史行情读取失败，已回退样例趋势"
     assert report.trade_count >= 1
 
 

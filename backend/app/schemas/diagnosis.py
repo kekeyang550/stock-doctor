@@ -631,9 +631,15 @@ class StrategyBacktestTrade(BaseModel):
     exit_date: str
     entry_price: float
     exit_price: float
+    gross_return_pct: float = 0
+    cost_pct: float = 0
     return_pct: float
     max_drawdown_pct: float
     holding_days: int
+    price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
+    history_bar_count: int = 0
+    history_last_date: str | None = None
+    fallback_reason: str | None = None
     rule_tags: list[str]
     signal_reason: str
 
@@ -646,6 +652,9 @@ class StrategyBacktestReport(BaseModel):
     history_bar_count: int = 0
     history_last_date: str | None = None
     fallback_reason: str | None = None
+    fee_bps: float = 5
+    slippage_bps: float = 10
+    round_trip_cost_pct: float = 0.3
     sample_size: int
     match_count: int
     trade_count: int

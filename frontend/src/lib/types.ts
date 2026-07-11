@@ -407,9 +407,15 @@ export type StrategyBacktestTrade = {
   exit_date: string
   entry_price: number
   exit_price: number
+  gross_return_pct: number
+  cost_pct: number
   return_pct: number
   max_drawdown_pct: number
   holding_days: number
+  price_source: 'historical-kline' | 'synthetic-trend'
+  history_bar_count: number
+  history_last_date: string | null
+  fallback_reason: string | null
   rule_tags: string[]
   signal_reason: string
 }
@@ -422,6 +428,9 @@ export type StrategyBacktestReport = {
   history_bar_count: number
   history_last_date: string | null
   fallback_reason: string | null
+  fee_bps: number
+  slippage_bps: number
+  round_trip_cost_pct: number
   sample_size: number
   match_count: number
   trade_count: number

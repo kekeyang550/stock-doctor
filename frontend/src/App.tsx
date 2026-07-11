@@ -1071,13 +1071,17 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>历史样本</span><strong>${escapeHtml(strategyBacktest.history_bar_count ? `${strategyBacktest.history_bar_count} 根` : "-")}</strong></div>
         <div class="metric"><span>最后交易日</span><strong>${escapeHtml(strategyBacktest.history_last_date ?? "-")}</strong></div>
         <div class="metric"><span>Fallback</span><strong>${escapeHtml(strategyBacktest.fallback_reason ?? "未发生 fallback")}</strong></div>
+        <div class="metric"><span>成本口径</span><strong>${escapeHtml(strategyBacktest.round_trip_cost_pct ?? 0)}%</strong></div>
+        <div class="metric"><span>手续费</span><strong>${escapeHtml(strategyBacktest.fee_bps ?? 0)} bps</strong></div>
+        <div class="metric"><span>滑点</span><strong>${escapeHtml(strategyBacktest.slippage_bps ?? 0)} bps</strong></div>
+        <div class="metric"><span>单笔成本</span><strong>${escapeHtml(strategyBacktest.round_trip_cost_pct ?? 0)}%</strong></div>
         <div class="metric"><span>样例交易</span><strong>${escapeHtml(strategyBacktest.trade_count ?? 0)}</strong></div>
         <div class="metric"><span>胜率</span><strong>${escapeHtml(strategyBacktest.win_rate ?? 0)}%</strong></div>
         <div class="metric"><span>平均收益</span><strong>${escapeHtml(strategyBacktest.average_return_pct ?? 0)}%</strong></div>
         <div class="metric"><span>最大回撤</span><strong>${escapeHtml(strategyBacktest.max_drawdown_pct ?? 0)}%</strong></div>
       </div>
       <p>${escapeHtml(strategyBacktest.summary ?? "")}</p>
-      ${trades.slice(0, 6).map((trade: any) => `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · 收益 ${escapeHtml(trade.return_pct)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%</small></div>`).join("") || "<p>暂无样例交易</p>"}
+      ${trades.slice(0, 6).map((trade: any) => `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · 净收益 ${escapeHtml(trade.return_pct)}% · 毛收益 ${escapeHtml(trade.gross_return_pct ?? trade.return_pct)}% · 成本 ${escapeHtml(trade.cost_pct ?? 0)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%</small></div>`).join("") || "<p>暂无样例交易</p>"}
     </section>
 
     <section>

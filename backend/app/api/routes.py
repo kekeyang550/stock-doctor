@@ -671,6 +671,8 @@ async def strategy_backtest(
     horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
     holding_days: int = Query(default=5, ge=1, le=20),
     limit: int = Query(default=8, ge=1, le=30),
+    fee_bps: float = Query(default=5, ge=0, le=100),
+    slippage_bps: float = Query(default=10, ge=0, le=100),
 ) -> StrategyBacktestReport:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -683,6 +685,8 @@ async def strategy_backtest(
         diagnoses=diagnoses,
         holding_days=holding_days,
         limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
     )
 
 
@@ -692,6 +696,8 @@ async def strategy_backtest_periods(
     horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
     periods: str = Query(default="3,5,10,20"),
     limit: int = Query(default=8, ge=1, le=30),
+    fee_bps: float = Query(default=5, ge=0, le=100),
+    slippage_bps: float = Query(default=10, ge=0, le=100),
 ) -> StrategyBacktestComparison:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -704,6 +710,8 @@ async def strategy_backtest_periods(
         diagnoses=diagnoses,
         periods=_parse_holding_periods(periods),
         limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
     )
 
 

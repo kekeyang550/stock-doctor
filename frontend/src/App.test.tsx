@@ -527,6 +527,9 @@ const strategyBacktest = {
   history_bar_count: 30,
   history_last_date: '2026-06-30',
   fallback_reason: null,
+  fee_bps: 5,
+  slippage_bps: 10,
+  round_trip_cost_pct: 0.3,
   sample_size: 4,
   match_count: 2,
   trade_count: 2,
@@ -546,9 +549,15 @@ const strategyBacktest = {
       exit_date: '2026-07-10',
       entry_price: 1468.2,
       exit_price: 1518.1,
+      gross_return_pct: 3.4,
+      cost_pct: 0.3,
       return_pct: 3.4,
       max_drawdown_pct: -1.2,
       holding_days: 5,
+      price_source: 'historical-kline',
+      history_bar_count: 30,
+      history_last_date: '2026-06-30',
+      fallback_reason: null,
       rule_tags: ['综合高分', '技术强势'],
       signal_reason: '综合 86，技术 90，趋势结构较强。',
     },
@@ -1132,8 +1141,17 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('30 根')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('最后交易日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('2026-06-30')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('成本口径')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('手续费')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('5 bps')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('滑点')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('10 bps')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('单笔成本')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('0.30%')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('贵州茅台')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('600519 · 白酒 · 5 日')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('净收益 +3.40%')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('毛收益 +3.40% · 成本 0.30% · 历史K线')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('综合高分')).toBeInTheDocument()
   })
 
@@ -1553,6 +1571,15 @@ describe('App', () => {
     expect(html).toContain('30 根')
     expect(html).toContain('最后交易日')
     expect(html).toContain('2026-06-30')
+    expect(html).toContain('成本口径')
+    expect(html).toContain('手续费')
+    expect(html).toContain('5 bps')
+    expect(html).toContain('滑点')
+    expect(html).toContain('10 bps')
+    expect(html).toContain('单笔成本')
+    expect(html).toContain('0.3%')
+    expect(html).toContain('净收益')
+    expect(html).toContain('毛收益')
     expect(html).toContain('数据可信度')
     expect(anchor.download).toBe('stock-doctor-report-600519-2026-07-11.html')
     expect(click).toHaveBeenCalled()

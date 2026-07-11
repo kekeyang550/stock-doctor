@@ -687,6 +687,21 @@ export function StrategyBacktestPanel({
             </span>
             <em>{report.fallback_reason ?? '未发生 fallback'}</em>
           </div>
+          <div className="backtest-cost-card">
+            <strong>成本口径</strong>
+            <span>
+              <small>手续费</small>
+              <b>{formatBps(report.fee_bps)}</b>
+            </span>
+            <span>
+              <small>滑点</small>
+              <b>{formatBps(report.slippage_bps)}</b>
+            </span>
+            <span>
+              <small>单笔成本</small>
+              <b>{formatPlainPercent(report.round_trip_cost_pct)}</b>
+            </span>
+          </div>
           <div className="portfolio-metrics backtest-metrics">
             <SummaryMetric label="样例交易" value={report.trade_count} />
             <SummaryMetric label="胜率" value={`${report.win_rate.toFixed(1)}%`} />
@@ -702,8 +717,9 @@ export function StrategyBacktestPanel({
                   <strong>{trade.name}</strong>
                   <span>{trade.symbol} · {trade.industry} · {trade.holding_days} 日</span>
                 </div>
-                <em className={trade.return_pct >= 0 ? 'up' : 'down'}>{formatSignedPercent(trade.return_pct)}</em>
+                <em className={trade.return_pct >= 0 ? 'up' : 'down'}>净收益 {formatSignedPercent(trade.return_pct)}</em>
                 <small>{trade.entry_price.toFixed(2)} → {trade.exit_price.toFixed(2)} · 回撤 {formatSignedPercent(trade.max_drawdown_pct)}</small>
+                <small>毛收益 {formatSignedPercent(trade.gross_return_pct)} · 成本 {formatPlainPercent(trade.cost_pct)} · {backtestPriceSourceLabel(trade.price_source)}</small>
                 {trade.rule_tags.length ? (
                   <div className="screener-tags">
                     {trade.rule_tags.map((tag) => (
@@ -731,6 +747,14 @@ function backtestPriceSourceLabel(source: StrategyBacktestReport['price_source']
 
 function formatBacktestHistoryCount(value: number) {
   return value > 0 ? `${value} 根` : '-'
+}
+
+function formatBps(value: number) {
+  return `${Number(value.toFixed(2))} bps`
+}
+
+function formatPlainPercent(value: number) {
+  return `${value.toFixed(2)}%`
 }
 
 function BacktestPeriodComparison({

@@ -677,6 +677,34 @@
   font-style: normal;
 }
 
+.backtest-cost-card {
+  display: grid;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid #e3e4d8;
+  border-radius: 8px;
+  padding: 9px;
+  background: #fffdf4;
+}
+
+.backtest-cost-card > strong {
+  color: #554a2d;
+  font-size: 13px;
+}
+
+.backtest-cost-card span {
+  display: grid;
+  gap: 2px;
+  color: #7a6f54;
+  font-size: 12px;
+}
+
+.backtest-cost-card b {
+  color: #2f2a1f;
+}
+
 .backtest-comparison,
 .backtest-comparison-state {
   display: grid;
