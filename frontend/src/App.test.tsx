@@ -730,6 +730,7 @@ const peers = {
 
 describe('App', () => {
   beforeEach(() => {
+    window.localStorage.clear()
     vi.stubGlobal('fetch', vi.fn((url: string) => {
       if (url.includes('/stocks/search')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(stockSearchResults) })
@@ -845,6 +846,7 @@ describe('App', () => {
 
   afterEach(() => {
     cleanup()
+    window.localStorage.clear()
     vi.unstubAllGlobals()
   })
 
@@ -1260,6 +1262,87 @@ describe('App', () => {
       expect(backtestCalls.some((url) => url.includes('fee_bps=8'))).toBe(true)
       expect(backtestCalls.some((url) => url.includes('slippage_bps=12'))).toBe(true)
       expect(backtestCalls.some((url) => url.includes('limit=6'))).toBe(true)
+    })
+  })
+
+  it('uses saved strategy backtest parameters on first load', async () => {
+    window.localStorage.setItem('stock-doctor-backtest-parameters-v1', JSON.stringify({
+      holding_days: 10,
+      fee_bps: 8,
+      slippage_bps: 12,
+      limit: 6,
+    }))
+
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+
+    expect(within(backtestPanel).getByLabelText('回测手续费 bps')).toHaveValue(8)
+    expect(within(backtestPanel).getByLabelText('回测滑点 bps')).toHaveValue(12)
+    expect(within(backtestPanel).getByLabelText('回测样本数量')).toHaveValue(6)
+
+    await waitFor(() => {
+      const backtestCalls = vi.mocked(fetch).mock.calls
+        .map((call) => String(call[0]))
+        .filter((url) => url.includes('/backtests/strategy'))
+      expect(backtestCalls.some((url) => url.includes('holding_days=10'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('fee_bps=8'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('slippage_bps=12'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('limit=6'))).toBe(true)
+    })
+  })
+
+  it('saves changed strategy backtest parameters to local storage', async () => {
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+
+    fireEvent.click(within(backtestPanel).getByRole('button', { name: '10日' }))
+    fireEvent.change(within(backtestPanel).getByLabelText('回测手续费 bps'), { target: { value: '8' } })
+    fireEvent.change(within(backtestPanel).getByLabelText('回测滑点 bps'), { target: { value: '12' } })
+    fireEvent.change(within(backtestPanel).getByLabelText('回测样本数量'), { target: { value: '6' } })
+
+    await waitFor(() => {
+      expect(JSON.parse(window.localStorage.getItem('stock-doctor-backtest-parameters-v1') ?? '{}')).toEqual({
+        holding_days: 10,
+        fee_bps: 8,
+        slippage_bps: 12,
+        limit: 6,
+      })
+    })
+  })
+
+  it('falls back to default strategy backtest parameters when local storage is invalid', async () => {
+    window.localStorage.setItem('stock-doctor-backtest-parameters-v1', 'not-json')
+
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+
+    expect(within(backtestPanel).getByLabelText('回测手续费 bps')).toHaveValue(5)
+    expect(within(backtestPanel).getByLabelText('回测滑点 bps')).toHaveValue(10)
+    expect(within(backtestPanel).getByLabelText('回测样本数量')).toHaveValue(8)
+
+    await waitFor(() => {
+      const backtestCalls = vi.mocked(fetch).mock.calls
+        .map((call) => String(call[0]))
+        .filter((url) => url.includes('/backtests/strategy'))
+      expect(backtestCalls.some((url) => url.includes('holding_days=5'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('fee_bps=5'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('slippage_bps=10'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('limit=8'))).toBe(true)
     })
   })
 

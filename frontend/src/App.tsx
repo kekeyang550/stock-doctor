@@ -156,6 +156,22 @@ const hotspotModes = [
   { value: 'momentum', label: '异动' },
 ]
 
+const BACKTEST_PARAMETERS_STORAGE_KEY = 'stock-doctor-backtest-parameters-v1'
+
+type BacktestParameters = {
+  holding_days: number
+  fee_bps: number
+  slippage_bps: number
+  limit: number
+}
+
+const DEFAULT_BACKTEST_PARAMETERS: BacktestParameters = {
+  holding_days: 5,
+  fee_bps: 5,
+  slippage_bps: 10,
+  limit: 8,
+}
+
 export default function App() {
   const [stocks, setStocks] = useState<StockSummary[]>([])
   const [stockSearchResults, setStockSearchResults] = useState<StockSearchResult[]>([])
@@ -196,10 +212,11 @@ export default function App() {
   const [screenerPreset, setScreenerPreset] = useState('strong')
   const [hotspotMode, setHotspotMode] = useState('balanced')
   const [portfolioWeights, setPortfolioWeights] = useState<Record<string, string>>({})
-  const [backtestHoldingDays, setBacktestHoldingDays] = useState(5)
-  const [backtestFeeBps, setBacktestFeeBps] = useState(5)
-  const [backtestSlippageBps, setBacktestSlippageBps] = useState(10)
-  const [backtestLimit, setBacktestLimit] = useState(8)
+  const [storedBacktestParameters] = useState(readStoredBacktestParameters)
+  const [backtestHoldingDays, setBacktestHoldingDays] = useState(storedBacktestParameters.holding_days)
+  const [backtestFeeBps, setBacktestFeeBps] = useState(storedBacktestParameters.fee_bps)
+  const [backtestSlippageBps, setBacktestSlippageBps] = useState(storedBacktestParameters.slippage_bps)
+  const [backtestLimit, setBacktestLimit] = useState(storedBacktestParameters.limit)
   const [selectedSymbol, setSelectedSymbol] = useState('600519')
   const [horizon, setHorizon] = useState('swing')
   const [query, setQuery] = useState('')
@@ -234,6 +251,15 @@ export default function App() {
   const [storageError, setStorageError] = useState<string | null>(null)
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    writeStoredBacktestParameters({
+      holding_days: backtestHoldingDays,
+      fee_bps: backtestFeeBps,
+      slippage_bps: backtestSlippageBps,
+      limit: backtestLimit,
+    })
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps])
 
   const loadStocks = useCallback(async () => {
     const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotActions] = await Promise.all([
@@ -1128,6 +1154,55 @@ function escapeHtml(value: unknown) {
 
 function strategyBacktestPriceSourceLabel(source: unknown) {
   return source === 'historical-kline' ? '历史K线' : '样例趋势'
+}
+
+function readStoredBacktestParameters(): BacktestParameters {
+  if (typeof window === 'undefined') {
+    return DEFAULT_BACKTEST_PARAMETERS
+  }
+
+  try {
+    const raw = window.localStorage.getItem(BACKTEST_PARAMETERS_STORAGE_KEY)
+    if (!raw) {
+      return DEFAULT_BACKTEST_PARAMETERS
+    }
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return DEFAULT_BACKTEST_PARAMETERS
+    }
+    return normalizeBacktestParameters(parsed as Partial<BacktestParameters>)
+  } catch {
+    return DEFAULT_BACKTEST_PARAMETERS
+  }
+}
+
+function writeStoredBacktestParameters(parameters: BacktestParameters) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(BACKTEST_PARAMETERS_STORAGE_KEY, JSON.stringify(normalizeBacktestParameters(parameters)))
+  } catch {
+    // localStorage can be unavailable in restricted browser modes; keep the in-memory state.
+  }
+}
+
+function normalizeBacktestParameters(parameters: Partial<BacktestParameters>): BacktestParameters {
+  return {
+    holding_days: normalizeBacktestNumber(parameters.holding_days, 1, 60, DEFAULT_BACKTEST_PARAMETERS.holding_days),
+    fee_bps: normalizeBacktestNumber(parameters.fee_bps, 0, 100, DEFAULT_BACKTEST_PARAMETERS.fee_bps),
+    slippage_bps: normalizeBacktestNumber(parameters.slippage_bps, 0, 100, DEFAULT_BACKTEST_PARAMETERS.slippage_bps),
+    limit: normalizeBacktestNumber(parameters.limit, 1, 20, DEFAULT_BACKTEST_PARAMETERS.limit),
+  }
+}
+
+function normalizeBacktestNumber(value: unknown, min: number, max: number, fallback: number) {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.min(max, Math.max(min, Math.round(parsed)))
 }
 
 function buildStorageImportPayload(value: unknown): StorageImportPayload {
