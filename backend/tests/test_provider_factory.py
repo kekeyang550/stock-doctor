@@ -306,6 +306,30 @@ def test_akshare_provider_snapshot_and_history_cache_expire_after_ttl():
     assert akshare.history_calls == 3
 
 
+def test_akshare_provider_reports_cache_status_buckets():
+    now = 1000.0
+    akshare = FakeAkshareWithHistory()
+    provider = AkshareMarketDataProvider(ak_module=akshare, cache_ttl_seconds=10, clock=lambda: now)
+
+    cold = provider.get_cache_status()
+    provider.list_stocks()
+    provider.get_snapshot("688002")
+    provider.get_price_history("688002", days=10)
+    warm = provider.get_cache_status()
+    now = 1011.0
+    expired = provider.get_cache_status()
+
+    assert [bucket["key"] for bucket in cold["buckets"]] == ["stock_list", "snapshots", "history"]
+    assert all(bucket["entries"] == 0 for bucket in cold["buckets"])
+    assert {bucket["key"]: bucket["active_entries"] for bucket in warm["buckets"]} == {
+        "stock_list": 1,
+        "snapshots": 1,
+        "history": 1,
+    }
+    assert all(bucket["nearest_expires_in_seconds"] == 10 for bucket in warm["buckets"])
+    assert all(bucket["status"] == "expired" for bucket in expired["buckets"])
+
+
 def test_akshare_provider_warms_watchlist_snapshot_cache(tmp_path):
     store = JsonStateStore(tmp_path / "state.json")
     akshare = FakeAkshareWithHistory()

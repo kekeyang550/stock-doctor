@@ -26,6 +26,7 @@ import type {
   PeerComparison,
   PeerComparisonItem,
   PriceAlert,
+  ProviderCacheBucketStatus,
   RankedDiagnosis,
   ResearchNote,
   ReportRecord,
@@ -241,6 +242,9 @@ export function DataConnectorPanel({
   const latestJob = jobs[0] ?? null
   const usingFallback = health ? health.active_provider === health.fallback_provider : false
   const runtimeConfig = health?.runtime_config
+  const cacheBuckets = health?.cache_status?.buckets ?? []
+  const totalCacheEntries = cacheBuckets.reduce((total, bucket) => total + bucket.entries, 0)
+  const activeCacheEntries = cacheBuckets.reduce((total, bucket) => total + bucket.active_entries, 0)
   return (
     <section className="panel connector-panel">
       <div className="panel-title split-title">
@@ -296,6 +300,21 @@ export function DataConnectorPanel({
               detail="行情缓存有效窗口，超过后应重新刷新。"
               status="unknown"
             />
+            <TrustCard
+              label="缓存命中"
+              value={cacheBuckets.length ? `${activeCacheEntries}/${totalCacheEntries} 有效` : '暂无遥测'}
+              detail={cacheBuckets.length ? `缓存桶 ${cacheBuckets.length} 个，TTL ${health.cache_status?.ttl_seconds ?? runtimeConfig?.cache_ttl_seconds ?? '--'} 秒。` : '当前 provider 未暴露缓存遥测。'}
+              status={cacheSummaryStatus(cacheBuckets)}
+            />
+            {cacheBuckets.map((bucket) => (
+              <TrustCard
+                key={bucket.key}
+                label={bucket.label}
+                value={`${bucket.active_entries}/${bucket.entries} 有效`}
+                detail={cacheBucketDetail(bucket)}
+                status={cacheBucketStatusClass(bucket.status)}
+              />
+            ))}
             <TrustCard
               label="过期阈值"
               value={runtimeConfig ? `${runtimeConfig.freshness_stale_after_minutes} 分钟` : freshness ? `${freshness.stale_after_minutes} 分钟` : '--'}
@@ -369,6 +388,32 @@ function cacheStatusClass(freshness: DataFreshnessStatus) {
   if (freshness.status === 'stale') return 'fallback'
   if (freshness.status === 'expired') return 'failed'
   return 'unknown'
+}
+
+
+
+function cacheSummaryStatus(buckets: ProviderCacheBucketStatus[]) {
+  if (buckets.length === 0) return 'unknown'
+  if (buckets.some((bucket) => bucket.status === 'active' || bucket.status === 'partial')) return 'online'
+  return 'failed'
+}
+
+
+
+function cacheBucketStatusClass(status: ProviderCacheBucketStatus['status']) {
+  if (status === 'active') return 'online'
+  if (status === 'partial') return 'fallback'
+  if (status === 'expired') return 'failed'
+  return 'unknown'
+}
+
+
+
+function cacheBucketDetail(bucket: ProviderCacheBucketStatus) {
+  if (bucket.entries === 0) return '暂无缓存条目。'
+  if (bucket.active_entries === 0) return `全部 ${bucket.entries} 条缓存已过期。`
+  const expiredText = bucket.expired_entries > 0 ? `，${bucket.expired_entries} 条已过期` : ''
+  return `最近 ${bucket.nearest_expires_in_seconds} 秒后过期${expiredText}。`
 }
 
 

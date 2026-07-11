@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from time import monotonic
 from typing import Callable
 
@@ -166,6 +166,17 @@ class AkshareMarketDataProvider:
             if self.get_snapshot(stock.symbol) is not None:
                 warmed += 1
         return warmed
+
+    def get_cache_status(self) -> dict:
+        return {
+            "ttl_seconds": max(0, self._cache_ttl_seconds),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "buckets": [
+                self._cache_bucket_status("stock_list", "股票列表", [self._stock_cache] if self._stock_cache else []),
+                self._cache_bucket_status("snapshots", "行情快照", list(self._snapshot_cache.values())),
+                self._cache_bucket_status("history", "历史行情", list(self._history_rows_cache.values())),
+            ],
+        }
 
     def _load_a_share_list(self) -> list[StockSummary]:
         rows = self._call_stock_rows("stock_zh_a_spot_em")
@@ -497,3 +508,30 @@ class AkshareMarketDataProvider:
         if self._cache_ttl_seconds <= 0:
             return False
         return self._now() - created_at <= self._cache_ttl_seconds
+
+    def _cache_bucket_status(self, key: str, label: str, entries: list[tuple[float, object]]) -> dict:
+        active_ages = [
+            max(0.0, self._cache_ttl_seconds - (self._now() - created_at))
+            for created_at, _value in entries
+            if self._is_cache_fresh(created_at)
+        ]
+        active_entries = len(active_ages)
+        total_entries = len(entries)
+        expired_entries = total_entries - active_entries
+        if total_entries == 0:
+            status = "empty"
+        elif active_entries == total_entries:
+            status = "active"
+        elif active_entries == 0:
+            status = "expired"
+        else:
+            status = "partial"
+        return {
+            "key": key,
+            "label": label,
+            "entries": total_entries,
+            "active_entries": active_entries,
+            "expired_entries": expired_entries,
+            "nearest_expires_in_seconds": int(min(active_ages)) if active_ages else 0,
+            "status": status,
+        }

@@ -45,6 +45,43 @@ class PartialAkshareProvider:
         ]
 
 
+class CacheReportingProvider:
+    def get_data_sources(self):
+        return [
+            {
+                "name": "AKShare",
+                "status": "online",
+                "role": "行情列表和历史行情缓存可用。",
+            },
+        ]
+
+    def get_cache_status(self):
+        return {
+            "ttl_seconds": 300,
+            "generated_at": "2026-07-10T06:00:00Z",
+            "buckets": [
+                {
+                    "key": "stock_list",
+                    "label": "股票列表",
+                    "entries": 1,
+                    "active_entries": 1,
+                    "expired_entries": 0,
+                    "nearest_expires_in_seconds": 240,
+                    "status": "active",
+                },
+                {
+                    "key": "snapshots",
+                    "label": "行情快照",
+                    "entries": 3,
+                    "active_entries": 2,
+                    "expired_entries": 1,
+                    "nearest_expires_in_seconds": 80,
+                    "status": "partial",
+                },
+            ],
+        }
+
+
 def test_data_connector_health_uses_provider_source_status(monkeypatch):
     monkeypatch.setattr(settings, "data_provider", "akshare")
 
@@ -65,6 +102,17 @@ def test_data_connector_health_surfaces_partial_provider_message(monkeypatch):
     assert akshare.status == "online"
     assert "fundamental" in akshare.message
     assert "capital" in akshare.message
+
+
+def test_data_connector_health_surfaces_provider_cache_status(monkeypatch):
+    monkeypatch.setattr(settings, "data_provider", "akshare")
+
+    health = DataConnectorHealthService().build_health(provider=CacheReportingProvider())
+
+    assert health.cache_status is not None
+    assert health.cache_status.ttl_seconds == 300
+    assert [bucket.label for bucket in health.cache_status.buckets] == ["股票列表", "行情快照"]
+    assert health.cache_status.buckets[1].status == "partial"
 
 
 def test_data_connector_health_endpoint():

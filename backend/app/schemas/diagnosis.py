@@ -77,10 +77,27 @@ class DataConnectorRuntimeConfig(BaseModel):
     freshness_stale_after_minutes: int
 
 
+class ProviderCacheBucketStatus(BaseModel):
+    key: str
+    label: str
+    entries: int = Field(ge=0)
+    active_entries: int = Field(ge=0)
+    expired_entries: int = Field(ge=0)
+    nearest_expires_in_seconds: int = Field(ge=0)
+    status: str = Field(pattern="^(empty|active|partial|expired)$")
+
+
+class ProviderCacheStatus(BaseModel):
+    ttl_seconds: int = Field(ge=0)
+    generated_at: str
+    buckets: list[ProviderCacheBucketStatus]
+
+
 class DataConnectorHealth(BaseModel):
     active_provider: str
     fallback_provider: str
     runtime_config: DataConnectorRuntimeConfig
+    cache_status: ProviderCacheStatus | None = None
     connectors: list[DataConnectorStatus]
 
 

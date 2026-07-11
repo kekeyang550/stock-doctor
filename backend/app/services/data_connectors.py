@@ -2,7 +2,12 @@ from datetime import datetime, timezone
 from importlib.util import find_spec
 
 from app.config import settings
-from app.schemas.diagnosis import DataConnectorHealth, DataConnectorRuntimeConfig, DataConnectorStatus
+from app.schemas.diagnosis import (
+    DataConnectorHealth,
+    DataConnectorRuntimeConfig,
+    DataConnectorStatus,
+    ProviderCacheStatus,
+)
 from app.services.providers import MarketDataProvider
 
 
@@ -63,6 +68,7 @@ class DataConnectorHealthService:
                 cache_ttl_seconds=settings.data_cache_ttl_seconds,
                 freshness_stale_after_minutes=settings.data_freshness_stale_after_minutes,
             ),
+            cache_status=self._provider_cache_status(provider),
             connectors=connectors,
         )
 
@@ -78,6 +84,18 @@ class DataConnectorHealthService:
             for source in sources
             if source.get("name") is not None
         }
+
+    def _provider_cache_status(self, provider: MarketDataProvider | None) -> ProviderCacheStatus | None:
+        if provider is None:
+            return None
+        get_cache_status = getattr(provider, "get_cache_status", None)
+        if get_cache_status is None:
+            return None
+        try:
+            payload = get_cache_status()
+        except Exception:
+            return None
+        return ProviderCacheStatus.model_validate(payload)
 
     def _akshare_status(
         self,

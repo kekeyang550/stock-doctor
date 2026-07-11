@@ -82,6 +82,39 @@ const connectorHealth = {
     cache_ttl_seconds: 300,
     freshness_stale_after_minutes: 30,
   },
+  cache_status: {
+    ttl_seconds: 300,
+    generated_at: '2026-07-10T06:00:00Z',
+    buckets: [
+      {
+        key: 'stock_list',
+        label: '股票列表',
+        entries: 1,
+        active_entries: 1,
+        expired_entries: 0,
+        nearest_expires_in_seconds: 240,
+        status: 'active',
+      },
+      {
+        key: 'snapshots',
+        label: '行情快照',
+        entries: 3,
+        active_entries: 2,
+        expired_entries: 1,
+        nearest_expires_in_seconds: 80,
+        status: 'partial',
+      },
+      {
+        key: 'history',
+        label: '历史行情',
+        entries: 1,
+        active_entries: 0,
+        expired_entries: 1,
+        nearest_expires_in_seconds: 0,
+        status: 'expired',
+      },
+    ],
+  },
   connectors: [
     {
       name: 'Mock A股样例库',
@@ -951,6 +984,13 @@ describe('App', () => {
     expect(within(trustPanel).getByText('8 秒')).toBeInTheDocument()
     expect(within(trustPanel).getByText('缓存 TTL')).toBeInTheDocument()
     expect(within(trustPanel).getByText('300 秒')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('缓存命中')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('股票列表')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('1/1 有效')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('行情快照')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('2/3 有效')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('历史行情')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('0/1 有效')).toBeInTheDocument()
     expect(within(trustPanel).getByText('过期阈值')).toBeInTheDocument()
     expect(within(trustPanel).getByText('30 分钟')).toBeInTheDocument()
     expect(within(trustPanel).getAllByText('mock').length).toBeGreaterThan(0)

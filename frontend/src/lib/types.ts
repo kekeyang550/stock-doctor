@@ -53,7 +53,22 @@ export type DataConnectorHealth = {
     cache_ttl_seconds: number
     freshness_stale_after_minutes: number
   }
+  cache_status?: {
+    ttl_seconds: number
+    generated_at: string
+    buckets: ProviderCacheBucketStatus[]
+  } | null
   connectors: DataConnectorStatus[]
+}
+
+export type ProviderCacheBucketStatus = {
+  key: string
+  label: string
+  entries: number
+  active_entries: number
+  expired_entries: number
+  nearest_expires_in_seconds: number
+  status: 'empty' | 'active' | 'partial' | 'expired'
 }
 
 export type DataRefreshJob = {
