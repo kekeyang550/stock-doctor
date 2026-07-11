@@ -1063,7 +1063,10 @@ export default function App() {
 
 function buildResearchReportHtml(payload: Record<string, any>) {
   const diagnosis = payload.diagnosis ?? {}
+  const diagnosisChange = payload.diagnosis_change ?? {}
   const score = diagnosis.score ?? {}
+  const ratingTransition = diagnosisChange.rating_transition ?? null
+  const riskShift = diagnosisChange.risk_shift ?? null
   const portfolioRisk = payload.portfolio_risk ?? {}
   const strategyBacktest = payload.strategy_backtest ?? {}
   const strategyBacktestParameters = payload.strategy_backtest_parameters ?? {}
@@ -1073,6 +1076,9 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const connectorHealth = dataTrust.connector_health ?? {}
   const freshness = dataTrust.freshness ?? {}
   const weightInputs = payload.portfolio_weight_inputs ?? {}
+  const scoreTrend = Array.isArray(diagnosisChange.score_trend) ? diagnosisChange.score_trend : []
+  const changeDrivers = Array.isArray(diagnosisChange.key_drivers) ? diagnosisChange.key_drivers : []
+  const changeItems = Array.isArray(diagnosisChange.changes) ? diagnosisChange.changes : []
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
   const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
@@ -1113,6 +1119,27 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>风险</span><strong>${escapeHtml(score.risk ?? "-")}</strong></div>
       </div>
       <p>${escapeHtml(diagnosis.summary ?? "")}</p>
+    </section>
+
+    <section>
+      <h2>诊断变化</h2>
+      <div class="grid">
+        <div class="metric"><span>状态</span><strong>${escapeHtml(diagnosisChange.status ?? "-")}</strong></div>
+        <div class="metric"><span>综合变化</span><strong>${escapeHtml(diagnosisChange.score_delta ?? 0)}</strong></div>
+        <div class="metric"><span>技术变化</span><strong>${escapeHtml(diagnosisChange.technical_delta ?? 0)}</strong></div>
+        <div class="metric"><span>风险变化</span><strong>${escapeHtml(diagnosisChange.risk_delta ?? 0)}</strong></div>
+      </div>
+      <p>${escapeHtml(diagnosisChange.summary ?? "")}</p>
+      <h3>趋势对比</h3>
+      ${scoreTrend.map((point: any) => `<div class="row"><strong>${escapeHtml(point.label)} · ${escapeHtml(point.rating)}</strong><small>综合 ${escapeHtml(point.total)} · 技术 ${escapeHtml(point.technical)} · 估值 ${escapeHtml(point.valuation)} · 资金 ${escapeHtml(point.capital)} · 风险 ${escapeHtml(point.risk)} · ${escapeHtml(point.generated_at)}</small></div>`).join("") || "<p>暂无趋势对比</p>"}
+      <h3>评级轨迹</h3>
+      <p>${ratingTransition ? `${escapeHtml(ratingTransition.previous ? `${ratingTransition.previous} -> ${ratingTransition.current}` : ratingTransition.current)}：${escapeHtml(ratingTransition.detail)}` : "暂无评级轨迹"}</p>
+      <h3>风险变化</h3>
+      <p>${riskShift ? `${escapeHtml(riskShift.label)}：${escapeHtml(riskShift.detail)}` : "暂无风险变化"}</p>
+      <h3>关键驱动</h3>
+      ${changeDrivers.map((driver: any) => `<div class="row"><strong>${escapeHtml(driver.label)}</strong><small>${escapeHtml(driver.direction)} · ${escapeHtml(driver.delta)} · ${escapeHtml(driver.detail)}</small></div>`).join("") || "<p>暂无关键驱动</p>"}
+      <h3>变化明细</h3>
+      ${changeItems.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.direction)} · ${escapeHtml(item.detail)}</small></div>`).join("") || "<p>暂无变化明细</p>"}
     </section>
 
     <section>
