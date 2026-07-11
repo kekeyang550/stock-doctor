@@ -13,6 +13,7 @@ def test_data_connector_health_reports_mock_and_planned_sources():
 
     assert health.active_provider in {"mock", "akshare"}
     assert health.fallback_provider == "mock"
+    assert health.cache_status is None
     assert health.runtime_config.request_timeout_seconds == settings.data_request_timeout_seconds
     assert health.runtime_config.cache_ttl_seconds == settings.data_cache_ttl_seconds
     assert health.runtime_config.freshness_stale_after_minutes == settings.data_freshness_stale_after_minutes
@@ -124,5 +125,7 @@ def test_data_connector_health_endpoint():
     assert payload["runtime_config"]["request_timeout_seconds"] == settings.data_request_timeout_seconds
     assert payload["runtime_config"]["cache_ttl_seconds"] == settings.data_cache_ttl_seconds
     assert payload["runtime_config"]["freshness_stale_after_minutes"] == settings.data_freshness_stale_after_minutes
+    assert payload["cache_status"]["ttl_seconds"] == settings.data_cache_ttl_seconds
+    assert [bucket["label"] for bucket in payload["cache_status"]["buckets"]] == ["股票列表", "行情快照", "历史行情"]
     assert any(item["name"] == "AKShare" for item in payload["connectors"])
     assert all("next_action" in item for item in payload["connectors"])

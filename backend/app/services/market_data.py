@@ -1,5 +1,6 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
+from app.config import settings
 from app.schemas.diagnosis import (
     CapitalSnapshot,
     FundamentalSnapshot,
@@ -94,8 +95,15 @@ class MockMarketDataProvider:
                 risk=RiskSnapshot(pledge_ratio=1.2, unlock_days=None, st_flag=False, limit_up_streak=0),
             ),
         }
+        self._history_symbols: set[str] = set()
+        self._cache_stats = {
+            "stock_list": {"hit": 0, "miss": 0},
+            "snapshots": {"hit": 0, "miss": 0},
+            "history": {"hit": 0, "miss": 0},
+        }
 
     def list_stocks(self) -> list[StockSummary]:
+        self._record_cache_hit("stock_list")
         return [
             StockSummary(
                 symbol=s.symbol,
@@ -163,12 +171,20 @@ class MockMarketDataProvider:
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
         normalized = symbol.strip().upper()
-        return self._snapshots.get(normalized)
+        snapshot = self._snapshots.get(normalized)
+        if snapshot is None:
+            self._record_cache_miss("snapshots")
+            return None
+        self._record_cache_hit("snapshots")
+        return snapshot
 
     def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
         snapshot = self.get_snapshot(symbol)
         if snapshot is None:
+            self._record_cache_miss("history")
             return []
+        self._history_symbols.add(snapshot.symbol)
+        self._record_cache_hit("history")
         days = max(2, min(days, 240))
         end_date = date.fromisoformat(snapshot.as_of)
         trend_bias = 1 if snapshot.last_price >= snapshot.technical.ma20 else -1
@@ -194,3 +210,37 @@ class MockMarketDataProvider:
     def warm_cache(self, scope: str = "all") -> int:
         stocks = self.get_watchlist() if scope == "watchlist" else self.list_stocks()
         return len(stocks)
+
+    def get_cache_status(self) -> dict:
+        return {
+            "ttl_seconds": settings.data_cache_ttl_seconds,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "buckets": [
+                self._cache_bucket_status("stock_list", "股票列表", 1),
+                self._cache_bucket_status("snapshots", "行情快照", len(self._snapshots)),
+                self._cache_bucket_status("history", "历史行情", len(self._history_symbols)),
+            ],
+        }
+
+    def _cache_bucket_status(self, key: str, label: str, entries: int) -> dict:
+        stats = self._cache_stats[key]
+        total_lookups = stats["hit"] + stats["miss"]
+        active_entries = entries
+        return {
+            "key": key,
+            "label": label,
+            "entries": entries,
+            "active_entries": active_entries,
+            "expired_entries": 0,
+            "nearest_expires_in_seconds": settings.data_cache_ttl_seconds if entries else 0,
+            "hit_count": stats["hit"],
+            "miss_count": stats["miss"],
+            "hit_rate_pct": round((stats["hit"] / total_lookups) * 100, 1) if total_lookups else 0,
+            "status": "active" if entries else "empty",
+        }
+
+    def _record_cache_hit(self, key: str) -> None:
+        self._cache_stats[key]["hit"] += 1
+
+    def _record_cache_miss(self, key: str) -> None:
+        self._cache_stats[key]["miss"] += 1

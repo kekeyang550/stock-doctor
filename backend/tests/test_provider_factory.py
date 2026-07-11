@@ -243,6 +243,39 @@ def test_mock_provider_returns_deterministic_price_history():
     assert all(bar.close > 0 for bar in bars)
 
 
+def test_mock_provider_reports_cache_status_for_default_data():
+    provider = MockMarketDataProvider()
+
+    cold = provider.get_cache_status()
+    provider.list_stocks()
+    provider.get_snapshot("600519")
+    provider.get_snapshot("NOPE")
+    provider.get_price_history("600519", days=10)
+    warm = provider.get_cache_status()
+
+    assert [bucket["key"] for bucket in cold["buckets"]] == ["stock_list", "snapshots", "history"]
+    assert {bucket["key"]: bucket["entries"] for bucket in warm["buckets"]} == {
+        "stock_list": 1,
+        "snapshots": 4,
+        "history": 1,
+    }
+    assert {bucket["key"]: bucket["hit_count"] for bucket in warm["buckets"]} == {
+        "stock_list": 1,
+        "snapshots": 2,
+        "history": 1,
+    }
+    assert {bucket["key"]: bucket["miss_count"] for bucket in warm["buckets"]} == {
+        "stock_list": 0,
+        "snapshots": 1,
+        "history": 0,
+    }
+    assert {bucket["key"]: bucket["hit_rate_pct"] for bucket in warm["buckets"]} == {
+        "stock_list": 100,
+        "snapshots": 66.7,
+        "history": 100,
+    }
+
+
 def test_akshare_provider_exposes_price_history_rows():
     akshare = FakeAkshareWithHistory()
     provider = AkshareMarketDataProvider(ak_module=akshare)
