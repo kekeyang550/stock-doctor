@@ -1027,6 +1027,44 @@ describe('App', () => {
     expect(within(history).getByText(/86 分/)).toBeInTheDocument()
   })
 
+  it('keeps diagnosis change panel visible when legacy change data omits enhanced fields', async () => {
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    const legacyDiagnosisChange = {
+      symbol: diagnosisChange.symbol,
+      name: diagnosisChange.name,
+      status: diagnosisChange.status,
+      current_generated_at: diagnosisChange.current_generated_at,
+      previous_generated_at: diagnosisChange.previous_generated_at,
+      score_delta: diagnosisChange.score_delta,
+      technical_delta: diagnosisChange.technical_delta,
+      valuation_delta: diagnosisChange.valuation_delta,
+      capital_delta: diagnosisChange.capital_delta,
+      risk_delta: diagnosisChange.risk_delta,
+      rating_changed: diagnosisChange.rating_changed,
+      previous_rating: diagnosisChange.previous_rating,
+      current_rating: diagnosisChange.current_rating,
+      summary: diagnosisChange.summary,
+      changes: diagnosisChange.changes,
+    }
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      if (String(url).includes('/diagnosis-change')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(legacyDiagnosisChange) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const changePanel = await waitFor(() => {
+      const panel = screen.getByRole('heading', { name: '诊断变化' }).closest('section')
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    expect(within(changePanel).getByText('复盘基线')).toBeInTheDocument()
+    expect(within(changePanel).getByText('暂无趋势对比数据')).toBeInTheDocument()
+    expect(within(changePanel).getByText('暂无关键驱动数据')).toBeInTheDocument()
+  })
+
   it('shows a diagnosis failure state when market diagnosis times out', async () => {
     const defaultFetch = vi.mocked(fetch).getMockImplementation()!
     vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {

@@ -389,6 +389,12 @@ function qualityStatusLabel(status: DataQualityReport['status']) {
 
 
 function DiagnosisChangePanel({ report }: { report: DiagnosisChangeReport | null }) {
+  const scoreTrend = Array.isArray(report?.score_trend) ? report.score_trend : []
+  const keyDrivers = Array.isArray(report?.key_drivers) ? report.key_drivers : []
+  const changes = Array.isArray(report?.changes) ? report.changes : []
+  const ratingTransition = report?.rating_transition
+  const riskShift = report?.risk_shift
+
   return (
     <section className="panel diagnosis-change-panel">
       <div className="panel-title split-title">
@@ -419,44 +425,62 @@ function DiagnosisChangePanel({ report }: { report: DiagnosisChangeReport | null
           </div>
           <div className="change-trend-block">
             <div className="mini-section-title">趋势对比</div>
-            <div className="change-trend-strip">
-              {report.score_trend.map((point) => (
+            {scoreTrend.length ? (
+              <div className="change-trend-strip">
+                {scoreTrend.map((point) => (
                 <article key={`${point.label}-${point.generated_at}`}>
                   <strong>{point.label} · {point.rating}</strong>
                   <span>综合 {point.total} / 风险 {point.risk}</span>
                   <small>{formatReportTime(point.generated_at)}</small>
                 </article>
-              ))}
+                ))}
+              </div>
+            ) : (
+              <p className="empty-text">暂无趋势对比数据</p>
+            )}
+          </div>
+          {ratingTransition || riskShift ? (
+            <div className="change-insight-grid">
+              {ratingTransition ? (
+                <article className="rating-transition">
+                  <small>评级轨迹</small>
+                  <strong>
+                    {ratingTransition.previous ? `${ratingTransition.previous} -> ${ratingTransition.current}` : ratingTransition.current}
+                  </strong>
+                  <span>{ratingTransition.detail}</span>
+                </article>
+              ) : null}
+              {riskShift ? (
+                <article className={`risk-shift ${riskShift.direction}`}>
+                  <small>风险变化</small>
+                  <strong>{riskShift.label}</strong>
+                  <span>{riskShift.detail}</span>
+                </article>
+              ) : null}
             </div>
-          </div>
-          <div className="change-insight-grid">
-            <article className="rating-transition">
-              <small>评级轨迹</small>
-              <strong>
-                {report.rating_transition.previous ? `${report.rating_transition.previous} -> ${report.rating_transition.current}` : report.rating_transition.current}
-              </strong>
-              <span>{report.rating_transition.detail}</span>
-            </article>
-            <article className={`risk-shift ${report.risk_shift.direction}`}>
-              <small>风险变化</small>
-              <strong>{report.risk_shift.label}</strong>
-              <span>{report.risk_shift.detail}</span>
-            </article>
-          </div>
+          ) : null}
           <div className="change-driver-list">
             <div className="mini-section-title">关键驱动</div>
-            {report.key_drivers.map((driver) => (
-              <article key={driver.metric} className={`change-driver ${driver.direction}`}>
-                <strong>{driver.label}</strong>
-                <em>{formatDelta(driver.delta)}</em>
-                <span>{driver.detail}</span>
-              </article>
-            ))}
+            {keyDrivers.length ? (
+              keyDrivers.map((driver) => (
+                <article key={driver.metric} className={`change-driver ${driver.direction}`}>
+                  <strong>{driver.label}</strong>
+                  <em>{formatDelta(driver.delta)}</em>
+                  <span>{driver.detail}</span>
+                </article>
+              ))
+            ) : (
+              <p className="empty-text">暂无关键驱动数据</p>
+            )}
           </div>
           <div className="change-list">
-            {report.changes.map((item) => (
-              <ChangeItemRow key={item.key} item={item} />
-            ))}
+            {changes.length ? (
+              changes.map((item) => (
+                <ChangeItemRow key={item.key} item={item} />
+              ))
+            ) : (
+              <p className="empty-text">暂无诊断变化明细</p>
+            )}
           </div>
         </>
       ) : (
