@@ -554,6 +554,22 @@ export type PortfolioRiskDistribution = {
   low_count: number
 }
 
+export type PortfolioIndustryExposure = {
+  industry: string
+  stock_count: number
+  weight_pct: number
+  risk_score: number
+}
+
+export type PortfolioRiskContribution = {
+  symbol: string
+  name: string
+  industry: string
+  weight_pct: number
+  risk_score: number
+  contribution_score: number
+}
+
 export type PortfolioRiskDriver = {
   symbol: string
   name: string
@@ -585,7 +601,9 @@ export type PortfolioRiskReport = {
   risk_label: string
   summary: string
   concentration: PortfolioRiskConcentration
+  industry_exposures?: PortfolioIndustryExposure[]
   distribution: PortfolioRiskDistribution
+  risk_contributions?: PortfolioRiskContribution[]
   top_drivers: PortfolioRiskDriver[]
   suggestions: string[]
   exposures: RiskExposureItem[]

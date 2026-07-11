@@ -4,6 +4,8 @@ from app.schemas.diagnosis import (
     AlertItem,
     DiagnosisResponse,
     PortfolioRiskConcentration,
+    PortfolioIndustryExposure,
+    PortfolioRiskContribution,
     PortfolioRiskDistribution,
     PortfolioRiskDriver,
     PortfolioRiskReport,
@@ -44,7 +46,9 @@ class PortfolioRiskService:
                     top_industry_ratio=0,
                     industry_count=0,
                 ),
+                industry_exposures=[],
                 distribution=PortfolioRiskDistribution(high_count=0, medium_count=0, low_count=0),
+                risk_contributions=[],
                 top_drivers=[],
                 suggestions=["先添加自选股，再查看组合风险。"],
                 exposures=exposures,
@@ -56,6 +60,7 @@ class PortfolioRiskService:
         average_total = round(sum(item.score.total * normalized_weights.get(item.symbol, 0) for item in diagnoses), 1)
         average_risk = round(sum(item.score.risk * normalized_weights.get(item.symbol, 0) for item in diagnoses), 1)
         concentration = self._concentration(snapshots, normalized_weights)
+        industry_exposures = self._industry_exposures(snapshots, diagnosis_by_symbol, normalized_weights)
         distribution = self._distribution(diagnoses)
         pressure = self._pressure_score(
             average_risk_score=average_risk,
@@ -66,6 +71,7 @@ class PortfolioRiskService:
         )
         risk_level, risk_label = self._risk_level(pressure)
         drivers = self._drivers(snapshots, diagnosis_by_symbol, alerts, raw_weights)
+        risk_contributions = self._risk_contributions(snapshots, diagnosis_by_symbol, normalized_weights, raw_weights)
         suggestions = self._suggestions(pressure, concentration, distribution, drivers)
         positions = self._positions(snapshots, raw_weights)
 
@@ -82,7 +88,9 @@ class PortfolioRiskService:
             risk_label=risk_label,
             summary=f"{stock_count} 只标的组合风险为{risk_label}，行业集中度最高为 {concentration.top_industry}。",
             concentration=concentration,
+            industry_exposures=industry_exposures,
             distribution=distribution,
+            risk_contributions=risk_contributions,
             top_drivers=drivers,
             suggestions=suggestions,
             exposures=exposures,
@@ -136,6 +144,33 @@ class PortfolioRiskService:
             top_industry_ratio=round(top_ratio, 4),
             industry_count=len(industry_counts),
         )
+
+    def _industry_exposures(
+        self,
+        snapshots: list[StockSnapshot],
+        diagnosis_by_symbol: dict[str, DiagnosisResponse],
+        normalized_weights: dict[str, float],
+    ) -> list[PortfolioIndustryExposure]:
+        industry_counts = Counter(snapshot.industry for snapshot in snapshots)
+        industry_weights: dict[str, float] = defaultdict(float)
+        industry_risk_pressure: dict[str, float] = defaultdict(float)
+        for snapshot in snapshots:
+            weight = normalized_weights.get(snapshot.symbol, 0)
+            diagnosis = diagnosis_by_symbol.get(snapshot.symbol)
+            risk_pressure = 100 - diagnosis.score.risk if diagnosis is not None else 0
+            industry_weights[snapshot.industry] += weight
+            industry_risk_pressure[snapshot.industry] += weight * risk_pressure
+
+        exposures = [
+            PortfolioIndustryExposure(
+                industry=industry,
+                stock_count=industry_counts[industry],
+                weight_pct=round(weight * 100, 2),
+                risk_score=round(industry_risk_pressure[industry], 1),
+            )
+            for industry, weight in industry_weights.items()
+        ]
+        return sorted(exposures, key=lambda item: (item.weight_pct, item.risk_score), reverse=True)
 
     def _distribution(self, diagnoses: list[DiagnosisResponse]) -> PortfolioRiskDistribution:
         high_count = len([item for item in diagnoses if item.score.risk < 60])
@@ -197,6 +232,32 @@ class PortfolioRiskService:
             )
 
         return sorted(drivers, key=lambda item: (item.risk_score, -item.alert_count, item.total_score))[:3]
+
+    def _risk_contributions(
+        self,
+        snapshots: list[StockSnapshot],
+        diagnosis_by_symbol: dict[str, DiagnosisResponse],
+        normalized_weights: dict[str, float],
+        raw_weights: dict[str, float],
+    ) -> list[PortfolioRiskContribution]:
+        contributions: list[PortfolioRiskContribution] = []
+        for snapshot in snapshots:
+            diagnosis = diagnosis_by_symbol.get(snapshot.symbol)
+            if diagnosis is None:
+                continue
+            risk_pressure = max(0, 100 - diagnosis.score.risk)
+            contribution_score = round(risk_pressure * normalized_weights.get(snapshot.symbol, 0), 1)
+            contributions.append(
+                PortfolioRiskContribution(
+                    symbol=snapshot.symbol,
+                    name=snapshot.name,
+                    industry=snapshot.industry,
+                    weight_pct=raw_weights.get(snapshot.symbol, 0),
+                    risk_score=diagnosis.score.risk,
+                    contribution_score=contribution_score,
+                )
+            )
+        return sorted(contributions, key=lambda item: item.contribution_score, reverse=True)
 
     def _suggestions(
         self,

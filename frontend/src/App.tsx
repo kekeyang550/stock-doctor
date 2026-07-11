@@ -1082,6 +1082,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const changeDrivers = Array.isArray(diagnosisChange.key_drivers) ? diagnosisChange.key_drivers : []
   const changeItems = Array.isArray(diagnosisChange.changes) ? diagnosisChange.changes : []
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
+  const industryExposures = Array.isArray(portfolioRisk.industry_exposures) ? portfolioRisk.industry_exposures : []
+  const riskContributions = Array.isArray(portfolioRisk.risk_contributions) ? portfolioRisk.risk_contributions : []
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
   const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
   const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
@@ -1156,6 +1158,10 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <p>${escapeHtml(portfolioRisk.summary ?? "")}</p>
       <h3>模拟仓位</h3>
       ${positions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · ${escapeHtml(item.weight_pct)}%</small></div>`).join("") || "<p>暂无模拟仓位</p>"}
+      <h3>行业暴露</h3>
+      ${industryExposures.map((item: any) => `<div class="row"><strong>${escapeHtml(item.industry)}</strong><small>权重 ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.stock_count)} 只 · 风险压力 ${escapeHtml(item.risk_score)}</small></div>`).join("") || "<p>暂无行业暴露</p>"}
+      <h3>风险贡献</h3>
+      ${riskContributions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · 权重 ${escapeHtml(item.weight_pct)}% · 风险分 ${escapeHtml(item.risk_score)} · 贡献 ${escapeHtml(item.contribution_score)}</small></div>`).join("") || "<p>暂无风险贡献</p>"}
       <p>输入权重：<code>${escapeHtml(JSON.stringify(weightInputs))}</code></p>
     </section>
 

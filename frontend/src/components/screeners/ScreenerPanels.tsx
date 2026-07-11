@@ -300,6 +300,8 @@ export function RiskExposurePanel({
   onSelect: (symbol: string) => void
 }) {
   const items = report?.exposures ?? []
+  const industryExposures = report?.industry_exposures ?? []
+  const riskContributions = report?.risk_contributions ?? []
   const positions = report?.positions.length
     ? report.positions
     : watchlist.map((stock) => ({ symbol: stock.symbol, name: stock.name, industry: stock.industry, weight_pct: 0 }))
@@ -378,6 +380,22 @@ export function RiskExposurePanel({
               ))}
             </div>
           </div>
+          {industryExposures.length ? (
+            <div className="portfolio-suggestions">
+              <strong>行业暴露</strong>
+              {industryExposures.slice(0, 4).map((item) => (
+                <span key={item.industry}>{item.industry} {formatWeightPercent(item.weight_pct)} · {item.stock_count} 只 · 风险压力 {item.risk_score.toFixed(1)}</span>
+              ))}
+            </div>
+          ) : null}
+          {riskContributions.length ? (
+            <div className="portfolio-suggestions">
+              <strong>风险贡献</strong>
+              {riskContributions.slice(0, 4).map((item) => (
+                <span key={item.symbol}>{item.name} · {item.industry} · 权重 {formatWeightPercent(item.weight_pct)} · 贡献 {item.contribution_score.toFixed(1)}</span>
+              ))}
+            </div>
+          ) : null}
           {report.suggestions.length ? (
             <div className="portfolio-suggestions">
               {report.suggestions.map((suggestion) => (
@@ -421,6 +439,11 @@ function formatPercent(value: number) {
 function formatWeightInput(value: number) {
   if (!Number.isFinite(value) || value <= 0) return ''
   return String(Number(value.toFixed(2)))
+}
+
+function formatWeightPercent(value: number) {
+  if (!Number.isFinite(value)) return '--'
+  return `${value.toFixed(1)}%`
 }
 
 

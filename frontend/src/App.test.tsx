@@ -495,6 +495,11 @@ const portfolioRisk = {
     top_industry_ratio: 0.3333,
     industry_count: 3,
   },
+  industry_exposures: [
+    { industry: '白酒', stock_count: 1, weight_pct: 33.33, risk_score: 18.4 },
+    { industry: '汽车整车', stock_count: 1, weight_pct: 33.33, risk_score: 23.1 },
+    { industry: '股份制银行', stock_count: 1, weight_pct: 33.33, risk_score: 15.2 },
+  ],
   distribution: {
     high_count: 1,
     medium_count: 1,
@@ -511,6 +516,11 @@ const portfolioRisk = {
       primary_risk: '临近解禁窗口',
       position_weight_pct: 33.33,
     },
+  ],
+  risk_contributions: [
+    { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 33.33, risk_score: 58, contribution_score: 14 },
+    { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 33.33, risk_score: 82, contribution_score: 6 },
+    { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 33.33, risk_score: 83, contribution_score: 5.7 },
   ],
   suggestions: [
     '优先复核 比亚迪：临近解禁窗口',
@@ -1179,8 +1189,13 @@ describe('App', () => {
     expect(within(riskPanel).getAllByText('中等风险').length).toBeGreaterThan(0)
     expect(within(riskPanel).getByText('行业集中')).toBeInTheDocument()
     expect(riskPanel).toHaveTextContent('白酒 33.3%')
+    expect(within(riskPanel).getByText('行业暴露')).toBeInTheDocument()
+    expect(riskPanel).toHaveTextContent('汽车整车 33.3%')
     expect(within(riskPanel).getByText('风险分布')).toBeInTheDocument()
     expect(riskPanel).toHaveTextContent('高 1 / 中 1 / 低 1')
+    expect(within(riskPanel).getByText('风险贡献')).toBeInTheDocument()
+    expect(riskPanel).toHaveTextContent('比亚迪 · 汽车整车')
+    expect(riskPanel).toHaveTextContent('贡献 14.0')
     expect(within(riskPanel).getByText('优先复核 比亚迪：临近解禁窗口')).toBeInTheDocument()
     expect(within(riskPanel).getByText('事件')).toBeInTheDocument()
     expect(within(riskPanel).getByText('临近解禁窗口')).toBeInTheDocument()
@@ -1841,6 +1856,11 @@ describe('App', () => {
     expect(html).toContain('关键驱动')
     expect(html).toContain('当前诊断已作为后续对比基线。')
     expect(html).toContain('组合风险')
+    expect(html).toContain('行业暴露')
+    expect(html).toContain('汽车整车 · 权重 33.33%')
+    expect(html).toContain('风险贡献')
+    expect(html).toContain('<strong>比亚迪</strong>')
+    expect(html).toContain('002594 · 汽车整车 · 权重 33.33% · 风险分 58 · 贡献 14')
     expect(html).toContain('策略回测')
     expect(html).toContain('历史K线')
     expect(html).toContain('历史样本')

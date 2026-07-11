@@ -42,8 +42,12 @@ def test_portfolio_risk_report_summarizes_watchlist():
     assert report.risk_level in {"low", "medium", "high"}
     assert report.concentration.top_industry
     assert report.concentration.top_industry_ratio > 0
+    assert report.industry_exposures
+    assert report.industry_exposures[0].weight_pct > 0
     assert report.distribution.high_count + report.distribution.medium_count + report.distribution.low_count == 3
     assert report.top_drivers
+    assert report.risk_contributions
+    assert report.risk_contributions[0].contribution_score >= report.risk_contributions[-1].contribution_score
     assert report.suggestions
     assert report.exposures == exposures
 
@@ -85,4 +89,9 @@ def test_portfolio_risk_report_supports_custom_position_weights():
     assert report.positions[2].weight_pct == 0
     assert report.concentration.top_industry == "白酒"
     assert report.concentration.top_industry_ratio == 0.8
+    assert report.industry_exposures[0].industry == "白酒"
+    assert report.industry_exposures[0].weight_pct == 80
     assert report.top_drivers[0].position_weight_pct >= 0
+    maotai_contribution = next(item for item in report.risk_contributions if item.symbol == "600519")
+    assert maotai_contribution.weight_pct == 80
+    assert maotai_contribution.contribution_score > 0

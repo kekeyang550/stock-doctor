@@ -592,6 +592,22 @@ class PortfolioRiskDistribution(BaseModel):
     low_count: int
 
 
+class PortfolioIndustryExposure(BaseModel):
+    industry: str
+    stock_count: int
+    weight_pct: float
+    risk_score: float
+
+
+class PortfolioRiskContribution(BaseModel):
+    symbol: str
+    name: str
+    industry: str
+    weight_pct: float
+    risk_score: int
+    contribution_score: float
+
+
 class PortfolioRiskDriver(BaseModel):
     symbol: str
     name: str
@@ -623,7 +639,9 @@ class PortfolioRiskReport(BaseModel):
     risk_label: str
     summary: str
     concentration: PortfolioRiskConcentration
+    industry_exposures: list[PortfolioIndustryExposure] = Field(default_factory=list)
     distribution: PortfolioRiskDistribution
+    risk_contributions: list[PortfolioRiskContribution] = Field(default_factory=list)
     top_drivers: list[PortfolioRiskDriver]
     suggestions: list[str]
     exposures: list[RiskExposureItem]
