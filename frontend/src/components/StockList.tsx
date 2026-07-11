@@ -7,6 +7,7 @@ type StockListProps = {
   watchlist: StockSummary[]
   selectedSymbol: string
   query: string
+  addingWatchlistSymbol: string | null
   onQueryChange: (query: string) => void
   onSelect: (symbol: string) => void
   onAddToWatchlist: (symbol: string) => void
@@ -18,6 +19,7 @@ export function StockList({
   watchlist,
   selectedSymbol,
   query,
+  addingWatchlistSymbol,
   onQueryChange,
   onSelect,
   onAddToWatchlist,
@@ -45,32 +47,37 @@ export function StockList({
         <h2>搜索结果</h2>
         <div className="search-results">
           {searchResults.length ? (
-            searchResults.map((stock) => (
-              <article key={stock.symbol} className={stock.symbol === selectedSymbol ? 'search-result active' : 'search-result'}>
-                <button type="button" onClick={() => onSelect(stock.symbol)}>
-                  <strong>{stock.name}</strong>
-                  <small>{stock.symbol} · {stock.industry} · {stock.match_reason}</small>
-                  <span className={`search-quality ${stock.quality_status}`}>
-                    {searchQualityLabel(stock)}
-                  </span>
-                </button>
-                {stock.in_watchlist ? (
-                  <em>已自选</em>
-                ) : !stock.diagnosable ? (
-                  <em>待接快照</em>
-                ) : (
-                  <button
-                    type="button"
-                    className="search-add"
-                    onClick={() => onAddToWatchlist(stock.symbol)}
-                    title="加入自选"
-                    aria-label={`加入自选 ${stock.name}`}
-                  >
-                    <Plus size={15} />
+            searchResults.map((stock) => {
+              const adding = stock.symbol === addingWatchlistSymbol
+
+              return (
+                <article key={stock.symbol} className={stock.symbol === selectedSymbol ? 'search-result active' : 'search-result'}>
+                  <button type="button" onClick={() => onSelect(stock.symbol)}>
+                    <strong>{stock.name}</strong>
+                    <small>{stock.symbol} · {stock.industry} · {stock.match_reason}</small>
+                    <span className={`search-quality ${stock.quality_status}`}>
+                      {searchQualityLabel(stock)}
+                    </span>
                   </button>
-                )}
-              </article>
-            ))
+                  {stock.in_watchlist ? (
+                    <em>已自选</em>
+                  ) : !stock.diagnosable ? (
+                    <em>待接快照</em>
+                  ) : (
+                    <button
+                      type="button"
+                      className="search-add"
+                      onClick={() => onAddToWatchlist(stock.symbol)}
+                      title={adding ? '加入中' : '加入自选'}
+                      aria-label={`${adding ? '加入中' : '加入自选'} ${stock.name}`}
+                      disabled={adding}
+                    >
+                      <Plus size={15} />
+                    </button>
+                  )}
+                </article>
+              )
+            })
           ) : (
             <p>暂无匹配标的</p>
           )}

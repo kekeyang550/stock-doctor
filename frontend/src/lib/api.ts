@@ -18,6 +18,7 @@ import type {
   MarketOverview,
   MomentumSignalItem,
   PeerComparison,
+  PortfolioRiskReport,
   PriceAlert,
   RankedDiagnosis,
   ResearchNote,
@@ -28,6 +29,8 @@ import type {
   ScreenCandidate,
   StockSearchResult,
   StockSummary,
+  StrategyBacktestComparison,
+  StrategyBacktestReport,
   StorageExport,
   StorageImportPayload,
   StorageImportPreview,
@@ -300,12 +303,32 @@ export function fetchScreener(preset: string, horizon: string): Promise<ScreenCa
   return getJson<ScreenCandidate[]>(`/api/v1/screeners/${preset}?horizon=${horizon}&limit=8`)
 }
 
+export function fetchStrategyBacktest(preset: string, horizon: string, holdingDays = 5): Promise<StrategyBacktestReport> {
+  return getJson<StrategyBacktestReport>(`/api/v1/backtests/strategy?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=8`)
+}
+
+export function fetchStrategyBacktestComparison(preset: string, horizon: string): Promise<StrategyBacktestComparison> {
+  return getJson<StrategyBacktestComparison>(`/api/v1/backtests/strategy/periods?preset=${preset}&horizon=${horizon}&periods=3,5,10,20&limit=8`)
+}
+
 export function fetchAlerts(horizon: string, scope = 'watchlist'): Promise<AlertItem[]> {
   return getJson<AlertItem[]>(`/api/v1/alerts?horizon=${horizon}&scope=${scope}&limit=12`)
 }
 
 export function fetchRiskExposure(horizon: string, scope = 'watchlist'): Promise<RiskExposureItem[]> {
   return getJson<RiskExposureItem[]>(`/api/v1/risk/exposure?horizon=${horizon}&scope=${scope}`)
+}
+
+export function fetchPortfolioRisk(horizon: string, scope = 'watchlist', weights?: Record<string, string | number>): Promise<PortfolioRiskReport> {
+  const params = new URLSearchParams({ horizon, scope })
+  const weightPairs = Object.entries(weights ?? {})
+    .map(([symbol, value]) => [symbol, Number(value)] as const)
+    .filter(([, value]) => Number.isFinite(value) && value > 0)
+    .map(([symbol, value]) => `${symbol}:${value}`)
+  if (weightPairs.length) {
+    params.set('weights', weightPairs.join(','))
+  }
+  return getJson<PortfolioRiskReport>(`/api/v1/risk/portfolio?${params.toString()}`)
 }
 
 export function fetchTimeline(horizon: string, scope = 'watchlist'): Promise<TimelineEvent[]> {

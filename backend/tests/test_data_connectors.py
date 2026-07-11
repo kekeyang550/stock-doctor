@@ -30,6 +30,18 @@ class FallbackAkshareProvider:
         ]
 
 
+class PartialAkshareProvider:
+    def get_data_sources(self):
+        return [
+            {
+                "name": "AKShare",
+                "status": "online",
+                "role": "行情可用；fundamental、capital 使用保守估算。",
+            },
+            {"name": "Mock A股样例库", "status": "fallback", "role": "稳定回退"},
+        ]
+
+
 def test_data_connector_health_uses_provider_source_status(monkeypatch):
     monkeypatch.setattr(settings, "data_provider", "akshare")
 
@@ -39,6 +51,17 @@ def test_data_connector_health_uses_provider_source_status(monkeypatch):
     assert akshare.status == "fallback"
     assert "network unavailable" in akshare.message
     assert "确认网络" in akshare.next_action
+
+
+def test_data_connector_health_surfaces_partial_provider_message(monkeypatch):
+    monkeypatch.setattr(settings, "data_provider", "akshare")
+
+    health = DataConnectorHealthService().build_health(provider=PartialAkshareProvider())
+    akshare = next(connector for connector in health.connectors if connector.name == "AKShare")
+
+    assert akshare.status == "online"
+    assert "fundamental" in akshare.message
+    assert "capital" in akshare.message
 
 
 def test_data_connector_health_endpoint():

@@ -1,0 +1,154 @@
+﻿@media (max-width: 1120px) {
+  .diagnosis-layout {
+    grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+  }
+
+  .evidence-panel {
+    grid-column: 1 / -1;
+  }
+
+  .source-panel {
+    grid-column: 1 / -1;
+  }
+
+  .peer-panel {
+    grid-column: 1 / -1;
+  }
+
+  .diagnosis-change-panel {
+    grid-column: 1 / -1;
+  }
+
+  .data-quality-panel {
+    grid-column: 1 / -1;
+  }
+
+  .thesis-panel {
+    grid-column: 1 / -1;
+  }
+
+  .ranking-list {
+    grid-template-columns: 1fr;
+  }
+
+  .screener-list {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-list {
+    grid-template-columns: 1fr;
+  }
+
+  .industry-heat-list {
+    grid-template-columns: 1fr;
+  }
+
+  .concept-heat-list,
+  .concept-heat-row,
+  .momentum-list,
+  .momentum-row {
+    grid-template-columns: 1fr;
+  }
+
+  .exposure-list {
+    grid-template-columns: 1fr;
+  }
+
+  .connector-list {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-metrics,
+  .portfolio-details,
+  .portfolio-risk-head,
+  .portfolio-risk-grid,
+  .action-overview-metrics,
+  .action-overview-row,
+  .quality-overview-metrics,
+  .quality-checks,
+  .readiness-checks,
+  .change-grid,
+  .change-trend-strip,
+  .change-insight-grid,
+  .change-driver,
+  .change-list,
+  .thesis-cases,
+  .thesis-evidence-list,
+  .storage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .storage-grid.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hotspot-brief-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hotspot-candidate-list,
+  .hotspot-candidate-row {
+    grid-template-columns: 1fr;
+  }
+
+  .freshness-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .note-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .price-alert-presets,
+  .price-alert-editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+  }
+
+  .topbar,
+  .summary-band {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar {
+    justify-content: space-between;
+  }
+
+  .diagnosis-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-panel {
+    grid-column: auto;
+  }
+
+  .source-panel {
+    grid-column: auto;
+  }
+
+  .peer-panel {
+    grid-column: auto;
+  }
+
+  .diagnosis-change-panel {
+    grid-column: auto;
+  }
+
+  .data-quality-panel {
+    grid-column: auto;
+  }
+
+  .thesis-panel {
+    grid-column: auto;
+  }
+}

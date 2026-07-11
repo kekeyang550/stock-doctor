@@ -161,3 +161,7 @@ class MockMarketDataProvider:
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
         normalized = symbol.strip().upper()
         return self._snapshots.get(normalized)
+
+    def warm_cache(self, scope: str = "all") -> int:
+        stocks = self.get_watchlist() if scope == "watchlist" else self.list_stocks()
+        return len(stocks)

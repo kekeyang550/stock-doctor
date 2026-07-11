@@ -229,6 +229,39 @@ class DiagnosisChangeItem(BaseModel):
     detail: str
 
 
+class DiagnosisScoreTrendPoint(BaseModel):
+    label: str
+    generated_at: str
+    total: int
+    technical: int
+    valuation: int
+    capital: int
+    risk: int
+    rating: str
+
+
+class DiagnosisRatingTransition(BaseModel):
+    previous: str | None
+    current: str
+    changed: bool
+    detail: str
+
+
+class DiagnosisRiskShift(BaseModel):
+    direction: str = Field(pattern="^(improved|worsened|flat|baseline)$")
+    delta: int
+    label: str
+    detail: str
+
+
+class DiagnosisChangeDriver(BaseModel):
+    metric: str
+    label: str
+    delta: int
+    direction: str = Field(pattern="^(up|down|flat|changed)$")
+    detail: str
+
+
 class DiagnosisChangeReport(BaseModel):
     symbol: str
     name: str
@@ -245,6 +278,10 @@ class DiagnosisChangeReport(BaseModel):
     current_rating: str
     summary: str
     changes: list[DiagnosisChangeItem]
+    score_trend: list[DiagnosisScoreTrendPoint]
+    rating_transition: DiagnosisRatingTransition
+    risk_shift: DiagnosisRiskShift
+    key_drivers: list[DiagnosisChangeDriver]
 
 
 class ReviewActionItem(BaseModel):
@@ -376,6 +413,9 @@ class ScreenCandidate(BaseModel):
     rating: str
     reason: str
     risk_note: str
+    rule_tags: list[str] = Field(default_factory=list)
+    positive_evidence: str = ""
+    invalidation_risk: str = ""
 
 
 class AlertItem(BaseModel):
@@ -524,6 +564,107 @@ class RiskExposureItem(BaseModel):
     top_symbol: str
     top_name: str
     top_title: str
+
+
+class PortfolioRiskConcentration(BaseModel):
+    top_industry: str
+    top_industry_count: int
+    top_industry_ratio: float
+    industry_count: int
+
+
+class PortfolioRiskDistribution(BaseModel):
+    high_count: int
+    medium_count: int
+    low_count: int
+
+
+class PortfolioRiskDriver(BaseModel):
+    symbol: str
+    name: str
+    industry: str
+    risk_score: int
+    total_score: int
+    alert_count: int
+    primary_risk: str
+    position_weight_pct: float = 0
+
+
+class PortfolioPositionWeight(BaseModel):
+    symbol: str
+    name: str
+    industry: str
+    weight_pct: float
+
+
+class PortfolioRiskReport(BaseModel):
+    scope: str = Field(pattern="^(watchlist|all)$")
+    horizon: str = Field(pattern="^(intraday|swing|position)$")
+    stock_count: int
+    weight_mode: str = Field(default="equal", pattern="^(equal|custom)$")
+    total_position_weight: float = 0
+    average_total_score: float
+    average_risk_score: float
+    portfolio_risk_score: int
+    risk_level: str = Field(pattern="^(low|medium|high)$")
+    risk_label: str
+    summary: str
+    concentration: PortfolioRiskConcentration
+    distribution: PortfolioRiskDistribution
+    top_drivers: list[PortfolioRiskDriver]
+    suggestions: list[str]
+    exposures: list[RiskExposureItem]
+    positions: list[PortfolioPositionWeight] = Field(default_factory=list)
+
+
+class StrategyBacktestTrade(BaseModel):
+    symbol: str
+    name: str
+    industry: str
+    entry_date: str
+    exit_date: str
+    entry_price: float
+    exit_price: float
+    return_pct: float
+    max_drawdown_pct: float
+    holding_days: int
+    rule_tags: list[str]
+    signal_reason: str
+
+
+class StrategyBacktestReport(BaseModel):
+    preset: str
+    horizon: str = Field(pattern="^(intraday|swing|position)$")
+    holding_days: int
+    sample_size: int
+    match_count: int
+    trade_count: int
+    win_rate: float = Field(ge=0, le=100)
+    average_return_pct: float
+    best_return_pct: float
+    worst_return_pct: float
+    max_drawdown_pct: float
+    summary: str
+    rule_notes: list[str]
+    trades: list[StrategyBacktestTrade]
+
+
+class StrategyBacktestPeriodSummary(BaseModel):
+    holding_days: int
+    trade_count: int
+    win_rate: float = Field(ge=0, le=100)
+    average_return_pct: float
+    max_drawdown_pct: float
+
+
+class StrategyBacktestComparison(BaseModel):
+    preset: str
+    horizon: str = Field(pattern="^(intraday|swing|position)$")
+    sample_size: int
+    match_count: int
+    recommended_holding_days: int | None
+    periods: list[StrategyBacktestPeriodSummary]
+    summary: str
 
 
 class TrendPoint(BaseModel):

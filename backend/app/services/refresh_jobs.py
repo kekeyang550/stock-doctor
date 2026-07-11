@@ -55,12 +55,14 @@ class DataRefreshJobService:
     def run_refresh(self, provider: MarketDataProvider, scope: str = "all") -> DataRefreshJob:
         started_at = datetime.now(timezone.utc)
         timer = perf_counter()
+        warmed_count = 0
         try:
+            warmed_count = provider.warm_cache(scope)
             stocks = provider.get_watchlist() if scope == "watchlist" else provider.list_stocks()
             watchlist = provider.get_watchlist()
             sources = provider.get_data_sources()
             status = "success"
-            message = self._message(scope, len(stocks), len(watchlist))
+            message = self._message(scope, warmed_count, len(watchlist))
         except Exception as exc:
             stocks = []
             watchlist = []
@@ -75,7 +77,7 @@ class DataRefreshJobService:
             started_at=started_at.isoformat(),
             finished_at=finished_at.isoformat(),
             duration_ms=max(0, round((perf_counter() - timer) * 1000)),
-            stock_count=len(stocks),
+            stock_count=warmed_count if status == "success" else len(stocks),
             watchlist_count=len(watchlist),
             source_count=len(sources),
             message=message,

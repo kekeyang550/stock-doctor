@@ -21,6 +21,7 @@ from app.schemas.diagnosis import (
     MarketOverview,
     MomentumSignalItem,
     PeerComparisonResponse,
+    PortfolioRiskReport,
     PriceAlert,
     PriceAlertRequest,
     ResearchNote,
@@ -33,6 +34,8 @@ from app.schemas.diagnosis import (
     ReportRecord,
     ReportRequest,
     ScreenCandidate,
+    StrategyBacktestComparison,
+    StrategyBacktestReport,
     StockSummary,
     StockSearchResult,
     StockSnapshot,
@@ -68,8 +71,10 @@ from app.services.provider_factory import create_market_data_provider
 from app.services.reports import ReportService
 from app.services.refresh_jobs import DataRefreshJobService
 from app.services.review_actions import ReviewActionService
+from app.services.portfolio_risk import PortfolioRiskService
 from app.services.risk_exposure import RiskExposureService
 from app.services.screener import ScreenerService
+from app.services.strategy_backtest import StrategyBacktestService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
 from app.services.timeline import TimelineService
 from app.services.trend import TrendService
@@ -93,13 +98,17 @@ hotspot_brief_service = HotspotBriefService()
 hotspot_candidate_service = HotspotCandidateService()
 hotspot_review_action_service = HotspotReviewActionService()
 risk_exposure_service = RiskExposureService()
+portfolio_risk_service = PortfolioRiskService()
 screener_service = ScreenerService()
+strategy_backtest_service = StrategyBacktestService(screener_service=screener_service, trend_service=trend_service)
 price_alert_service = PriceAlertService()
 data_connector_health_service = DataConnectorHealthService()
 refresh_job_service = DataRefreshJobService()
 data_quality_service = DataQualityService()
 thesis_service = ThesisService()
 review_action_service = ReviewActionService()
+
+SCREENER_PRESETS = {"strong", "value", "capital-risk", "breakout-volume", "capital-return", "risk-avoidance"}
 
 
 @router.get("/health")
@@ -227,7 +236,7 @@ async def system_export() -> StorageExport:
     return StorageExport(
         exported_at=datetime.now(timezone.utc).isoformat(),
         backend=backend,
-        watchlist=store.load_watchlist([]),
+        watchlist=[stock.symbol for stock in data_provider.get_watchlist()],
         reports=store.load_reports(),
         notes=store.load_notes(),
         price_alerts=store.load_price_alerts(),
@@ -576,17 +585,122 @@ async def risk_exposure(
     return risk_exposure_service.summarize(items)
 
 
+@router.get("/risk/portfolio", response_model=PortfolioRiskReport)
+async def portfolio_risk(
+    scope: str = Query(default="watchlist", pattern="^(watchlist|all)$"),
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    weights: str | None = Query(default=None),
+) -> PortfolioRiskReport:
+    stocks = data_provider.get_watchlist() if scope == "watchlist" else data_provider.list_stocks()
+    snapshots: list[StockSnapshot] = []
+    diagnoses: list[DiagnosisResponse] = []
+    alerts: list[AlertItem] = []
+    for stock in stocks:
+        snapshot = data_provider.get_snapshot(stock.symbol)
+        if snapshot is None:
+            continue
+        diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
+        snapshots.append(snapshot)
+        diagnoses.append(diagnosis)
+        alerts.extend(alert_engine.build_alerts(snapshot, diagnosis))
+
+    exposures = risk_exposure_service.summarize(alerts)
+    return portfolio_risk_service.build(
+        scope=scope,
+        horizon=horizon,
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        alerts=alerts,
+        exposures=exposures,
+        position_weights=_parse_position_weights(weights),
+    )
+
+
+def _parse_position_weights(value: str | None) -> dict[str, float] | None:
+    if not value:
+        return None
+    weights: dict[str, float] = {}
+    for chunk in value.split(","):
+        if ":" not in chunk:
+            continue
+        symbol, raw_weight = chunk.split(":", 1)
+        symbol = symbol.strip().upper()
+        if not symbol:
+            continue
+        try:
+            weight = float(raw_weight)
+        except ValueError:
+            continue
+        if weight > 0:
+            weights[symbol] = weight
+    return weights or None
+
+
+def _parse_holding_periods(value: str | None) -> list[int]:
+    periods: list[int] = []
+    for chunk in (value or "3,5,10,20").split(","):
+        try:
+            holding_days = int(chunk.strip())
+        except ValueError:
+            continue
+        if 1 <= holding_days <= 20 and holding_days not in periods:
+            periods.append(holding_days)
+    return periods or [3, 5, 10, 20]
+
+
 @router.get("/screeners/{preset}", response_model=list[ScreenCandidate])
 async def screener(
     preset: str,
     horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
     limit: int = Query(default=12, ge=1, le=50),
 ) -> list[ScreenCandidate]:
-    if preset not in {"strong", "value", "capital-risk"}:
+    if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
     return screener_service.screen(snapshots=snapshots, diagnoses=diagnoses, preset=preset)[:limit]
+
+
+@router.get("/backtests/strategy", response_model=StrategyBacktestReport)
+async def strategy_backtest(
+    preset: str = Query(default="breakout-volume"),
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    holding_days: int = Query(default=5, ge=1, le=20),
+    limit: int = Query(default=8, ge=1, le=30),
+) -> StrategyBacktestReport:
+    if preset not in SCREENER_PRESETS:
+        raise HTTPException(status_code=404, detail="Screener preset not found")
+    snapshots = _all_snapshots()
+    diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    return strategy_backtest_service.run(
+        preset=preset,
+        horizon=horizon,
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=holding_days,
+        limit=limit,
+    )
+
+
+@router.get("/backtests/strategy/periods", response_model=StrategyBacktestComparison)
+async def strategy_backtest_periods(
+    preset: str = Query(default="breakout-volume"),
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    periods: str = Query(default="3,5,10,20"),
+    limit: int = Query(default=8, ge=1, le=30),
+) -> StrategyBacktestComparison:
+    if preset not in SCREENER_PRESETS:
+        raise HTTPException(status_code=404, detail="Screener preset not found")
+    snapshots = _all_snapshots()
+    diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    return strategy_backtest_service.compare_periods(
+        preset=preset,
+        horizon=horizon,
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        periods=_parse_holding_periods(periods),
+        limit=limit,
+    )
 
 
 @router.get("/timeline", response_model=list[TimelineEvent])

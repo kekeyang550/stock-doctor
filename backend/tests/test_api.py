@@ -426,6 +426,34 @@ def test_risk_exposure_endpoint_returns_grouped_risk_categories():
     assert {"category", "event_count", "severity_score", "top_symbol"}.issubset(payload[0].keys())
 
 
+def test_portfolio_risk_endpoint_returns_report():
+    response = client.get("/api/v1/risk/portfolio?scope=watchlist&horizon=swing")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["scope"] == "watchlist"
+    assert payload["horizon"] == "swing"
+    assert payload["stock_count"] >= 1
+    assert payload["risk_level"] in {"low", "medium", "high"}
+    assert "concentration" in payload
+    assert "distribution" in payload
+    assert isinstance(payload["top_drivers"], list)
+    assert isinstance(payload["suggestions"], list)
+    assert isinstance(payload["exposures"], list)
+
+
+def test_portfolio_risk_endpoint_accepts_position_weights():
+    response = client.get("/api/v1/risk/portfolio?scope=watchlist&horizon=swing&weights=600519:80,300750:20")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["weight_mode"] == "custom"
+    assert payload["total_position_weight"] == 100
+    assert payload["concentration"]["top_industry_ratio"] == 0.8
+    assert payload["positions"][0]["symbol"] == "600519"
+    assert payload["positions"][0]["weight_pct"] == 80
+
+
 def test_screener_endpoint_returns_preset_candidates():
     response = client.get("/api/v1/screeners/strong")
 
@@ -433,6 +461,50 @@ def test_screener_endpoint_returns_preset_candidates():
     payload = response.json()
     assert len(payload) > 0
     assert {"symbol", "preset", "reason", "risk_note"}.issubset(payload[0].keys())
+
+
+def test_screener_endpoint_accepts_new_presets():
+    for preset in ["breakout-volume", "capital-return", "risk-avoidance"]:
+        response = client.get(f"/api/v1/screeners/{preset}")
+
+        assert response.status_code == 200
+        assert all(item["preset"] == preset for item in response.json())
+
+
+def test_screener_endpoint_returns_explanation_fields():
+    response = client.get("/api/v1/screeners/breakout-volume")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) > 0
+    assert {"rule_tags", "positive_evidence", "invalidation_risk"}.issubset(payload[0].keys())
+    assert payload[0]["rule_tags"]
+
+
+def test_strategy_backtest_endpoint_returns_sample_report():
+    response = client.get("/api/v1/backtests/strategy?preset=breakout-volume&horizon=swing&holding_days=5")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preset"] == "breakout-volume"
+    assert payload["horizon"] == "swing"
+    assert payload["holding_days"] == 5
+    assert payload["trade_count"] >= 1
+    assert {"win_rate", "average_return_pct", "max_drawdown_pct", "trades"}.issubset(payload.keys())
+    assert {"symbol", "entry_price", "exit_price", "return_pct", "rule_tags"}.issubset(payload["trades"][0].keys())
+
+
+def test_strategy_backtest_period_comparison_endpoint_returns_period_summaries():
+    response = client.get("/api/v1/backtests/strategy/periods?preset=breakout-volume&horizon=swing&periods=3,5,10,20")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preset"] == "breakout-volume"
+    assert payload["horizon"] == "swing"
+    assert [period["holding_days"] for period in payload["periods"]] == [3, 5, 10, 20]
+    assert payload["recommended_holding_days"] in [3, 5, 10, 20]
+    assert payload["summary"]
+    assert all("average_return_pct" in period for period in payload["periods"])
 
 
 def test_unknown_screener_preset_returns_404():

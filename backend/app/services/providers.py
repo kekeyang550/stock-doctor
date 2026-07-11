@@ -27,3 +27,6 @@ class MarketDataProvider(Protocol):
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
         ...
+
+    def warm_cache(self, scope: str = "all") -> int:
+        ...

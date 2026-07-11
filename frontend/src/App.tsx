@@ -1,7 +1,32 @@
 import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ScoreGauge } from './components/ScoreGauge'
 import { StockList } from './components/StockList'
+import { DiagnosisWorkspace } from './components/diagnosis/DiagnosisPanels'
+import {
+  ConceptHeatPanel,
+  HotspotBriefPanel,
+  HotspotCandidatesPanel,
+  HotspotReviewActionsPanel,
+  IndustryHeatPanel,
+  MomentumSignalPanel,
+} from './components/hotspots/HotspotPanels'
+import { PriceAlertsPanel, ReportHistory, ResearchNotesPanel } from './components/research/ResearchPanels'
+import {
+  AlertCenter,
+  DataQualityOverviewPanel,
+  RankingPanel,
+  ReviewActionOverviewPanel,
+  RiskExposurePanel,
+  ScreenerPanel,
+  StrategyBacktestPanel,
+  TimelinePanel,
+  WatchlistSummaryPanel,
+} from './components/screeners/ScreenerPanels'
+import {
+  DataConnectorPanel,
+  SystemReadinessPanel,
+  SystemStoragePanel,
+} from './components/system/SystemPanels'
 import {
   addWatchlistSymbol,
   createNote,
@@ -34,8 +59,10 @@ import {
   fetchReports,
   fetchReviewActionOverview,
   fetchReviewActions,
-  fetchRiskExposure,
+  fetchPortfolioRisk,
   fetchScreener,
+  fetchStrategyBacktest,
+  fetchStrategyBacktestComparison,
   fetchStockSearch,
   fetchStocks,
   fetchStorageExport,
@@ -78,6 +105,7 @@ import type {
   MomentumSignalItem,
   PeerComparison,
   PeerComparisonItem,
+  PortfolioRiskReport,
   PriceAlert,
   RankedDiagnosis,
   ResearchNote,
@@ -86,10 +114,11 @@ import type {
   ReviewActionOverview,
   ReviewActionPlan,
   ReviewActionStockSummary,
-  RiskExposureItem,
   ScreenCandidate,
   StockSearchResult,
   StockSummary,
+  StrategyBacktestComparison,
+  StrategyBacktestReport,
   StorageImportPayload,
   StorageImportPreview,
   StorageStatus,
@@ -146,6 +175,8 @@ export default function App() {
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([])
   const [rankings, setRankings] = useState<RankedDiagnosis[]>([])
   const [screenCandidates, setScreenCandidates] = useState<ScreenCandidate[]>([])
+  const [strategyBacktest, setStrategyBacktest] = useState<StrategyBacktestReport | null>(null)
+  const [strategyBacktestComparison, setStrategyBacktestComparison] = useState<StrategyBacktestComparison | null>(null)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [watchlistSummary, setWatchlistSummary] = useState<WatchlistSummary | null>(null)
   const [reviewActionOverview, setReviewActionOverview] = useState<ReviewActionOverview | null>(null)
@@ -153,16 +184,19 @@ export default function App() {
   const [hotspotBrief, setHotspotBrief] = useState<HotspotBrief | null>(null)
   const [hotspotCandidates, setHotspotCandidates] = useState<HotspotCandidate[]>([])
   const [hotspotReviewPlan, setHotspotReviewPlan] = useState<HotspotReviewPlan | null>(null)
+  const [hotspotCandidatesError, setHotspotCandidatesError] = useState<string | null>(null)
   const [industryHeat, setIndustryHeat] = useState<IndustryHeatItem[]>([])
   const [conceptHeat, setConceptHeat] = useState<ConceptHeatItem[]>([])
   const [momentumSignals, setMomentumSignals] = useState<MomentumSignalItem[]>([])
-  const [riskExposure, setRiskExposure] = useState<RiskExposureItem[]>([])
+  const [portfolioRisk, setPortfolioRisk] = useState<PortfolioRiskReport | null>(null)
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
   const [trend, setTrend] = useState<TrendSeries | null>(null)
   const [peers, setPeers] = useState<PeerComparison | null>(null)
   const [rankingSort, setRankingSort] = useState('total')
   const [screenerPreset, setScreenerPreset] = useState('strong')
   const [hotspotMode, setHotspotMode] = useState('balanced')
+  const [portfolioWeights, setPortfolioWeights] = useState<Record<string, string>>({})
+  const [backtestHoldingDays, setBacktestHoldingDays] = useState(5)
   const [selectedSymbol, setSelectedSymbol] = useState('600519')
   const [horizon, setHorizon] = useState('swing')
   const [query, setQuery] = useState('')
@@ -174,10 +208,32 @@ export default function App() {
   const [reviewActions, setReviewActions] = useState<ReviewActionPlan | null>(null)
   const [dataQuality, setDataQuality] = useState<DataQualityReport | null>(null)
   const [loading, setLoading] = useState(true)
+  const [diagnosisError, setDiagnosisError] = useState<string | null>(null)
+  const [screenerError, setScreenerError] = useState<string | null>(null)
+  const [strategyBacktestError, setStrategyBacktestError] = useState<string | null>(null)
+  const [strategyBacktestComparisonError, setStrategyBacktestComparisonError] = useState<string | null>(null)
+  const [refreshingScope, setRefreshingScope] = useState<'all' | 'watchlist' | null>(null)
+  const [updatingWatchlist, setUpdatingWatchlist] = useState(false)
+  const [savingReport, setSavingReport] = useState(false)
+  const [exportingReportPackage, setExportingReportPackage] = useState(false)
+  const [updatingReviewActionId, setUpdatingReviewActionId] = useState<string | null>(null)
+  const [updatingHotspotActionId, setUpdatingHotspotActionId] = useState<string | null>(null)
+  const [addingSearchWatchlistSymbol, setAddingSearchWatchlistSymbol] = useState<string | null>(null)
+  const [savingNote, setSavingNote] = useState(false)
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
+  const [savingPriceAlert, setSavingPriceAlert] = useState(false)
+  const [deletingPriceAlertId, setDeletingPriceAlertId] = useState<string | null>(null)
+  const [exportingStorage, setExportingStorage] = useState(false)
+  const [previewingImport, setPreviewingImport] = useState(false)
+  const [applyingImport, setApplyingImport] = useState(false)
+  const [noteError, setNoteError] = useState<string | null>(null)
+  const [priceAlertError, setPriceAlertError] = useState<string | null>(null)
+  const [storageError, setStorageError] = useState<string | null>(null)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotPool, hotspotActions] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotActions] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
@@ -191,7 +247,6 @@ export default function App() {
       fetchReports(),
       fetchMomentumSignals(),
       fetchHotspotBrief(horizon),
-      fetchHotspotCandidates(horizon, hotspotMode),
       fetchHotspotReviewActions(horizon, hotspotMode),
     ])
     setStocks(items)
@@ -207,7 +262,6 @@ export default function App() {
     setReports(savedReports)
     setMomentumSignals(momentum)
     setHotspotBrief(brief)
-    setHotspotCandidates(hotspotPool)
     setHotspotReviewPlan(hotspotActions)
     if (!items.some((item) => item.symbol === selectedSymbol) && items[0]) {
       setSelectedSymbol(items[0].symbol)
@@ -217,6 +271,7 @@ export default function App() {
   const loadDiagnosis = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setDiagnosisError(null)
     try {
       const [result, quality, thesisResult, changeResult, actionPlan] = await Promise.all([
         fetchDiagnosis(selectedSymbol, horizon),
@@ -231,11 +286,79 @@ export default function App() {
       setDiagnosisChange(changeResult)
       setReviewActions(actionPlan)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '未知错误')
+      const message = err instanceof Error ? err.message : '未知错误'
+      setDiagnosisError(message)
+      setDiagnosis(null)
+      setDataQuality(null)
+      setThesis(null)
+      setDiagnosisChange(null)
+      setReviewActions(null)
+      setError(message)
     } finally {
       setLoading(false)
     }
   }, [selectedSymbol, horizon])
+
+  const loadScreenerCandidates = useCallback(async () => {
+    setScreenerError(null)
+    try {
+      const candidates = await fetchScreener(screenerPreset, horizon)
+      setScreenCandidates(candidates)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '策略股票池加载失败'
+      setScreenerError(message)
+      setScreenCandidates([])
+      setError(message)
+    }
+  }, [horizon, screenerPreset])
+
+  const loadStrategyBacktest = useCallback(async () => {
+    setStrategyBacktestError(null)
+    setStrategyBacktestComparisonError(null)
+    try {
+      const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays)
+      setStrategyBacktest(report)
+      try {
+        const comparison = await fetchStrategyBacktestComparison(screenerPreset, horizon)
+        setStrategyBacktestComparison(comparison)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '周期对比加载失败'
+        setStrategyBacktestComparisonError(message)
+        setStrategyBacktestComparison(null)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '策略回测加载失败'
+      setStrategyBacktestError(message)
+      setStrategyBacktest(null)
+      setStrategyBacktestComparison(null)
+      setError(message)
+    }
+  }, [backtestHoldingDays, horizon, screenerPreset])
+
+  const setPortfolioWeight = useCallback((symbol: string, value: string) => {
+    setPortfolioWeights((current) => {
+      const next = { ...current }
+      if (value.trim() === '') {
+        delete next[symbol]
+      } else {
+        next[symbol] = value
+      }
+      return next
+    })
+  }, [])
+
+  const loadHotspotCandidatePool = useCallback(async () => {
+    setHotspotCandidatesError(null)
+    try {
+      const candidates = await fetchHotspotCandidates(horizon, hotspotMode)
+      setHotspotCandidates(candidates)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '热点选股池加载失败'
+      setHotspotCandidatesError(message)
+      setHotspotCandidates([])
+      setError(message)
+    }
+  }, [horizon, hotspotMode])
 
   useEffect(() => {
     loadStocks().catch((err) => setError(err instanceof Error ? err.message : '股票列表加载失败'))
@@ -259,10 +382,16 @@ export default function App() {
   }, [horizon, rankingSort])
 
   useEffect(() => {
-    fetchScreener(screenerPreset, horizon)
-      .then(setScreenCandidates)
-      .catch((err) => setError(err instanceof Error ? err.message : '策略股票池加载失败'))
-  }, [horizon, screenerPreset])
+    loadScreenerCandidates()
+  }, [loadScreenerCandidates])
+
+  useEffect(() => {
+    loadStrategyBacktest()
+  }, [loadStrategyBacktest])
+
+  useEffect(() => {
+    loadHotspotCandidatePool()
+  }, [loadHotspotCandidatePool])
 
   useEffect(() => {
     fetchAlerts(horizon)
@@ -301,10 +430,10 @@ export default function App() {
   }, [horizon, watchlist])
 
   useEffect(() => {
-    fetchRiskExposure(horizon)
-      .then(setRiskExposure)
+    fetchPortfolioRisk(horizon, 'watchlist', portfolioWeights)
+      .then(setPortfolioRisk)
       .catch((err) => setError(err instanceof Error ? err.message : '风险敞口加载失败'))
-  }, [horizon, watchlist])
+  }, [horizon, watchlist, portfolioWeights])
 
   useEffect(() => {
     fetchTrend(selectedSymbol)
@@ -339,6 +468,7 @@ export default function App() {
 
   const toggleWatchlist = useCallback(async () => {
     setError(null)
+    setUpdatingWatchlist(true)
     try {
       const nextWatchlist = isInWatchlist
         ? await removeWatchlistSymbol(selectedSymbol)
@@ -346,28 +476,100 @@ export default function App() {
       setWatchlist(nextWatchlist)
     } catch (err) {
       setError(err instanceof Error ? err.message : '自选股更新失败')
+    } finally {
+      setUpdatingWatchlist(false)
     }
   }, [isInWatchlist, selectedSymbol])
 
   const addSearchResultToWatchlist = useCallback(async (symbol: string) => {
     setError(null)
+    setAddingSearchWatchlistSymbol(symbol)
     try {
       const nextWatchlist = await addWatchlistSymbol(symbol)
       setWatchlist(nextWatchlist)
     } catch (err) {
       setError(err instanceof Error ? err.message : '自选股更新失败')
+    } finally {
+      setAddingSearchWatchlistSymbol(null)
     }
   }, [])
 
   const saveCurrentReport = useCallback(async () => {
     setError(null)
+    setSavingReport(true)
     try {
       const report = await createReport(selectedSymbol, horizon)
       setReports((items) => [report, ...items.filter((item) => item.id !== report.id)].slice(0, 20))
     } catch (err) {
       setError(err instanceof Error ? err.message : '报告保存失败')
+    } finally {
+      setSavingReport(false)
     }
   }, [horizon, selectedSymbol])
+
+  const buildCurrentResearchReportPayload = useCallback(() => {
+    if (!diagnosis) return null
+    const exportedAt = new Date().toISOString()
+    return {
+        version: 'stock-doctor-report-v2',
+        exported_at: exportedAt,
+        symbol: selectedSymbol,
+        horizon,
+        diagnosis,
+        diagnosis_change: diagnosisChange,
+        portfolio_risk: portfolioRisk,
+        portfolio_weight_inputs: portfolioWeights,
+        strategy_backtest: strategyBacktest,
+        data_quality: dataQuality,
+        data_trust: {
+          sources: dataSources,
+          connector_health: connectorHealth,
+          freshness,
+          refresh_jobs: refreshJobs,
+        },
+      }
+  }, [connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, selectedSymbol, strategyBacktest])
+
+  const exportCurrentResearchReport = useCallback(() => {
+    const payload = buildCurrentResearchReportPayload()
+    if (!payload) return
+    setError(null)
+    setExportingReportPackage(true)
+    try {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.json`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '研究报告导出失败')
+    } finally {
+      setExportingReportPackage(false)
+    }
+  }, [buildCurrentResearchReportPayload, selectedSymbol])
+
+  const exportCurrentResearchReportHtml = useCallback(() => {
+    const payload = buildCurrentResearchReportPayload()
+    if (!payload) return
+    setError(null)
+    setExportingReportPackage(true)
+    try {
+      const html = buildResearchReportHtml(payload)
+      const blob = new Blob([html], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.html`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'HTML 报告导出失败')
+    } finally {
+      setExportingReportPackage(false)
+    }
+  }, [buildCurrentResearchReportPayload, selectedSymbol])
 
   const removeReport = useCallback(async (reportId: string) => {
     setError(null)
@@ -383,33 +585,51 @@ export default function App() {
     const body = noteDraft.trim()
     if (!body) return
     setError(null)
+    setNoteError(null)
+    setSavingNote(true)
     try {
       const note = await createNote(selectedSymbol, body)
       setNotes((items) => [note, ...items])
       setNoteDraft('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '研究笔记保存失败')
+      const message = err instanceof Error ? err.message : '研究笔记保存失败'
+      setNoteError(message)
+      setError(message)
+    } finally {
+      setSavingNote(false)
     }
   }, [noteDraft, selectedSymbol])
 
   const removeNote = useCallback(async (noteId: string) => {
     setError(null)
+    setNoteError(null)
+    setDeletingNoteId(noteId)
     try {
       await deleteNote(noteId)
       setNotes((items) => items.filter((item) => item.id !== noteId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '研究笔记删除失败')
+      const message = err instanceof Error ? err.message : '研究笔记删除失败'
+      setNoteError(message)
+      setError(message)
+    } finally {
+      setDeletingNoteId(null)
     }
   }, [])
 
   const savePriceAlert = useCallback(async (targetPrice: number, direction: PriceAlert['direction'], label: string) => {
     setError(null)
+    setPriceAlertError(null)
+    setSavingPriceAlert(true)
     try {
       const alert = await createPriceAlert(selectedSymbol, targetPrice, direction, label)
       setPriceAlerts((items) => [alert, ...items])
       setPriceAlertDraft('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '价位提醒保存失败')
+      const message = err instanceof Error ? err.message : '价位提醒保存失败'
+      setPriceAlertError(message)
+      setError(message)
+    } finally {
+      setSavingPriceAlert(false)
     }
   }, [selectedSymbol])
 
@@ -422,16 +642,23 @@ export default function App() {
 
   const removePriceAlert = useCallback(async (alertId: string) => {
     setError(null)
+    setPriceAlertError(null)
+    setDeletingPriceAlertId(alertId)
     try {
       await deletePriceAlert(alertId)
       setPriceAlerts((items) => items.filter((item) => item.id !== alertId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '价位提醒删除失败')
+      const message = err instanceof Error ? err.message : '价位提醒删除失败'
+      setPriceAlertError(message)
+      setError(message)
+    } finally {
+      setDeletingPriceAlertId(null)
     }
   }, [])
 
   const setReviewActionStatus = useCallback(async (actionId: string, status: ReviewActionItem['status']) => {
     setError(null)
+    setUpdatingReviewActionId(actionId)
     try {
       const nextPlan = await updateReviewActionStatus(selectedSymbol, horizon, actionId, status)
       setReviewActions(nextPlan)
@@ -439,21 +666,28 @@ export default function App() {
       setReviewActionOverview(overviewResult)
     } catch (err) {
       setError(err instanceof Error ? err.message : '行动状态更新失败')
+    } finally {
+      setUpdatingReviewActionId(null)
     }
   }, [horizon, selectedSymbol])
 
   const setHotspotActionStatus = useCallback(async (actionId: string, status: HotspotReviewAction['status']) => {
     setError(null)
+    setUpdatingHotspotActionId(actionId)
     try {
       const nextPlan = await updateHotspotReviewActionStatus(horizon, hotspotMode, actionId, status)
       setHotspotReviewPlan(nextPlan)
     } catch (err) {
       setError(err instanceof Error ? err.message : '热点动作状态更新失败')
+    } finally {
+      setUpdatingHotspotActionId(null)
     }
   }, [horizon, hotspotMode])
 
   const exportStorage = useCallback(async () => {
     setError(null)
+    setStorageError(null)
+    setExportingStorage(true)
     try {
       const snapshot = await fetchStorageExport()
       const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' })
@@ -464,12 +698,18 @@ export default function App() {
       anchor.click()
       URL.revokeObjectURL(url)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '数据导出失败')
+      const message = err instanceof Error ? err.message : '数据导出失败'
+      setStorageError(message)
+      setError(message)
+    } finally {
+      setExportingStorage(false)
     }
   }, [])
 
   const previewStorageFile = useCallback(async (file: File) => {
     setError(null)
+    setStorageError(null)
+    setPreviewingImport(true)
     try {
       const parsed = JSON.parse(await file.text()) as unknown
       const payload = buildStorageImportPayload(parsed)
@@ -478,16 +718,19 @@ export default function App() {
       setStorageImportPreview(preview)
       setStorageImportName(file.name)
     } catch (err) {
-      setStorageImportPayload(null)
-      setStorageImportPreview(null)
-      setStorageImportName('')
-      setError(err instanceof Error ? err.message : '导入预检失败')
+      const message = err instanceof Error ? err.message : '导入预检失败'
+      setStorageError(message)
+      setError(message)
+    } finally {
+      setPreviewingImport(false)
     }
   }, [])
 
   const applyStorageImport = useCallback(async () => {
     if (!storageImportPayload) return
     setError(null)
+    setStorageError(null)
+    setApplyingImport(true)
     try {
       const result = await importStorage(storageImportPayload)
       const readiness = await fetchSystemReadiness()
@@ -505,12 +748,18 @@ export default function App() {
       setStorageImportPayload(null)
       setStorageImportName('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '数据导入失败')
+      const message = normalizeStorageImportError(err)
+      setStorageError(message)
+      setError(message)
+    } finally {
+      setApplyingImport(false)
     }
   }, [loadDiagnosis, loadStocks, selectedSymbol, storageImportPayload])
 
   const triggerRefreshJob = useCallback(async (scope: 'all' | 'watchlist') => {
     setError(null)
+    setRefreshError(null)
+    setRefreshingScope(scope)
     try {
       const job = await runRefreshJob(scope)
       const [fresh, readiness] = await Promise.all([fetchDataFreshness(), fetchSystemReadiness()])
@@ -519,7 +768,11 @@ export default function App() {
       setSystemReadiness(readiness)
       await loadStocks()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '刷新任务失败')
+      const message = err instanceof Error ? err.message : '刷新任务失败'
+      setError(message)
+      setRefreshError(message)
+    } finally {
+      setRefreshingScope(null)
     }
   }, [loadStocks])
 
@@ -531,6 +784,7 @@ export default function App() {
         watchlist={watchlist}
         selectedSymbol={selectedSymbol}
         query={query}
+        addingWatchlistSymbol={addingSearchWatchlistSymbol}
         onQueryChange={setQuery}
         onSelect={setSelectedSymbol}
         onAddToWatchlist={addSearchResultToWatchlist}
@@ -542,13 +796,26 @@ export default function App() {
             <h2>{diagnosis?.name ?? selectedStock?.name ?? '加载中'} <small>{selectedSymbol}</small></h2>
           </div>
           <div className="toolbar">
-            <button className={isInWatchlist ? 'watch-button active' : 'watch-button'} type="button" onClick={toggleWatchlist}>
+            <button
+              className={isInWatchlist ? 'watch-button active' : 'watch-button'}
+              type="button"
+              onClick={toggleWatchlist}
+              disabled={updatingWatchlist}
+            >
               <Star size={16} />
-              <span>{isInWatchlist ? '已自选' : '加自选'}</span>
+              <span>{updatingWatchlist ? '更新中' : (isInWatchlist ? '已自选' : '加自选')}</span>
             </button>
-            <button className="watch-button" type="button" onClick={saveCurrentReport}>
+            <button className="watch-button" type="button" onClick={saveCurrentReport} disabled={savingReport}>
               <Save size={16} />
-              <span>存报告</span>
+              <span>{savingReport ? '保存中' : '存报告'}</span>
+            </button>
+            <button className="watch-button" type="button" onClick={exportCurrentResearchReport} disabled={!diagnosis || exportingReportPackage}>
+              <Download size={16} />
+              <span>{exportingReportPackage ? '导出中' : '导出报告'}</span>
+            </button>
+            <button className="watch-button" type="button" onClick={exportCurrentResearchReportHtml} disabled={!diagnosis || exportingReportPackage}>
+              <FileText size={16} />
+              <span>{exportingReportPackage ? '导出中' : '导出HTML'}</span>
             </button>
             <div className="segments" role="tablist" aria-label="周期">
               {horizonOptions.map((option) => (
@@ -582,10 +849,13 @@ export default function App() {
           mode={hotspotMode}
           onModeChange={setHotspotMode}
           onSelect={setSelectedSymbol}
+          error={hotspotCandidatesError}
+          onRetry={loadHotspotCandidatePool}
         />
 
         <HotspotReviewActionsPanel
           plan={hotspotReviewPlan}
+          updatingActionId={updatingHotspotActionId}
           onSelect={setSelectedSymbol}
           onStatusChange={setHotspotActionStatus}
         />
@@ -604,7 +874,13 @@ export default function App() {
 
         <TimelinePanel events={timeline} onSelect={setSelectedSymbol} />
 
-        <RiskExposurePanel items={riskExposure} onSelect={setSelectedSymbol} />
+        <RiskExposurePanel
+          report={portfolioRisk}
+          watchlist={watchlist}
+          positionWeights={portfolioWeights}
+          onPositionWeightChange={setPortfolioWeight}
+          onSelect={setSelectedSymbol}
+        />
 
         <SystemStoragePanel
           status={storageStatus}
@@ -613,16 +889,50 @@ export default function App() {
           onExport={exportStorage}
           onPreviewImport={previewStorageFile}
           onApplyImport={applyStorageImport}
+          exporting={exportingStorage}
+          previewingImport={previewingImport}
+          applyingImport={applyingImport}
+          error={storageError}
         />
 
         <SystemReadinessPanel readiness={systemReadiness} />
 
-        <DataConnectorPanel health={connectorHealth} freshness={freshness} jobs={refreshJobs} onRun={triggerRefreshJob} />
+        <DataConnectorPanel
+          health={connectorHealth}
+          freshness={freshness}
+          jobs={refreshJobs}
+          refreshingScope={refreshingScope}
+          refreshError={refreshError}
+          onRun={triggerRefreshJob}
+        />
 
-        {loading || !diagnosis ? (
+        {loading ? (
           <div className="state-panel">
             <RefreshCw className="spin" size={20} />
             <span>正在生成诊断...</span>
+          </div>
+        ) : diagnosisError ? (
+          <div className="state-panel error-state">
+            <AlertTriangle size={20} />
+            <span>
+              <strong>行情数据加载失败</strong>
+              <small>{diagnosisError}</small>
+              <small>可能是行情源、网络或接口超时导致，当前诊断没有更新。</small>
+            </span>
+            <button type="button" onClick={loadDiagnosis}>
+              重试诊断
+            </button>
+          </div>
+        ) : !diagnosis ? (
+          <div className="state-panel empty-state">
+            <AlertTriangle size={20} />
+            <span>
+              <strong>暂无诊断数据</strong>
+              <small>请选择自选股或重新加载诊断。</small>
+            </span>
+            <button type="button" onClick={loadDiagnosis}>
+              重试诊断
+            </button>
           </div>
         ) : (
           <DiagnosisWorkspace
@@ -635,6 +945,7 @@ export default function App() {
             thesis={thesis}
             diagnosisChange={diagnosisChange}
             reviewActions={reviewActions}
+            updatingReviewActionId={updatingReviewActionId}
             onReviewActionStatus={setReviewActionStatus}
           />
         )}
@@ -646,6 +957,9 @@ export default function App() {
           onSavePreset={savePriceAlert}
           onSaveCustom={saveCustomPriceAlert}
           onDelete={removePriceAlert}
+          saving={savingPriceAlert}
+          deletingAlertId={deletingPriceAlertId}
+          error={priceAlertError}
         />
         <AlertCenter alerts={alerts} onSelect={setSelectedSymbol} />
         <RankingPanel
@@ -659,6 +973,17 @@ export default function App() {
           preset={screenerPreset}
           onPresetChange={setScreenerPreset}
           onSelect={setSelectedSymbol}
+          error={screenerError}
+          onRetry={loadScreenerCandidates}
+        />
+        <StrategyBacktestPanel
+          report={strategyBacktest}
+          comparison={strategyBacktestComparison}
+          holdingDays={backtestHoldingDays}
+          onHoldingDaysChange={setBacktestHoldingDays}
+          error={strategyBacktestError}
+          comparisonError={strategyBacktestComparisonError}
+          onRetry={loadStrategyBacktest}
         />
         <ResearchNotesPanel
           notes={notes}
@@ -666,11 +991,113 @@ export default function App() {
           onDraftChange={setNoteDraft}
           onSave={saveNote}
           onDelete={removeNote}
+          saving={savingNote}
+          deletingNoteId={deletingNoteId}
+          error={noteError}
         />
         <ReportHistory reports={reports} onSelect={setSelectedSymbol} onDelete={removeReport} />
       </section>
     </main>
   )
+}
+
+function buildResearchReportHtml(payload: Record<string, any>) {
+  const diagnosis = payload.diagnosis ?? {}
+  const score = diagnosis.score ?? {}
+  const portfolioRisk = payload.portfolio_risk ?? {}
+  const strategyBacktest = payload.strategy_backtest ?? {}
+  const dataTrust = payload.data_trust ?? {}
+  const connectorHealth = dataTrust.connector_health ?? {}
+  const freshness = dataTrust.freshness ?? {}
+  const weightInputs = payload.portfolio_weight_inputs ?? {}
+  const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
+  const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
+
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(diagnosis.name ?? payload.symbol)} 研究报告</title>
+  <style>
+    body { margin: 0; font-family: Arial, "Microsoft YaHei", sans-serif; color: #25352d; background: #f6f8f4; }
+    main { max-width: 980px; margin: 0 auto; padding: 32px 20px; }
+    header, section { background: #fff; border: 1px solid #dfe8dc; border-radius: 8px; padding: 18px; margin-bottom: 14px; }
+    h1, h2, p { margin-top: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+    .metric, .row { border: 1px solid #e5ece2; border-radius: 8px; padding: 10px; background: #fbfdf9; }
+    .metric span, .row small { color: #68786f; display: block; }
+    .metric strong { font-size: 24px; }
+    ul { padding-left: 18px; }
+    code { background: #edf4e9; padding: 2px 5px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p>Stock Doctor · ${escapeHtml(payload.version)} · ${escapeHtml(payload.exported_at)}</p>
+      <h1>${escapeHtml(diagnosis.name ?? "")} <small>${escapeHtml(payload.symbol)}</small></h1>
+      <p>${escapeHtml(diagnosis.rating ?? "")} · ${escapeHtml(diagnosis.verdict ?? "")}</p>
+    </header>
+
+    <section>
+      <h2>诊断摘要</h2>
+      <div class="grid">
+        <div class="metric"><span>综合</span><strong>${escapeHtml(score.total ?? "-")}</strong></div>
+        <div class="metric"><span>技术</span><strong>${escapeHtml(score.technical ?? "-")}</strong></div>
+        <div class="metric"><span>资金</span><strong>${escapeHtml(score.capital ?? "-")}</strong></div>
+        <div class="metric"><span>风险</span><strong>${escapeHtml(score.risk ?? "-")}</strong></div>
+      </div>
+      <p>${escapeHtml(diagnosis.summary ?? "")}</p>
+    </section>
+
+    <section>
+      <h2>组合风险</h2>
+      <div class="grid">
+        <div class="metric"><span>风险等级</span><strong>${escapeHtml(portfolioRisk.risk_label ?? "-")}</strong></div>
+        <div class="metric"><span>风险压力</span><strong>${escapeHtml(portfolioRisk.portfolio_risk_score ?? "-")}</strong></div>
+        <div class="metric"><span>权重模式</span><strong>${escapeHtml(portfolioRisk.weight_mode === "custom" ? "自定义权重" : "等权模拟")}</strong></div>
+        <div class="metric"><span>总权重</span><strong>${escapeHtml(portfolioRisk.total_position_weight ?? 0)}%</strong></div>
+      </div>
+      <p>${escapeHtml(portfolioRisk.summary ?? "")}</p>
+      <h3>模拟仓位</h3>
+      ${positions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · ${escapeHtml(item.weight_pct)}%</small></div>`).join("") || "<p>暂无模拟仓位</p>"}
+      <p>输入权重：<code>${escapeHtml(JSON.stringify(weightInputs))}</code></p>
+    </section>
+
+    <section>
+      <h2>策略回测</h2>
+      <div class="grid">
+        <div class="metric"><span>样例交易</span><strong>${escapeHtml(strategyBacktest.trade_count ?? 0)}</strong></div>
+        <div class="metric"><span>胜率</span><strong>${escapeHtml(strategyBacktest.win_rate ?? 0)}%</strong></div>
+        <div class="metric"><span>平均收益</span><strong>${escapeHtml(strategyBacktest.average_return_pct ?? 0)}%</strong></div>
+        <div class="metric"><span>最大回撤</span><strong>${escapeHtml(strategyBacktest.max_drawdown_pct ?? 0)}%</strong></div>
+      </div>
+      <p>${escapeHtml(strategyBacktest.summary ?? "")}</p>
+      ${trades.slice(0, 6).map((trade: any) => `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · 收益 ${escapeHtml(trade.return_pct)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%</small></div>`).join("") || "<p>暂无样例交易</p>"}
+    </section>
+
+    <section>
+      <h2>数据可信度</h2>
+      <div class="grid">
+        <div class="metric"><span>连接器</span><strong>${escapeHtml(connectorHealth.active_provider ?? "-")}</strong></div>
+        <div class="metric"><span>Fallback</span><strong>${escapeHtml(connectorHealth.fallback_provider ?? "-")}</strong></div>
+        <div class="metric"><span>缓存状态</span><strong>${escapeHtml(freshness.status ?? "-")}</strong></div>
+        <div class="metric"><span>覆盖率</span><strong>${escapeHtml(freshness.coverage_pct ?? "-")}%</strong></div>
+      </div>
+      <p>${escapeHtml(freshness.message ?? "")}</p>
+    </section>
+  </main>
+</body>
+</html>`
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 function buildStorageImportPayload(value: unknown): StorageImportPayload {
@@ -687,1766 +1114,10 @@ function buildStorageImportPayload(value: unknown): StorageImportPayload {
   }
 }
 
-function SystemStoragePanel({
-  status,
-  importFileName,
-  importPreview,
-  onExport,
-  onPreviewImport,
-  onApplyImport,
-}: {
-  status: StorageStatus | null
-  importFileName: string
-  importPreview: StorageImportPreview | null
-  onExport: () => void
-  onPreviewImport: (file: File) => void
-  onApplyImport: () => void
-}) {
-  return (
-    <section className="panel storage-panel">
-      <div className="panel-title split-title">
-        <span>
-          <Database size={18} />
-          <h3>系统存储</h3>
-        </span>
-        <div className="title-actions">
-          <small>{status ? status.status : '加载中'}</small>
-          <button type="button" onClick={onExport} disabled={!status}>
-            <Download size={15} />
-            <span>导出</span>
-          </button>
-          <label className="file-action">
-            <Upload size={15} />
-            <span>预检</span>
-            <input
-              type="file"
-              accept="application/json,.json"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) onPreviewImport(file)
-                event.target.value = ''
-              }}
-            />
-          </label>
-        </div>
-      </div>
-      {status ? (
-        <>
-          <div className="storage-head">
-            <span>
-              <strong>{status.backend.toUpperCase()}</strong>
-              <small>{status.path}</small>
-            </span>
-            <b>{status.total_records}</b>
-          </div>
-          <div className="storage-grid">
-            {status.collections.map((item) => (
-              <div key={item.key} className="storage-stat">
-                <span>{item.label}</span>
-                <strong>{item.count}</strong>
-              </div>
-            ))}
-          </div>
-          <p>{status.migration_hint}</p>
-          {importPreview ? (
-            <div className="import-preview">
-              <div className="import-preview-head">
-                <span>
-                  <strong>{importFileName}</strong>
-                  <small>{importPreview.total_records} 条记录 · 跳过 {importPreview.skipped_records}</small>
-                </span>
-                <button type="button" onClick={onApplyImport} disabled={!importPreview.can_import}>
-                  <Upload size={15} />
-                  <span>导入</span>
-                </button>
-              </div>
-              <div className="storage-grid compact">
-                {importPreview.collections.map((item) => (
-                  <div key={item.key} className="storage-stat">
-                    <span>{item.label}</span>
-                    <strong>{item.count}</strong>
-                  </div>
-                ))}
-              </div>
-              {importPreview.warnings.length ? (
-                <ul className="import-warnings">
-                  {importPreview.warnings.map((warning) => (
-                    <li key={warning}>{warning}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <p className="empty-text">正在检查本地存储...</p>
-      )}
-    </section>
-  )
-}
-
-function SystemReadinessPanel({ readiness }: { readiness: SystemReadiness | null }) {
-  return (
-    <section className="panel readiness-panel">
-      <div className="panel-title split-title">
-        <span>
-          <CheckCircle2 size={18} />
-          <h3>系统就绪度</h3>
-        </span>
-        <small className={readiness ? readiness.status : 'warn'}>
-          {readiness ? readinessStatusLabel(readiness.status) : '加载中'}
-        </small>
-      </div>
-      {readiness ? (
-        <>
-          <div className="readiness-head">
-            <strong>{readiness.score}</strong>
-            <span>{readiness.summary}</span>
-          </div>
-          <div className="readiness-checks">
-            {readiness.checks.map((check) => (
-              <ReadinessCheckRow key={check.key} check={check} />
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="empty-text">正在汇总系统就绪状态...</p>
-      )}
-    </section>
-  )
-}
-
-function ReadinessCheckRow({ check }: { check: SystemReadinessCheck }) {
-  return (
-    <article className={`readiness-check ${check.status}`}>
-      <div>
-        <strong>{check.label}</strong>
-        <em>{readinessStatusLabel(check.status)}</em>
-      </div>
-      <p>{check.detail}</p>
-      <small>{check.next_action}</small>
-    </article>
-  )
-}
-
-function readinessStatusLabel(status: SystemReadiness['status']) {
-  if (status === 'pass') return '正常'
-  if (status === 'warn') return '待完善'
-  return '阻断'
-}
-
-function DataConnectorPanel({
-  health,
-  freshness,
-  jobs,
-  onRun,
-}: {
-  health: DataConnectorHealth | null
-  freshness: DataFreshnessStatus | null
-  jobs: DataRefreshJob[]
-  onRun: (scope: 'all' | 'watchlist') => void
-}) {
-  return (
-    <section className="panel connector-panel">
-      <div className="panel-title split-title">
-        <span>
-          <Database size={18} />
-          <h3>数据连接器</h3>
-        </span>
-        <small>{health ? `当前 ${health.active_provider}` : '加载中'}</small>
-      </div>
-      {health ? (
-        <>
-          <div className="connector-summary">
-            <span>回退源</span>
-            <strong>{health.fallback_provider}</strong>
-            <button type="button" onClick={() => onRun('all')}>
-              <RefreshCw size={15} />
-              <span>刷新全部</span>
-            </button>
-            <button type="button" onClick={() => onRun('watchlist')}>
-              <RefreshCw size={15} />
-              <span>刷新自选</span>
-            </button>
-          </div>
-          <div className="connector-list">
-            {health.connectors.map((connector) => (
-              <ConnectorRow key={connector.name} connector={connector} />
-            ))}
-          </div>
-          <FreshnessPanel freshness={freshness} />
-          <RefreshJobList jobs={jobs} />
-        </>
-      ) : (
-        <p className="empty-text">正在检查数据连接器...</p>
-      )}
-    </section>
-  )
-}
-
-function FreshnessPanel({ freshness }: { freshness: DataFreshnessStatus | null }) {
-  return (
-    <div className="freshness-panel">
-      <div className="freshness-title">
-        <strong>数据新鲜度</strong>
-        <em className={freshness ? freshness.status : 'unknown'}>
-          {freshness ? freshnessStatusLabel(freshness.status) : '加载中'}
-        </em>
-      </div>
-      {freshness ? (
-        <>
-          <div className="freshness-metrics">
-            <span>
-              <small>覆盖率</small>
-              <b>{freshness.coverage_pct.toFixed(1)}%</b>
-            </span>
-            <span>
-              <small>刷新年龄</small>
-              <b>{freshness.age_minutes === null ? '--' : `${freshness.age_minutes} 分钟`}</b>
-            </span>
-            <span>
-              <small>覆盖标的</small>
-              <b>{freshness.last_stock_count}/{freshness.expected_stock_count}</b>
-            </span>
-          </div>
-          <p>{freshness.message}</p>
-          <small>{freshness.next_action}</small>
-        </>
-      ) : (
-        <p className="empty-text">正在计算数据新鲜度...</p>
-      )}
-    </div>
-  )
-}
-
-function freshnessStatusLabel(status: DataFreshnessStatus['status']) {
-  if (status === 'fresh') return '新鲜'
-  if (status === 'stale') return '偏旧'
-  if (status === 'expired') return '过期'
-  return '未知'
-}
-
-function RefreshJobList({ jobs }: { jobs: DataRefreshJob[] }) {
-  return (
-    <div className="refresh-job-list">
-      <div className="refresh-job-title">
-        <strong>刷新记录</strong>
-        <span>{jobs.length ? `${jobs.length} 条` : '暂无'}</span>
-      </div>
-      {jobs.length === 0 ? (
-        <p className="empty-text">尚未运行刷新任务</p>
-      ) : (
-        jobs.map((job) => (
-          <article key={job.id} className={`refresh-job-row ${job.status}`}>
-            <span>
-              <strong>{job.provider}</strong>
-              <small>{formatReportTime(job.finished_at)} · {job.duration_ms} ms</small>
-            </span>
-            <em>{job.status === 'success' ? '成功' : '失败'}</em>
-            <p>{job.message}</p>
-          </article>
-        ))
-      )}
-    </div>
-  )
-}
-
-function ConnectorRow({ connector }: { connector: DataConnectorStatus }) {
-  return (
-    <article className={`connector-row ${connector.status}`}>
-      <div>
-        <strong>{connector.name}</strong>
-        <span>{connector.role}</span>
-      </div>
-      <em>{connector.active ? '启用' : connectorStatusLabel(connector.status)}</em>
-      <p>{connector.message}</p>
-      <small>{connector.next_action}</small>
-    </article>
-  )
-}
-
-function connectorStatusLabel(status: DataConnectorStatus['status']) {
-  if (status === 'online') return '在线'
-  if (status === 'fallback') return '备用'
-  if (status === 'missing-package') return '缺包'
-  if (status === 'planned') return '规划'
-  return '异常'
-}
-
-function WatchlistSummaryPanel({
-  summary,
-  onSelect,
-}: {
-  summary: WatchlistSummary | null
-  onSelect: (symbol: string) => void
-}) {
-  return (
-    <section className="panel portfolio-panel">
-      <div className="panel-title split-title">
-        <span>
-          <ShieldAlert size={18} />
-          <h3>自选股体检</h3>
-        </span>
-        <small>{summary?.as_of || '加载中'}</small>
-      </div>
-      {summary ? (
-        <>
-          <div className="portfolio-metrics">
-            <SummaryMetric label="自选数量" value={summary.stock_count} />
-            <SummaryMetric label="平均评分" value={summary.average_score.toFixed(1)} />
-            <SummaryMetric label="强势候选" value={summary.strong_count} />
-            <SummaryMetric label="高优先预警" value={summary.high_alert_count} />
-          </div>
-          <div className="portfolio-details">
-            {summary.top_stock ? (
-              <button type="button" onClick={() => onSelect(summary.top_stock!.symbol)}>
-                <span>最强候选</span>
-                <strong>{summary.top_stock.name}</strong>
-                <small>{summary.top_stock.total_score} 分 · {summary.top_stock.rating}</small>
-              </button>
-            ) : null}
-            {summary.highest_risk_alert ? (
-              <button type="button" onClick={() => onSelect(summary.highest_risk_alert!.symbol)}>
-                <span>最高风险</span>
-                <strong>{summary.highest_risk_alert.title}</strong>
-                <small>{summary.highest_risk_alert.name} · {summary.highest_risk_alert.evidence}</small>
-              </button>
-            ) : null}
-            <div className="industry-strip">
-              {summary.industry_exposure.map((item) => (
-                <span key={item.industry}>{item.industry} {item.count}</span>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : (
-        <p className="empty-text">正在汇总自选股...</p>
-      )}
-    </section>
-  )
-}
-
-function ReviewActionOverviewPanel({
-  overview,
-  onSelect,
-}: {
-  overview: ReviewActionOverview | null
-  onSelect: (symbol: string) => void
-}) {
-  return (
-    <section className="panel action-overview-panel">
-      <div className="panel-title split-title">
-        <span>
-          <ListChecks size={18} />
-          <h3>行动总览</h3>
-        </span>
-        <small>{overview ? `${overview.stock_count} 只` : '加载中'}</small>
-      </div>
-      {overview ? (
-        <>
-          <div className="action-overview-metrics">
-            <SummaryMetric label="待处理" value={overview.pending_count} />
-            <SummaryMetric label="观察中" value={overview.watching_count} />
-            <SummaryMetric label="已完成" value={overview.done_count} />
-          </div>
-          {overview.summaries.length ? (
-            <div className="action-overview-list">
-              {overview.summaries.slice(0, 5).map((item) => (
-                <ActionOverviewRow key={item.symbol} item={item} onSelect={onSelect} />
-              ))}
-            </div>
-          ) : (
-            <p className="empty-text">当前自选股暂无复盘动作</p>
-          )}
-        </>
-      ) : (
-        <p className="empty-text">正在汇总自选股行动...</p>
-      )}
-    </section>
-  )
-}
-
-function ActionOverviewRow({
-  item,
-  onSelect,
-}: {
-  item: ReviewActionStockSummary
-  onSelect: (symbol: string) => void
-}) {
-  return (
-    <button type="button" className={`action-overview-row ${item.top_priority}`} onClick={() => onSelect(item.symbol)}>
-      <span>
-        <strong>{item.name}</strong>
-        <small>{item.symbol} · {item.industry || '自选股'} · {item.item_count} 项</small>
-      </span>
-      <span>
-        <b>{item.top_action}</b>
-        <small>{item.top_detail}</small>
-      </span>
-      <em>{priorityLabel(item.top_priority)}</em>
-    </button>
-  )
-}
-
-function DataQualityOverviewPanel({
-  overview,
-  onSelect,
-}: {
-  overview: DataQualityOverview | null
-  onSelect: (symbol: string) => void
-}) {
-  return (
-    <section className="panel quality-overview-panel">
-      <div className="panel-title split-title">
-        <span>
-          <CheckCircle2 size={18} />
-          <h3>数据质量总览</h3>
-        </span>
-        <small>{overview ? `${overview.stock_count} 只` : '加载中'}</small>
-      </div>
-      {overview ? (
-        <>
-          <div className="quality-overview-metrics">
-            <SummaryMetric label="平均质量" value={overview.average_score.toFixed(1)} />
-            <SummaryMetric label="可靠" value={overview.pass_count} />
-            <SummaryMetric label="关注" value={overview.warn_count} />
-            <SummaryMetric label="异常" value={overview.fail_count} />
-          </div>
-          {overview.lowest_report ? (
-            <button
-              type="button"
-              className={`quality-lowest ${overview.lowest_report.status}`}
-              onClick={() => onSelect(overview.lowest_report!.symbol)}
-            >
-              <span>
-                <strong>{overview.lowest_report.name}</strong>
-                <small>{overview.lowest_report.symbol} · {overview.lowest_report.summary}</small>
-              </span>
-              <em>{overview.lowest_report.score}</em>
-            </button>
-          ) : (
-            <p className="empty-text">暂无可检查标的</p>
-          )}
-        </>
-      ) : (
-        <p className="empty-text">正在汇总自选股数据质量...</p>
-      )}
-    </section>
-  )
-}
-
-function SummaryMetric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="summary-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  )
-}
-
-function HotspotBriefPanel({ brief, onSelect }: { brief: HotspotBrief | null; onSelect: (symbol: string) => void }) {
-  return (
-    <section className={`panel hotspot-brief-panel ${brief?.status ?? 'neutral'}`}>
-      <div className="panel-title split-title">
-        <span>
-          <BellRing size={18} />
-          <h3>热点总览</h3>
-        </span>
-        <small>{brief ? hotspotStatusLabel(brief.status) : '加载中'}</small>
-      </div>
-      {brief ? (
-        <>
-          <p>{brief.summary}</p>
-          <div className="hotspot-brief-grid">
-            <HotspotBriefMetric label="行业主线" value={brief.top_industry?.industry ?? '--'} score={brief.top_industry?.heat_score} />
-            <HotspotBriefMetric label="题材焦点" value={brief.top_concept?.concept ?? '--'} score={brief.top_concept?.heat_score} />
-            <HotspotBriefMetric label="异动代表" value={brief.top_signal?.name ?? '--'} score={brief.top_signal?.signal_score} />
-          </div>
-          {brief.focus_symbols.length ? (
-            <div className="hotspot-focus">
-              {brief.focus_symbols.map((symbol) => (
-                <button type="button" key={symbol} onClick={() => onSelect(symbol)}>
-                  {symbol}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <p className="empty-text">正在提炼热点主线...</p>
-      )}
-    </section>
-  )
-}
-
-function HotspotBriefMetric({ label, value, score }: { label: string; value: string; score?: number }) {
-  return (
-    <span>
-      <small>{label}</small>
-      <strong>{value}</strong>
-      <em>{score ?? '--'}</em>
-    </span>
-  )
-}
-
-function HotspotCandidatesPanel({
-  candidates,
-  mode,
-  onModeChange,
-  onSelect,
-}: {
-  candidates: HotspotCandidate[]
-  mode: string
-  onModeChange: (mode: string) => void
-  onSelect: (symbol: string) => void
-}) {
-  return (
-    <section className="panel hotspot-candidates-panel">
-      <div className="panel-title split-title">
-        <span>
-          <ListChecks size={18} />
-          <h3>热点选股池</h3>
-        </span>
-        <div className="mini-segments" aria-label="热点选股模式">
-          {hotspotModes.map((option) => (
-            <button
-              type="button"
-              key={option.value}
-              className={mode === option.value ? 'selected' : ''}
-              onClick={() => onModeChange(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {candidates.length === 0 ? (
-        <p className="empty-text">当前没有满足热点观察条件的标的</p>
-      ) : (
-        <div className="hotspot-candidate-list">
-          {candidates.map((item) => (
-            <button type="button" key={item.symbol} className="hotspot-candidate-row" onClick={() => onSelect(item.symbol)}>
-              <strong>{item.heat_score}</strong>
-              <span>
-                <b>{item.name}</b>
-                <small>{item.symbol} · {item.concept} · {item.industry}</small>
-              </span>
-              <em className={item.change_pct >= 0 ? 'up' : 'down'}>
-                {item.change_pct >= 0 ? '+' : ''}{item.change_pct.toFixed(2)}%
-              </em>
-              <small>诊断 {item.diagnosis_score} · 异动 {item.signal_score}</small>
-              <p>{item.reason}</p>
-              <p className="next-action">{item.next_action}</p>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function HotspotReviewActionsPanel({
-  plan,
-  onSelect,
-  onStatusChange,
-}: {
-  plan: HotspotReviewPlan | null
-  onSelect: (symbol: string) => void
-  onStatusChange: (actionId: string, status: HotspotReviewAction['status']) => void
-}) {
-  const [statusFilter, setStatusFilter] = useState<HotspotReviewAction['status'] | 'all'>('all')
-  const filteredActions = plan
-    ? plan.actions.filter((item) => statusFilter === 'all' || item.status === statusFilter)
-    : []
-  const visibleActions = filteredActions.slice(0, 6)
-  return (
-    <section className="panel hotspot-review-panel">
-      <div className="panel-title split-title">
-        <span>
-          <CalendarClock size={18} />
-          <h3>热点跟踪动作</h3>
-        </span>
-        <small>{plan ? `${plan.candidate_count} 个候选 · ${plan.actions.length} 项动作` : '加载中'}</small>
-      </div>
-      {plan ? (
-        <>
-          <div className="hotspot-review-stats">
-            <span className="high">
-              <small>高优先</small>
-              <strong>{plan.high_count}</strong>
-            </span>
-            <span className="medium">
-              <small>待观察</small>
-              <strong>{plan.medium_count}</strong>
-            </span>
-            <span className="low">
-              <small>低优先</small>
-              <strong>{plan.low_count}</strong>
-            </span>
-          </div>
-          <div className="review-progress-stats hotspot-progress-stats">
-            <span>
-              <small>待处理</small>
-              <strong>{plan.pending_count}</strong>
-            </span>
-            <span>
-              <small>观察中</small>
-              <strong>{plan.watching_count}</strong>
-            </span>
-            <span>
-              <small>已完成</small>
-              <strong>{plan.done_count}</strong>
-            </span>
-          </div>
-          <div className="mini-segments hotspot-status-filter" aria-label="热点动作状态筛选">
-            {([
-              ['all', '全部'],
-              ['pending', '待处理'],
-              ['watching', '观察中'],
-              ['done', '已完成'],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={statusFilter === value ? 'selected' : ''}
-                onClick={() => setStatusFilter(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="hotspot-review-list">
-            {visibleActions.length === 0 ? (
-              <p className="empty-text">当前筛选下没有热点动作</p>
-            ) : visibleActions.map((item) => (
-              <article
-                key={item.id}
-                className={`hotspot-review-action ${item.priority}`}
-              >
-                <button type="button" className="hotspot-review-main" onClick={() => onSelect(item.symbol)}>
-                  <div>
-                    <span>{item.concept}</span>
-                    <em>{priorityLabel(item.priority)}</em>
-                  </div>
-                  <strong>{item.title}</strong>
-                  <p>{item.detail}</p>
-                  <small>{item.trigger}</small>
-                  <b>{item.check_window}</b>
-                </button>
-                <div className="hotspot-review-controls">
-                  {(['pending', 'watching', 'done'] as HotspotReviewAction['status'][]).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      className={item.status === status ? 'selected' : ''}
-                      onClick={() => onStatusChange(item.id, status)}
-                    >
-                      {reviewStatusLabel(status)}
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="empty-text">正在生成热点跟踪动作...</p>
-      )}
-    </section>
-  )
-}
-
-function IndustryHeatPanel({ items, onSelect }: { items: IndustryHeatItem[]; onSelect: (symbol: string) => void }) {
-  return (
-    <section className="panel industry-heat-panel">
-      <div className="panel-title split-title">
-        <span>
-          <BarChart3 size={18} />
-          <h3>行业热力</h3>
-        </span>
-        <small>{items.length ? `${items.length} 个行业` : '加载中'}</small>
-      </div>
-      {items.length === 0 ? (
-        <p className="empty-text">正在计算行业热力...</p>
-      ) : (
-        <div className="industry-heat-list">
-          {items.map((item) => (
-            <button type="button" key={item.industry} className={`industry-heat-row ${item.heat_level}`} onClick={() => onSelect(item.top_symbol)}>
-              <span>
-                <strong>{item.industry}</strong>
-                <small>{item.stock_count} 只 · {item.momentum_label} · 高优先预警 {item.high_alert_count}</small>
-              </span>
-              <span className="heat-meter" aria-label={`${item.industry} 热度 ${item.heat_score}`}>
-                <i style={{ width: `${Math.max(8, Math.min(item.heat_score, 100))}%` }} />
-              </span>
-              <b>{item.heat_score}</b>
-              <em className={item.average_change_pct >= 0 ? 'up' : 'down'}>
-                {item.average_change_pct >= 0 ? '+' : ''}{item.average_change_pct.toFixed(2)}%
-              </em>
-              <small>{item.top_name} {item.top_score} · 资金 {formatSignedNumber(item.average_main_inflow_million)}</small>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function ConceptHeatPanel({ items, onSelect }: { items: ConceptHeatItem[]; onSelect: (symbol: string) => void }) {
-  return (
-    <section className="panel concept-heat-panel">
-      <div className="panel-title split-title">
-        <span>
-          <Star size={18} />
-          <h3>题材热榜</h3>
-        </span>
-        <small>{items.length ? `${items.length} 个题材` : '加载中'}</small>
-      </div>
-      {items.length === 0 ? (
-        <p className="empty-text">正在归因题材热度...</p>
-      ) : (
-        <div className="concept-heat-list">
-          {items.map((item) => (
-            <button type="button" key={item.concept} className={`concept-heat-row ${item.heat_level}`} onClick={() => onSelect(item.top_symbol)}>
-              <strong>{item.heat_score}</strong>
-              <span>
-                <b>{item.concept}</b>
-                <small>{item.stock_count} 只 · {item.top_name} · {item.reason}</small>
-              </span>
-              <em className={item.average_change_pct >= 0 ? 'up' : 'down'}>
-                {item.average_change_pct >= 0 ? '+' : ''}{item.average_change_pct.toFixed(2)}%
-              </em>
-              <small>资金 {formatSignedNumber(item.average_main_inflow_million)}</small>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function MomentumSignalPanel({ items, onSelect }: { items: MomentumSignalItem[]; onSelect: (symbol: string) => void }) {
-  return (
-    <section className="panel momentum-panel">
-      <div className="panel-title split-title">
-        <span>
-          <BellRing size={18} />
-          <h3>异动雷达</h3>
-        </span>
-        <small>{items.length ? `${items.length} 条信号` : '暂无异动'}</small>
-      </div>
-      {items.length === 0 ? (
-        <p className="empty-text">当前没有明显短线异动</p>
-      ) : (
-        <div className="momentum-list">
-          {items.map((item) => (
-            <button type="button" key={item.symbol} className={`momentum-row ${item.signal_level}`} onClick={() => onSelect(item.symbol)}>
-              <strong>{item.signal_score}</strong>
-              <span>
-                <b>{item.name}</b>
-                <small>{item.symbol} · {item.industry} · {item.title}</small>
-                <small>{item.reason}</small>
-              </span>
-              <em className={item.change_pct >= 0 ? 'up' : 'down'}>
-                {item.change_pct >= 0 ? '+' : ''}{item.change_pct.toFixed(2)}%
-              </em>
-              <small>量比 {item.volume_ratio.toFixed(2)} · 资金 {formatSignedNumber(item.main_inflow_million)}</small>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function TimelinePanel({ events, onSelect }: { events: TimelineEvent[]; onSelect: (symbol: string) => void }) {
-  return (
-    <section className="panel timeline-panel">
-      <div className="panel-title split-title">
-        <span>
-          <CalendarClock size={18} />
-          <h3>跟踪时间线</h3>
-        </span>
-        <small>{events.length ? `${events.length} 项待跟踪` : '暂无事件'}</small>
-      </div>
-      {events.length === 0 ? (
-        <p className="empty-text">当前自选股暂无待跟踪事件</p>
-      ) : (
-        <div className="timeline-list">
-          {events.map((event) => (
-            <button
-              type="button"
-              key={event.id}
-              className={`timeline-row ${event.severity}`}
-              onClick={() => onSelect(event.symbol)}
-            >
-              <span className="timeline-date">{formatShortDate(event.due_date)}</span>
-              <span className="timeline-main">
-                <b>{event.title}</b>
-                <small>{event.name} · {event.category} · {event.trigger}</small>
-              </span>
-              <em>{timelineStatusLabel(event.status)}</em>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function RiskExposurePanel({ items, onSelect }: { items: RiskExposureItem[]; onSelect: (symbol: string) => void }) {
-  return (
-    <section className="panel exposure-panel">
-      <div className="panel-title split-title">
-        <span>
-          <ShieldAlert size={18} />
-          <h3>风险敞口</h3>
-        </span>
-        <small>{items.length ? `${items.length} 类风险` : '暂无风险'}</small>
-      </div>
-      {items.length === 0 ? (
-        <p className="empty-text">当前自选股暂无聚合风险</p>
-      ) : (
-        <div className="exposure-list">
-          {items.map((item) => (
-            <button type="button" key={item.category} className="exposure-row" onClick={() => onSelect(item.top_symbol)}>
-              <strong>{item.category}</strong>
-              <span>
-                <b>{item.event_count} 项</b>
-                <small>高 {item.high_count} / 中 {item.medium_count} / 低 {item.low_count}</small>
-              </span>
-              <em>{item.severity_score}</em>
-              <small>{item.top_name} · {item.top_title}</small>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function formatShortDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
+function normalizeStorageImportError(err: unknown) {
+  if (!(err instanceof Error)) return '数据导入失败'
+  if (err.message.startsWith('导入失败')) {
+    return err.message.replace('导入失败', '数据导入失败')
   }
-  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-}
-
-function timelineStatusLabel(status: TimelineEvent['status']) {
-  return status === 'open' ? '处理' : '观察'
-}
-
-function AlertCenter({ alerts, onSelect }: { alerts: AlertItem[]; onSelect: (symbol: string) => void }) {
-  return (
-    <section className="panel alert-center">
-      <div className="panel-title">
-        <BellRing size={18} />
-        <h3>预警中心</h3>
-      </div>
-      {alerts.length === 0 ? (
-        <p className="empty-text">当前自选股暂无预警</p>
-      ) : (
-        <div className="alert-list">
-          {alerts.map((alert) => (
-            <button
-              type="button"
-              key={alert.id}
-              className={`alert-row ${alert.severity}`}
-              onClick={() => onSelect(alert.symbol)}
-            >
-              <strong>{severityLabel(alert.severity)}</strong>
-              <span>
-                <b>{alert.title}</b>
-                <small>{alert.name} · {alert.category} · {alert.evidence}</small>
-              </span>
-              <em>{alert.score}</em>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function severityLabel(severity: AlertItem['severity']) {
-  if (severity === 'high') return '高'
-  if (severity === 'medium') return '中'
-  return '低'
-}
-
-function RankingPanel({
-  rankings,
-  sort,
-  onSortChange,
-  onSelect,
-}: {
-  rankings: RankedDiagnosis[]
-  sort: string
-  onSortChange: (sort: string) => void
-  onSelect: (symbol: string) => void
-}) {
-  return (
-    <section className="panel ranking-panel">
-      <div className="panel-title split-title">
-        <span>
-          <BarChart3 size={18} />
-          <h3>机会排行</h3>
-        </span>
-        <div className="mini-segments" aria-label="排行排序">
-          {rankingSortOptions.map((option) => (
-            <button
-              type="button"
-              key={option.value}
-              className={sort === option.value ? 'selected' : ''}
-              onClick={() => onSortChange(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="ranking-list">
-        {rankings.map((item) => (
-          <button type="button" key={item.symbol} className="ranking-row" onClick={() => onSelect(item.symbol)}>
-            <strong>{item.total_score}</strong>
-            <span>
-              <b>{item.name}</b>
-              <small>{item.symbol} · {item.industry} · {item.rating}</small>
-            </span>
-            <em className={item.change_pct >= 0 ? 'up' : 'down'}>
-              {item.change_pct >= 0 ? '+' : ''}{item.change_pct.toFixed(2)}%
-            </em>
-          </button>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function PriceAlertsPanel({
-  alerts,
-  diagnosis,
-  draft,
-  onDraftChange,
-  onSavePreset,
-  onSaveCustom,
-  onDelete,
-}: {
-  alerts: PriceAlert[]
-  diagnosis: Diagnosis | null
-  draft: string
-  onDraftChange: (value: string) => void
-  onSavePreset: (targetPrice: number, direction: PriceAlert['direction'], label: string) => void
-  onSaveCustom: () => void
-  onDelete: (alertId: string) => void
-}) {
-  const levels = diagnosis?.key_levels
-  return (
-    <section className="panel price-alert-panel">
-      <div className="panel-title split-title">
-        <span>
-          <BellRing size={18} />
-          <h3>价位提醒</h3>
-        </span>
-        <small>{alerts.length} 条</small>
-      </div>
-      {levels ? (
-        <div className="price-alert-presets">
-          <button type="button" onClick={() => onSavePreset(levels.risk_line, 'below', '风控线')}>
-            风控 {levels.risk_line.toFixed(2)}
-          </button>
-          <button type="button" onClick={() => onSavePreset(levels.support, 'below', '支撑位')}>
-            支撑 {levels.support.toFixed(2)}
-          </button>
-          <button type="button" onClick={() => onSavePreset(levels.pressure, 'above', '压力位')}>
-            压力 {levels.pressure.toFixed(2)}
-          </button>
-        </div>
-      ) : null}
-      <div className="price-alert-editor">
-        <input
-          value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
-          inputMode="decimal"
-          placeholder="自定义价位"
-        />
-        <button type="button" onClick={onSaveCustom} disabled={!draft.trim()}>
-          <Save size={16} />
-          <span>保存</span>
-        </button>
-      </div>
-      {alerts.length === 0 ? (
-        <p className="empty-text">暂无价位提醒</p>
-      ) : (
-        <div className="price-alert-list">
-          {alerts.map((alert) => (
-            <article key={alert.id} className={`price-alert-row ${alert.status}`}>
-              <span>
-                <strong>{alert.label}</strong>
-                <small>{directionLabel(alert.direction)} {alert.target_price.toFixed(2)} · 现价 {alert.last_price.toFixed(2)}</small>
-              </span>
-              <em>{alert.status === 'triggered' ? '触发' : `${alert.distance_pct.toFixed(2)}%`}</em>
-              <button type="button" className="delete-button" onClick={() => onDelete(alert.id)} aria-label="删除价位提醒">
-                <Trash2 size={16} />
-              </button>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function directionLabel(direction: PriceAlert['direction']) {
-  return direction === 'above' ? '上穿' : '下破'
-}
-
-function ScreenerPanel({
-  candidates,
-  preset,
-  onPresetChange,
-  onSelect,
-}: {
-  candidates: ScreenCandidate[]
-  preset: string
-  onPresetChange: (preset: string) => void
-  onSelect: (symbol: string) => void
-}) {
-  return (
-    <section className="panel screener-panel">
-      <div className="panel-title split-title">
-        <span>
-          <ListChecks size={18} />
-          <h3>策略股票池</h3>
-        </span>
-        <div className="mini-segments" aria-label="股票池策略">
-          {screenerPresets.map((option) => (
-            <button
-              type="button"
-              key={option.value}
-              className={preset === option.value ? 'selected' : ''}
-              onClick={() => onPresetChange(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {candidates.length === 0 ? (
-        <p className="empty-text">当前策略暂无候选</p>
-      ) : (
-        <div className="screener-list">
-          {candidates.map((item) => (
-            <button type="button" key={`${item.preset}-${item.symbol}`} className="screener-row" onClick={() => onSelect(item.symbol)}>
-              <strong>{item.total_score}</strong>
-              <span>
-                <b>{item.name}</b>
-                <small>{item.symbol} · {item.industry} · {item.rating}</small>
-              </span>
-              <em className={item.change_pct >= 0 ? 'up' : 'down'}>
-                {item.change_pct >= 0 ? '+' : ''}{item.change_pct.toFixed(2)}%
-              </em>
-              <p>{item.reason}</p>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function ResearchNotesPanel({
-  notes,
-  draft,
-  onDraftChange,
-  onSave,
-  onDelete,
-}: {
-  notes: ResearchNote[]
-  draft: string
-  onDraftChange: (value: string) => void
-  onSave: () => void
-  onDelete: (noteId: string) => void
-}) {
-  return (
-    <section className="panel notes-panel">
-      <div className="panel-title split-title">
-        <span>
-          <FileText size={18} />
-          <h3>研究笔记</h3>
-        </span>
-        <small>{notes.length} 条</small>
-      </div>
-      <div className="note-editor">
-        <textarea
-          value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
-          placeholder="记录复盘、观察点或待验证假设"
-          rows={3}
-        />
-        <button type="button" onClick={onSave} disabled={!draft.trim()}>
-          <Save size={16} />
-          <span>保存</span>
-        </button>
-      </div>
-      {notes.length === 0 ? (
-        <p className="empty-text">暂无研究笔记</p>
-      ) : (
-        <div className="note-list">
-          {notes.map((note) => (
-            <article key={note.id} className="note-row">
-              <div>
-                <p>{note.body}</p>
-                <small>{formatReportTime(note.created_at)}</small>
-              </div>
-              <button type="button" className="delete-button" onClick={() => onDelete(note.id)} aria-label="删除研究笔记">
-                <Trash2 size={16} />
-              </button>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function ReportHistory({
-  reports,
-  onSelect,
-  onDelete,
-}: {
-  reports: ReportRecord[]
-  onSelect: (symbol: string) => void
-  onDelete: (reportId: string) => void
-}) {
-  return (
-    <section className="panel history-panel">
-      <div className="panel-title">
-        <FileText size={18} />
-        <h3>报告历史</h3>
-      </div>
-      {reports.length === 0 ? (
-        <p className="empty-text">暂无已保存报告</p>
-      ) : (
-        <div className="history-list">
-          {reports.map((report) => (
-            <article key={report.id} className="history-row">
-              <button type="button" onClick={() => onSelect(report.diagnosis.symbol)}>
-                <strong>{report.diagnosis.name}</strong>
-                <span>{report.diagnosis.symbol} · {report.diagnosis.rating} · {report.diagnosis.score.total} 分</span>
-                <small>{formatReportTime(report.generated_at)}</small>
-              </button>
-              <button type="button" className="delete-button" onClick={() => onDelete(report.id)} aria-label={`删除 ${report.diagnosis.name} 报告`}>
-                <Trash2 size={16} />
-              </button>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function formatReportTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function DiagnosisWorkspace({
-  diagnosis,
-  overview,
-  dataSources,
-  trend,
-  peers,
-  dataQuality,
-  thesis,
-  diagnosisChange,
-  reviewActions,
-  onReviewActionStatus,
-}: {
-  diagnosis: Diagnosis
-  overview: MarketOverview | null
-  dataSources: DataSource[]
-  trend: TrendSeries | null
-  peers: PeerComparison | null
-  dataQuality: DataQualityReport | null
-  thesis: DiagnosisThesis | null
-  diagnosisChange: DiagnosisChangeReport | null
-  reviewActions: ReviewActionPlan | null
-  onReviewActionStatus: (actionId: string, status: ReviewActionItem['status']) => void
-}) {
-  return (
-    <div className="diagnosis-layout">
-      <section className="summary-band">
-        <div>
-          <span className="eyebrow">{diagnosis.industry} · {diagnosis.as_of}</span>
-          <h3>{diagnosis.rating}</h3>
-          <p>{diagnosis.verdict}</p>
-        </div>
-        <strong>{diagnosis.score.total}</strong>
-      </section>
-
-      <ScoreGauge score={diagnosis.score} />
-
-      {overview ? (
-        <section className="panel market-panel">
-          <div className="panel-title">
-            <BarChart3 size={18} />
-            <h3>市场概览</h3>
-          </div>
-          <div className="market-index">
-            <strong>{overview.index_name}</strong>
-            <span>{overview.index_level.toFixed(2)}</span>
-            <em className={overview.index_change_pct >= 0 ? 'up' : 'down'}>
-              {overview.index_change_pct >= 0 ? '+' : ''}{overview.index_change_pct.toFixed(2)}%
-            </em>
-          </div>
-          <div className="breadth">
-            <span>上涨 {overview.advancing}</span>
-            <span>下跌 {overview.declining}</span>
-          </div>
-          <div className="tag-row">
-            {overview.hot_industries.map((industry) => (
-              <span key={industry}>{industry}</span>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <TrendPanel trend={trend} />
-
-      <ChecklistPanel items={diagnosis.checklist} />
-
-      <PeerPanel peers={peers} />
-
-      <DiagnosisChangePanel report={diagnosisChange} />
-
-      <ReviewActionsPanel plan={reviewActions} onStatusChange={onReviewActionStatus} />
-
-      <DataQualityPanel report={dataQuality} />
-
-      <ThesisPanel thesis={thesis} />
-
-      <section className="panel report-panel">
-        <div className="panel-title">
-          <FileText size={18} />
-          <h3>AI 诊断摘要</h3>
-        </div>
-        <p>{diagnosis.summary}</p>
-        <small>{diagnosis.disclaimer}</small>
-      </section>
-
-      <section className="panel levels-panel">
-        <div className="panel-title">
-          <BarChart3 size={18} />
-          <h3>关键价位</h3>
-        </div>
-        <div className="levels-grid">
-          <Level label="支撑" value={diagnosis.key_levels.support} />
-          <Level label="中枢" value={diagnosis.key_levels.pivot} />
-          <Level label="压力" value={diagnosis.key_levels.pressure} />
-          <Level label="风控" value={diagnosis.key_levels.risk_line} />
-        </div>
-      </section>
-
-      <section className="panel evidence-panel">
-        <div className="panel-title">
-          <CheckCircle2 size={18} />
-          <h3>证据链</h3>
-        </div>
-        <div className="evidence-list">
-          {diagnosis.evidence.map((item) => (
-            <EvidenceRow key={`${item.label}-${item.value}`} item={item} />
-          ))}
-        </div>
-      </section>
-
-      <section className="panel risk-panel">
-        <div className="panel-title">
-          <ShieldAlert size={18} />
-          <h3>风险提示</h3>
-        </div>
-        <ul>
-          {diagnosis.risks.map((risk) => (
-            <li key={risk}>{risk}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="panel source-panel">
-        <div className="panel-title">
-          <Database size={18} />
-          <h3>数据源状态</h3>
-        </div>
-        <div className="source-list">
-          {dataSources.map((source) => (
-            <div key={source.name} className="source-row">
-              <strong>{source.name}</strong>
-              <span>{source.role}</span>
-              <em>{source.status}</em>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function ReviewActionsPanel({
-  plan,
-  onStatusChange,
-}: {
-  plan: ReviewActionPlan | null
-  onStatusChange: (actionId: string, status: ReviewActionItem['status']) => void
-}) {
-  const visibleItems = plan ? plan.items.slice(0, 8) : []
-  return (
-    <section className="panel review-actions-panel">
-      <div className="panel-title split-title">
-        <span>
-          <ListChecks size={18} />
-          <h3>复盘行动</h3>
-        </span>
-        <small>{plan ? `${plan.items.length} 项` : '加载中'}</small>
-      </div>
-      {plan ? (
-        <>
-          <div className="review-action-stats">
-            <ActionStat label="高优先" value={plan.high_count} priority="high" />
-            <ActionStat label="待观察" value={plan.medium_count} priority="medium" />
-            <ActionStat label="低优先" value={plan.low_count} priority="low" />
-          </div>
-          <div className="review-progress-stats">
-            <span>
-              <small>待处理</small>
-              <strong>{plan.pending_count}</strong>
-            </span>
-            <span>
-              <small>观察中</small>
-              <strong>{plan.watching_count}</strong>
-            </span>
-            <span>
-              <small>已完成</small>
-              <strong>{plan.done_count}</strong>
-            </span>
-          </div>
-          <div className="review-action-list">
-            {visibleItems.map((item) => (
-              <ReviewActionRow key={item.id} item={item} onStatusChange={onStatusChange} />
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="empty-text">正在生成复盘行动...</p>
-      )}
-    </section>
-  )
-}
-
-function ActionStat({ label, value, priority }: { label: string; value: number; priority: ReviewActionItem['priority'] }) {
-  return (
-    <span className={priority}>
-      <small>{label}</small>
-      <strong>{value}</strong>
-    </span>
-  )
-}
-
-function ReviewActionRow({
-  item,
-  onStatusChange,
-}: {
-  item: ReviewActionItem
-  onStatusChange: (actionId: string, status: ReviewActionItem['status']) => void
-}) {
-  return (
-    <article className={`review-action ${item.priority} ${item.status}`}>
-      <div>
-        <span>{item.category}</span>
-        <em>{reviewStatusLabel(item.status)}</em>
-      </div>
-      <strong>{item.title}</strong>
-      <p>{item.detail}</p>
-      <div className="review-action-controls">
-        {(['pending', 'watching', 'done'] as ReviewActionItem['status'][]).map((status) => (
-          <button
-            key={status}
-            type="button"
-            className={item.status === status ? 'selected' : ''}
-            onClick={() => onStatusChange(item.id, status)}
-          >
-            {reviewStatusLabel(status)}
-          </button>
-        ))}
-      </div>
-    </article>
-  )
-}
-
-function ChecklistPanel({ items }: { items: ChecklistItem[] }) {
-  return (
-    <section className="panel checklist-panel">
-      <div className="panel-title">
-        <ListChecks size={18} />
-        <h3>操作清单</h3>
-      </div>
-      <div className="checklist-list">
-        {items.map((item) => (
-          <article key={item.id} className={`checklist-item ${item.priority}`}>
-            <div>
-              <strong>{item.title}</strong>
-              <span>{priorityLabel(item.priority)}</span>
-            </div>
-            <p>{item.detail}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function DataQualityPanel({ report }: { report: DataQualityReport | null }) {
-  return (
-    <section className="panel data-quality-panel">
-      <div className="panel-title split-title">
-        <span>
-          <CheckCircle2 size={18} />
-          <h3>数据质量</h3>
-        </span>
-        <small className={report ? report.status : 'warn'}>
-          {report ? qualityStatusLabel(report.status) : '加载中'}
-        </small>
-      </div>
-      {report ? (
-        <>
-          <div className="quality-head">
-            <strong>{report.score}</strong>
-            <span>
-              <b>{report.coverage_pct.toFixed(1)}%</b>
-              <small>{report.summary}</small>
-            </span>
-          </div>
-          <div className="quality-checks">
-            {report.checks.map((check) => (
-              <DataQualityCheckRow key={check.key} check={check} />
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="empty-text">正在检查诊断数据质量...</p>
-      )}
-    </section>
-  )
-}
-
-function DataQualityCheckRow({ check }: { check: DataQualityCheck }) {
-  return (
-    <article className={`quality-check ${check.status}`}>
-      <div>
-        <strong>{check.label}</strong>
-        <em>{qualityStatusLabel(check.status)}</em>
-      </div>
-      <p>{check.detail}</p>
-      <small>{check.impact}</small>
-    </article>
-  )
-}
-
-function qualityStatusLabel(status: DataQualityReport['status']) {
-  if (status === 'pass') return '可靠'
-  if (status === 'warn') return '关注'
-  return '异常'
-}
-
-function DiagnosisChangePanel({ report }: { report: DiagnosisChangeReport | null }) {
-  return (
-    <section className="panel diagnosis-change-panel">
-      <div className="panel-title split-title">
-        <span>
-          <CalendarClock size={18} />
-          <h3>诊断变化</h3>
-        </span>
-        <small className={report ? report.status : 'baseline'}>
-          {report ? changeStatusLabel(report.status) : '加载中'}
-        </small>
-      </div>
-      {report ? (
-        <>
-          <div className="change-head">
-            <strong>{formatDelta(report.score_delta)}</strong>
-            <span>
-              <b>{report.summary}</b>
-              <small>
-                {report.previous_generated_at ? `对比 ${formatReportTime(report.previous_generated_at)}` : '当前为首份复盘基线'}
-              </small>
-            </span>
-          </div>
-          <div className="change-grid">
-            <ChangeMetric label="技术" value={report.technical_delta} />
-            <ChangeMetric label="估值" value={report.valuation_delta} />
-            <ChangeMetric label="资金" value={report.capital_delta} />
-            <ChangeMetric label="风险" value={report.risk_delta} />
-          </div>
-          <div className="change-list">
-            {report.changes.map((item) => (
-              <ChangeItemRow key={item.key} item={item} />
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="empty-text">正在对比历史诊断...</p>
-      )}
-    </section>
-  )
-}
-
-function ChangeMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <span className={value > 0 ? 'up' : value < 0 ? 'down' : ''}>
-      <small>{label}</small>
-      <strong>{formatDelta(value)}</strong>
-    </span>
-  )
-}
-
-function ChangeItemRow({ item }: { item: DiagnosisChangeItem }) {
-  return (
-    <article className={`change-item ${item.direction}`}>
-      <strong>{item.label}</strong>
-      <span>{item.detail}</span>
-    </article>
-  )
-}
-
-function changeStatusLabel(status: DiagnosisChangeReport['status']) {
-  if (status === 'baseline') return '基线'
-  if (status === 'improved') return '增强'
-  if (status === 'weakened') return '转弱'
-  if (status === 'flat') return '持平'
-  return '变化'
-}
-
-function formatDelta(value: number) {
-  if (value > 0) return `+${value}`
-  return String(value)
-}
-
-function ThesisPanel({ thesis }: { thesis: DiagnosisThesis | null }) {
-  return (
-    <section className="panel thesis-panel">
-      <div className="panel-title split-title">
-        <span>
-          <ListChecks size={18} />
-          <h3>诊断论证</h3>
-        </span>
-        <small className={thesis ? thesis.stance : 'balanced'}>
-          {thesis ? thesisStanceLabel(thesis.stance) : '加载中'}
-        </small>
-      </div>
-      {thesis ? (
-        <>
-          <div className="thesis-head">
-            <strong>{thesis.confidence}</strong>
-            <span>
-              <b>{thesis.trigger}</b>
-              <small>{thesis.invalidation}</small>
-            </span>
-          </div>
-          <div className="thesis-cases">
-            <article>
-              <strong>多头假设</strong>
-              <p>{thesis.bull_case}</p>
-            </article>
-            <article>
-              <strong>空头假设</strong>
-              <p>{thesis.bear_case}</p>
-            </article>
-          </div>
-          <div className="thesis-evidence-list">
-            {thesis.evidence.map((item) => (
-              <article key={`${item.side}-${item.label}`} className={`thesis-evidence ${item.side}`}>
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.detail}</small>
-                </span>
-                <em>{item.weight}</em>
-              </article>
-            ))}
-          </div>
-          <div className="thesis-next">
-            {thesis.next_checks.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="empty-text">正在生成诊断论证...</p>
-      )}
-    </section>
-  )
-}
-
-function thesisStanceLabel(stance: DiagnosisThesis['stance']) {
-  if (stance === 'bullish') return '偏多'
-  if (stance === 'defensive') return '防御'
-  return '均衡'
-}
-
-function priorityLabel(priority: ChecklistItem['priority']) {
-  if (priority === 'high') return '高优先'
-  if (priority === 'medium') return '观察'
-  return '低优先'
-}
-
-function reviewStatusLabel(status: ReviewActionItem['status']) {
-  if (status === 'done') return '完成'
-  if (status === 'watching') return '观察中'
-  return '待处理'
-}
-
-function PeerPanel({ peers }: { peers: PeerComparison | null }) {
-  return (
-    <section className="panel peer-panel">
-      <div className="panel-title split-title">
-        <span>
-          <BarChart3 size={18} />
-          <h3>同业对比</h3>
-        </span>
-        <small>{peers ? `${peers.industry} · ${peers.sample_size} 个样本` : '加载中'}</small>
-      </div>
-      {peers ? (
-        <div className="peer-table">
-          <div className="peer-head">
-            <span>标的</span>
-            <span>评分</span>
-            <span>涨跌</span>
-            <span>PE</span>
-            <span>ROE</span>
-            <span>资金</span>
-          </div>
-          {peers.items.map((item) => (
-            <PeerRow key={item.symbol} item={item} />
-          ))}
-        </div>
-      ) : (
-        <p className="empty-text">正在加载同业对比...</p>
-      )}
-    </section>
-  )
-}
-
-function PeerRow({ item }: { item: PeerComparisonItem }) {
-  const isTarget = item.relative_label === '当前标的'
-  return (
-    <div className={isTarget ? 'peer-row current' : 'peer-row'}>
-      <span>
-        <strong>{item.name}</strong>
-        <small>{item.symbol} · {item.relative_label}</small>
-      </span>
-      <b>{item.total_score}</b>
-      <em className={item.change_pct >= 0 ? 'up' : 'down'}>
-        {item.change_pct >= 0 ? '+' : ''}{item.change_pct.toFixed(2)}%
-      </em>
-      <em>{item.pe_ttm.toFixed(1)}</em>
-      <em>{item.roe.toFixed(1)}%</em>
-      <em className={item.main_inflow_million >= 0 ? 'up' : 'down'}>
-        {item.main_inflow_million >= 0 ? '+' : ''}{item.main_inflow_million.toFixed(0)}
-      </em>
-    </div>
-  )
-}
-
-function TrendPanel({ trend }: { trend: TrendSeries | null }) {
-  const linePath = trend ? buildSparklinePath(trend.points.map((point) => point.close)) : ''
-  const maPath = trend ? buildSparklinePath(trend.points.map((point) => point.ma20)) : ''
-  return (
-    <section className="panel trend-panel">
-      <div className="panel-title split-title">
-        <span>
-          <BarChart3 size={18} />
-          <h3>走势回放</h3>
-        </span>
-        <small>{trend ? `${trend.points.length} 日` : '加载中'}</small>
-      </div>
-      {trend ? (
-        <>
-          <div className="trend-stats">
-            <span className={trend.change_30d_pct >= 0 ? 'up' : 'down'}>
-              {trend.change_30d_pct >= 0 ? '+' : ''}{trend.change_30d_pct.toFixed(2)}%
-            </span>
-            <small>高 {trend.high.toFixed(2)} / 低 {trend.low.toFixed(2)}</small>
-          </div>
-          <svg className="sparkline" viewBox="0 0 300 120" role="img" aria-label={`${trend.name} 30 日走势`}>
-            <path className="spark-grid" d="M0 30H300M0 60H300M0 90H300" />
-            <path className="spark-ma" d={maPath} />
-            <path className="spark-close" d={linePath} />
-          </svg>
-          <div className="trend-legend">
-            <span><i className="legend-close" />收盘</span>
-            <span><i className="legend-ma" />MA20</span>
-          </div>
-        </>
-      ) : (
-        <p className="empty-text">正在加载走势...</p>
-      )}
-    </section>
-  )
-}
-
-function buildSparklinePath(values: number[]) {
-  if (values.length === 0) return ''
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-  return values
-    .map((value, index) => {
-      const x = (index / Math.max(values.length - 1, 1)) * 300
-      const y = 105 - ((value - min) / range) * 90
-      return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`
-    })
-    .join(' ')
-}
-
-function formatSignedNumber(value: number) {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(0)}`
-}
-
-function hotspotStatusLabel(status: HotspotBrief['status']) {
-  const labels: Record<HotspotBrief['status'], string> = {
-    hot: '热点强',
-    warm: '温和扩散',
-    neutral: '分化观察',
-    cool: '动能偏弱',
-  }
-  return labels[status]
-}
-
-function Level({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="level">
-      <span>{label}</span>
-      <strong>{value.toFixed(2)}</strong>
-    </div>
-  )
-}
-
-function EvidenceRow({ item }: { item: EvidenceItem }) {
-  return (
-    <article className={`evidence ${item.polarity}`}>
-      <div>
-        <strong>{item.label}</strong>
-        <span>{item.value}</span>
-      </div>
-      <p>{item.interpretation}</p>
-    </article>
-  )
+  return err.message
 }

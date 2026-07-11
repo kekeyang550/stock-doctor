@@ -214,6 +214,39 @@ export type DiagnosisChangeItem = {
   detail: string
 }
 
+export type DiagnosisScoreTrendPoint = {
+  label: string
+  generated_at: string
+  total: number
+  technical: number
+  valuation: number
+  capital: number
+  risk: number
+  rating: string
+}
+
+export type DiagnosisRatingTransition = {
+  previous: string | null
+  current: string
+  changed: boolean
+  detail: string
+}
+
+export type DiagnosisRiskShift = {
+  direction: 'improved' | 'worsened' | 'flat' | 'baseline'
+  delta: number
+  label: string
+  detail: string
+}
+
+export type DiagnosisChangeDriver = {
+  metric: string
+  label: string
+  delta: number
+  direction: 'up' | 'down' | 'flat' | 'changed'
+  detail: string
+}
+
 export type DiagnosisChangeReport = {
   symbol: string
   name: string
@@ -230,6 +263,10 @@ export type DiagnosisChangeReport = {
   current_rating: string
   summary: string
   changes: DiagnosisChangeItem[]
+  score_trend: DiagnosisScoreTrendPoint[]
+  rating_transition: DiagnosisRatingTransition
+  risk_shift: DiagnosisRiskShift
+  key_drivers: DiagnosisChangeDriver[]
 }
 
 export type ReviewActionItem = {
@@ -357,6 +394,59 @@ export type ScreenCandidate = {
   rating: string
   reason: string
   risk_note: string
+  rule_tags?: string[]
+  positive_evidence?: string
+  invalidation_risk?: string
+}
+
+export type StrategyBacktestTrade = {
+  symbol: string
+  name: string
+  industry: string
+  entry_date: string
+  exit_date: string
+  entry_price: number
+  exit_price: number
+  return_pct: number
+  max_drawdown_pct: number
+  holding_days: number
+  rule_tags: string[]
+  signal_reason: string
+}
+
+export type StrategyBacktestReport = {
+  preset: string
+  horizon: 'intraday' | 'swing' | 'position'
+  holding_days: number
+  sample_size: number
+  match_count: number
+  trade_count: number
+  win_rate: number
+  average_return_pct: number
+  best_return_pct: number
+  worst_return_pct: number
+  max_drawdown_pct: number
+  summary: string
+  rule_notes: string[]
+  trades: StrategyBacktestTrade[]
+}
+
+export type StrategyBacktestPeriodSummary = {
+  holding_days: number
+  trade_count: number
+  win_rate: number
+  average_return_pct: number
+  max_drawdown_pct: number
+}
+
+export type StrategyBacktestComparison = {
+  preset: string
+  horizon: 'intraday' | 'swing' | 'position'
+  sample_size: number
+  match_count: number
+  recommended_holding_days: number | null
+  periods: StrategyBacktestPeriodSummary[]
+  summary: string
 }
 
 export type AlertItem = {
@@ -398,6 +488,57 @@ export type RiskExposureItem = {
   top_symbol: string
   top_name: string
   top_title: string
+}
+
+export type PortfolioRiskConcentration = {
+  top_industry: string
+  top_industry_count: number
+  top_industry_ratio: number
+  industry_count: number
+}
+
+export type PortfolioRiskDistribution = {
+  high_count: number
+  medium_count: number
+  low_count: number
+}
+
+export type PortfolioRiskDriver = {
+  symbol: string
+  name: string
+  industry: string
+  risk_score: number
+  total_score: number
+  alert_count: number
+  primary_risk: string
+  position_weight_pct: number
+}
+
+export type PortfolioPositionWeight = {
+  symbol: string
+  name: string
+  industry: string
+  weight_pct: number
+}
+
+export type PortfolioRiskReport = {
+  scope: 'watchlist' | 'all'
+  horizon: 'intraday' | 'swing' | 'position'
+  stock_count: number
+  weight_mode: 'equal' | 'custom'
+  total_position_weight: number
+  average_total_score: number
+  average_risk_score: number
+  portfolio_risk_score: number
+  risk_level: 'low' | 'medium' | 'high'
+  risk_label: string
+  summary: string
+  concentration: PortfolioRiskConcentration
+  distribution: PortfolioRiskDistribution
+  top_drivers: PortfolioRiskDriver[]
+  suggestions: string[]
+  exposures: RiskExposureItem[]
+  positions: PortfolioPositionWeight[]
 }
 
 export type IndustryExposure = {

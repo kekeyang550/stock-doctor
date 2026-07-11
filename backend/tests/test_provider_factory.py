@@ -27,6 +27,26 @@ class FailingAkshare:
         raise RuntimeError("network unavailable")
 
 
+class FakeAkshareWithMarketOverview:
+    def stock_zh_a_spot_em(self):
+        return [
+            {"代码": "000001", "名称": "平安银行", "行业": "银行", "最新价": "10.62", "涨跌幅": "0.19"},
+            {"代码": "600519", "名称": "贵州茅台", "行业": "白酒", "最新价": "1518.3", "涨跌幅": "1.18"},
+            {"代码": "300750", "名称": "宁德时代", "行业": "电池", "最新价": "214.8", "涨跌幅": "-0.74"},
+        ]
+
+    def stock_zh_index_spot_em(self):
+        return [
+            {"代码": "000300", "名称": "沪深300", "最新价": "4216.38", "涨跌幅": "0.72"},
+            {"代码": "000001", "名称": "上证指数", "最新价": "3120.15", "涨跌幅": "0.31"},
+        ]
+
+
+class FailingAkshareMarketOverview(FakeAkshareWithMarketOverview):
+    def stock_zh_index_spot_em(self):
+        raise RuntimeError("index endpoint unavailable")
+
+
 class FakeAkshareWithRemoteStock:
     def stock_zh_a_spot_em(self):
         return [
@@ -119,6 +139,31 @@ def test_akshare_provider_falls_back_when_remote_fails():
     assert sources[0]["status"] == "fallback"
 
 
+def test_akshare_provider_builds_market_overview_from_remote_rows():
+    provider = AkshareMarketDataProvider(ak_module=FakeAkshareWithMarketOverview())
+
+    overview = provider.get_market_overview()
+
+    assert overview.index_name == "沪深300"
+    assert overview.index_level == 4216.38
+    assert overview.index_change_pct == 0.72
+    assert overview.advancing == 2
+    assert overview.declining == 1
+    assert overview.hot_industries[:2] == ["白酒", "银行"]
+    assert "AKShare" in overview.risk_notes[0]
+
+
+def test_akshare_provider_market_overview_falls_back_when_index_endpoint_fails():
+    provider = AkshareMarketDataProvider(ak_module=FailingAkshareMarketOverview())
+
+    overview = provider.get_market_overview()
+    sources = provider.get_data_sources()
+
+    assert overview.index_name == "沪深 300"
+    assert sources[0]["status"] == "fallback"
+    assert "index endpoint unavailable" in sources[0]["role"]
+
+
 def test_akshare_provider_builds_conservative_snapshot_for_remote_stock():
     provider = AkshareMarketDataProvider(ak_module=FakeAkshareWithRemoteStock())
 
@@ -178,6 +223,31 @@ def test_akshare_provider_caches_remote_snapshot_enrichment():
     assert akshare.history_calls == 1
 
 
+def test_akshare_provider_warms_watchlist_snapshot_cache(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    akshare = FakeAkshareWithHistory()
+    provider = AkshareMarketDataProvider(ak_module=akshare, state_store=store)
+    provider.add_to_watchlist("688002")
+
+    warmed = provider.warm_cache(scope="watchlist")
+    first = provider.get_snapshot("688002")
+    second = provider.get_snapshot("688002")
+
+    assert warmed == 1
+    assert first is second
+    assert akshare.history_calls == 1
+
+
+def test_akshare_provider_warms_all_listed_stocks():
+    akshare = FakeAkshareWithHistory()
+    provider = AkshareMarketDataProvider(ak_module=akshare)
+
+    warmed = provider.warm_cache(scope="all")
+
+    assert warmed == 1
+    assert akshare.history_calls == 1
+
+
 def test_akshare_provider_marks_basic_risk_flags_from_summary():
     provider = AkshareMarketDataProvider(ak_module=FakeAkshareWithRiskNames())
 
@@ -201,6 +271,34 @@ def test_akshare_provider_enriches_fundamental_snapshot_from_remote_indicator():
     assert snapshot.fundamental.profit_growth == 15.2
     assert snapshot.fundamental.industry_pe_percentile == 42
     assert snapshot.capital.main_inflow_million == 0
+
+
+def test_akshare_provider_reports_partial_snapshot_sources():
+    provider = AkshareMarketDataProvider(ak_module=FakeAkshareWithRemoteStock())
+
+    snapshot = provider.get_snapshot("688001")
+    sources = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert sources[0]["status"] == "online"
+    assert "保守估算" in sources[0]["role"]
+    assert "fundamental" in sources[0]["role"]
+    assert "capital" in sources[0]["role"]
+
+
+def test_akshare_provider_reports_error_after_snapshot_enrichment_failure():
+    class FailingHistoryAkshare(FakeAkshareWithRemoteStock):
+        def stock_zh_a_hist(self, symbol: str, period: str, adjust: str):
+            raise RuntimeError("history unavailable")
+
+    provider = AkshareMarketDataProvider(ak_module=FailingHistoryAkshare())
+
+    snapshot = provider.get_snapshot("688001")
+    sources = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert sources[0]["status"] == "fallback"
+    assert "history unavailable" in sources[0]["role"]
 
 
 def test_akshare_provider_can_watch_remote_snapshot_stock(tmp_path):

@@ -1,0 +1,214 @@
+from app.schemas.diagnosis import (
+    DiagnosisResponse,
+    StockSnapshot,
+    StrategyBacktestComparison,
+    StrategyBacktestPeriodSummary,
+    StrategyBacktestReport,
+    StrategyBacktestTrade,
+    TrendPoint,
+)
+from app.services.screener import ScreenerService
+from app.services.trend import TrendService
+
+
+class StrategyBacktestService:
+    DEFAULT_PERIODS = [3, 5, 10, 20]
+
+    def __init__(self, screener_service: ScreenerService | None = None, trend_service: TrendService | None = None) -> None:
+        self._screener_service = screener_service or ScreenerService()
+        self._trend_service = trend_service or TrendService()
+
+    def run(
+        self,
+        preset: str,
+        horizon: str,
+        snapshots: list[StockSnapshot],
+        diagnoses: list[DiagnosisResponse],
+        holding_days: int = 5,
+        limit: int = 8,
+    ) -> StrategyBacktestReport:
+        holding_days = max(1, min(holding_days, 20))
+        limit = max(1, min(limit, 30))
+        snapshot_by_symbol = {item.symbol: item for item in snapshots}
+        candidates = self._screener_service.screen(snapshots=snapshots, diagnoses=diagnoses, preset=preset)
+        trades: list[StrategyBacktestTrade] = []
+
+        for candidate in candidates[:limit]:
+            snapshot = snapshot_by_symbol.get(candidate.symbol)
+            if snapshot is None:
+                continue
+            series = self._trend_service.build_series(snapshot=snapshot, days=max(holding_days + 5, 20))
+            trade = self._build_trade(snapshot, candidate.reason, candidate.rule_tags, series.points, holding_days)
+            if trade is not None:
+                trades.append(trade)
+
+        returns = [trade.return_pct for trade in trades]
+        average_return = sum(returns) / len(returns) if returns else 0.0
+        win_rate = (sum(1 for value in returns if value > 0) / len(returns) * 100) if returns else 0.0
+        best_return = max(returns) if returns else 0.0
+        worst_return = min(returns) if returns else 0.0
+        max_drawdown = min((trade.max_drawdown_pct for trade in trades), default=0.0)
+
+        return StrategyBacktestReport(
+            preset=preset,
+            horizon=horizon,
+            holding_days=holding_days,
+            sample_size=len(snapshots),
+            match_count=len(candidates),
+            trade_count=len(trades),
+            win_rate=round(win_rate, 1),
+            average_return_pct=round(average_return, 2),
+            best_return_pct=round(best_return, 2),
+            worst_return_pct=round(worst_return, 2),
+            max_drawdown_pct=round(max_drawdown, 2),
+            summary=self._summary(preset, len(candidates), trades, average_return, max_drawdown),
+            rule_notes=self._rule_notes(preset),
+            trades=sorted(trades, key=lambda item: item.return_pct, reverse=True),
+        )
+
+    def compare_periods(
+        self,
+        preset: str,
+        horizon: str,
+        snapshots: list[StockSnapshot],
+        diagnoses: list[DiagnosisResponse],
+        periods: list[int] | None = None,
+        limit: int = 8,
+    ) -> StrategyBacktestComparison:
+        normalized_periods = self._normalize_periods(periods)
+        reports = [
+            self.run(
+                preset=preset,
+                horizon=horizon,
+                snapshots=snapshots,
+                diagnoses=diagnoses,
+                holding_days=holding_days,
+                limit=limit,
+            )
+            for holding_days in normalized_periods
+        ]
+        summaries = [
+            StrategyBacktestPeriodSummary(
+                holding_days=report.holding_days,
+                trade_count=report.trade_count,
+                win_rate=report.win_rate,
+                average_return_pct=report.average_return_pct,
+                max_drawdown_pct=report.max_drawdown_pct,
+            )
+            for report in reports
+        ]
+        recommended = self._recommend_period(summaries)
+        return StrategyBacktestComparison(
+            preset=preset,
+            horizon=horizon,
+            sample_size=reports[0].sample_size if reports else len(snapshots),
+            match_count=reports[0].match_count if reports else 0,
+            recommended_holding_days=recommended.holding_days if recommended else None,
+            periods=summaries,
+            summary=self._comparison_summary(preset, summaries, recommended),
+        )
+
+    def _normalize_periods(self, periods: list[int] | None) -> list[int]:
+        selected: list[int] = []
+        for value in periods or self.DEFAULT_PERIODS:
+            holding_days = max(1, min(int(value), 20))
+            if holding_days not in selected:
+                selected.append(holding_days)
+        return selected or self.DEFAULT_PERIODS.copy()
+
+    def _recommend_period(self, periods: list[StrategyBacktestPeriodSummary]) -> StrategyBacktestPeriodSummary | None:
+        if not periods:
+            return None
+        return max(
+            periods,
+            key=lambda period: (
+                period.average_return_pct,
+                period.max_drawdown_pct,
+                period.win_rate,
+                -period.holding_days,
+            ),
+        )
+
+    def _comparison_summary(
+        self,
+        preset: str,
+        periods: list[StrategyBacktestPeriodSummary],
+        recommended: StrategyBacktestPeriodSummary | None,
+    ) -> str:
+        if not periods:
+            return f"{preset} 暂无可比较的样例周期。"
+        if recommended is None:
+            return f"{preset} 已生成 {len(periods)} 个周期样例摘要，暂无推荐周期。"
+        return (
+            f"{preset} 已比较 {len(periods)} 个持有周期，"
+            f"当前样例推荐 {recommended.holding_days} 日，"
+            f"平均收益 {recommended.average_return_pct:.2f}%，最大回撤 {recommended.max_drawdown_pct:.2f}%。"
+        )
+
+    def _build_trade(
+        self,
+        snapshot: StockSnapshot,
+        signal_reason: str,
+        rule_tags: list[str],
+        points: list[TrendPoint],
+        holding_days: int,
+    ) -> StrategyBacktestTrade | None:
+        if len(points) < 2:
+            return None
+
+        entry_index = max(0, len(points) - holding_days - 1)
+        exit_index = len(points) - 1
+        entry = points[entry_index]
+        exit_point = points[exit_index]
+        if entry.close <= 0:
+            return None
+
+        window = points[entry_index:exit_index + 1]
+        return_pct = ((exit_point.close - entry.close) / entry.close) * 100
+        max_drawdown_pct = self._max_drawdown(window)
+
+        return StrategyBacktestTrade(
+            symbol=snapshot.symbol,
+            name=snapshot.name,
+            industry=snapshot.industry,
+            entry_date=entry.date,
+            exit_date=exit_point.date,
+            entry_price=entry.close,
+            exit_price=exit_point.close,
+            return_pct=round(return_pct, 2),
+            max_drawdown_pct=round(max_drawdown_pct, 2),
+            holding_days=exit_index - entry_index,
+            rule_tags=rule_tags,
+            signal_reason=signal_reason,
+        )
+
+    def _max_drawdown(self, points: list[TrendPoint]) -> float:
+        peak = points[0].close
+        worst = 0.0
+        for point in points:
+            peak = max(peak, point.close)
+            if peak <= 0:
+                continue
+            drawdown = ((point.close - peak) / peak) * 100
+            worst = min(worst, drawdown)
+        return worst
+
+    def _summary(self, preset: str, match_count: int, trades: list[StrategyBacktestTrade], average_return: float, max_drawdown: float) -> str:
+        if not trades:
+            return f"{preset} 当前样例未形成可回测交易。"
+        return (
+            f"{preset} 在样例数据中命中 {match_count} 只标的，"
+            f"形成 {len(trades)} 笔 {trades[0].holding_days} 日持有交易，"
+            f"平均收益 {average_return:.2f}%，最大回撤 {max_drawdown:.2f}%。"
+        )
+
+    def _rule_notes(self, preset: str) -> list[str]:
+        notes = {
+            "strong": ["综合分和技术分同时较强。", "适合观察强势延续，但需复核回撤。"],
+            "value": ["行业估值分位较低且风险可控。", "适合验证低估值修复，不代表短线动能。"],
+            "capital-risk": ["用于暴露资金压力，不作为买入信号。", "收益统计仅帮助观察回避策略效果。"],
+            "breakout-volume": ["价格站上关键均线且量能放大。", "若量能回落或跌破 MA20，突破假设降级。"],
+            "capital-return": ["资金回流且不过热。", "适合验证温和资金修复样例。"],
+            "risk-avoidance": ["事件、技术或资金压力触发回避。", "用于复核风险暴露，不作为机会优先信号。"],
+        }
+        return notes.get(preset, ["当前策略使用样例规则生成，仅作研究参考。"])

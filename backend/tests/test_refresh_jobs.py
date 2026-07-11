@@ -9,6 +9,16 @@ from app.services.storage import JsonStateStore
 client = TestClient(create_app())
 
 
+class WarmableProvider(MockMarketDataProvider):
+    def __init__(self, state_store):
+        super().__init__(state_store=state_store)
+        self.warmed_scopes = []
+
+    def warm_cache(self, scope: str = "all") -> int:
+        self.warmed_scopes.append(scope)
+        return len(self.get_watchlist() if scope == "watchlist" else self.list_stocks())
+
+
 def test_refresh_job_service_records_successful_refresh(tmp_path):
     store = JsonStateStore(tmp_path / "state.json")
     provider = MockMarketDataProvider(state_store=store)
@@ -21,6 +31,18 @@ def test_refresh_job_service_records_successful_refresh(tmp_path):
     assert job.stock_count >= 1
     assert job.watchlist_count >= 1
     assert jobs[0].id == job.id
+
+
+def test_refresh_job_service_warms_provider_cache(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = WarmableProvider(state_store=store)
+    service = DataRefreshJobService(state_store=store)
+
+    job = service.run_refresh(provider=provider, scope="watchlist")
+
+    assert job.status == "success"
+    assert provider.warmed_scopes == ["watchlist"]
+    assert job.stock_count == len(provider.get_watchlist())
 
 
 def test_refresh_job_service_builds_freshness_status(tmp_path):

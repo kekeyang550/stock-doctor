@@ -37,6 +37,7 @@ class AkshareMarketDataProvider:
         self._stock_cache: list[StockSummary] | None = None
         self._snapshot_cache: dict[str, StockSnapshot] = {}
         self._last_error: str | None = None
+        self._partial_notes: set[str] = set()
 
     def list_stocks(self) -> list[StockSummary]:
         if self._ak is None:
@@ -56,11 +57,34 @@ class AkshareMarketDataProvider:
         return stocks
 
     def get_market_overview(self) -> MarketOverview:
-        return self._fallback.get_market_overview()
+        if self._ak is None:
+            return self._fallback.get_market_overview()
+        try:
+            overview = self._market_overview_from_remote()
+        except Exception as exc:
+            self._last_error = str(exc)
+            return self._fallback.get_market_overview()
+        if overview is None:
+            self._last_error = "AKShare market overview returned no usable rows"
+            return self._fallback.get_market_overview()
+        self._last_error = None
+        return overview
 
     def get_data_sources(self) -> list[dict[str, str]]:
-        status = "online" if self._ak is not None and self._last_error is None else "missing-package" if self._ak is None else "fallback"
-        message = "行情列表可由 AKShare 获取。" if status == "online" else self._last_error or "当前环境未安装 akshare。"
+        if self._ak is None:
+            status = "missing-package"
+            message = "当前环境未安装 akshare。"
+        elif self._last_error is not None:
+            status = "fallback"
+            message = self._last_error
+        else:
+            status = "online"
+            message = "行情列表可由 AKShare 获取。"
+
+        if self._partial_notes and status == "online":
+            partial = "、".join(sorted(self._partial_notes))
+            message = f"{message} {partial} 使用保守估算。"
+
         return [
             {"name": "AKShare", "status": status, "role": f"行情、指数、板块、资金流；{message}"},
             {"name": "Mock A股样例库", "status": "fallback", "role": "适配器未完成时的稳定回退"},
@@ -108,6 +132,14 @@ class AkshareMarketDataProvider:
         self._snapshot_cache[normalized] = snapshot
         return snapshot
 
+    def warm_cache(self, scope: str = "all") -> int:
+        stocks = self.get_watchlist() if scope == "watchlist" else self.list_stocks()
+        warmed = 0
+        for stock in stocks:
+            if self.get_snapshot(stock.symbol) is not None:
+                warmed += 1
+        return warmed
+
     def _load_a_share_list(self) -> list[StockSummary]:
         rows = self._call_stock_rows("stock_zh_a_spot_em")
         if not rows:
@@ -123,6 +155,45 @@ class AkshareMarketDataProvider:
         payload = method()
         return self._payload_to_rows(payload)
 
+    def _market_overview_from_remote(self) -> MarketOverview | None:
+        stocks = self.list_stocks()
+        index_rows = self._call_stock_rows("stock_zh_index_spot_em")
+        index_row = self._pick_index_row(index_rows)
+        if index_row is None:
+            return None
+        index_name = self._first_text(index_row, "名称", "name") or "沪深300"
+        index_level = self._first_float(index_row, "最新价", "last_price", "close", default=0)
+        index_change_pct = self._first_float(index_row, "涨跌幅", "change_pct", default=0)
+        if index_level <= 0:
+            return None
+        advancing = len([stock for stock in stocks if stock.change_pct >= 0])
+        declining = len(stocks) - advancing
+        hot_industries = [
+            stock.industry
+            for stock in sorted(stocks, key=lambda item: item.change_pct, reverse=True)
+            if stock.industry
+        ][:3]
+        return MarketOverview(
+            as_of=date.today().isoformat(),
+            index_name=index_name,
+            index_level=index_level,
+            index_change_pct=index_change_pct,
+            advancing=advancing,
+            declining=declining,
+            hot_industries=hot_industries,
+            risk_notes=["AKShare 行情概览已启用；指数和市场广度来自远端归一化数据。"],
+        )
+
+    def _pick_index_row(self, rows: list[dict]) -> dict | None:
+        if not rows:
+            return None
+        for row in rows:
+            code = self._first_text(row, "代码", "code", "symbol")
+            name = self._first_text(row, "名称", "name")
+            if code in {"000300", "399300"} or "沪深300" in name or "沪深 300" in name:
+                return row
+        return rows[0]
+
     def _call_history_rows(self, symbol: str) -> list[dict]:
         if self._ak is None:
             return []
@@ -132,8 +203,13 @@ class AkshareMarketDataProvider:
         try:
             payload = method(symbol=symbol, period="daily", adjust="qfq")
         except TypeError:
-            payload = method(symbol)
-        except Exception:
+            try:
+                payload = method(symbol)
+            except Exception as exc:
+                self._last_error = str(exc)
+                return []
+        except Exception as exc:
+            self._last_error = str(exc)
             return []
         return self._payload_to_rows(payload)
 
@@ -177,9 +253,21 @@ class AkshareMarketDataProvider:
         return default
 
     def _summary_to_conservative_snapshot(self, summary: StockSummary) -> StockSnapshot:
-        technical = self._technical_from_history(summary.symbol) or self._conservative_technical(summary.last_price)
-        fundamental = self._fundamental_from_remote(summary.symbol) or self._conservative_fundamental()
-        capital = self._capital_from_remote(summary.symbol) or self._conservative_capital()
+        technical = self._technical_from_history(summary.symbol)
+        if technical is None:
+            self._partial_notes.add("technical")
+            technical = self._conservative_technical(summary.last_price)
+
+        fundamental = self._fundamental_from_remote(summary.symbol)
+        if fundamental is None:
+            self._partial_notes.add("fundamental")
+            fundamental = self._conservative_fundamental()
+
+        capital = self._capital_from_remote(summary.symbol)
+        if capital is None:
+            self._partial_notes.add("capital")
+            capital = self._conservative_capital()
+
         price = technical["last_price"] or summary.last_price
         return StockSnapshot(
             symbol=summary.symbol,
@@ -362,8 +450,10 @@ class AkshareMarketDataProvider:
         except TypeError:
             try:
                 payload = method(symbol)
-            except Exception:
+            except Exception as exc:
+                self._last_error = str(exc)
                 return []
-        except Exception:
+        except Exception as exc:
+            self._last_error = str(exc)
             return []
         return self._payload_to_rows(payload)

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
@@ -220,6 +220,39 @@ const diagnosisChange = {
       detail: '保存当前报告后，后续诊断会自动对比变化。',
     },
   ],
+  score_trend: [
+    {
+      label: '本次',
+      generated_at: '2026-07-10T06:00:00Z',
+      total: 86,
+      technical: 90,
+      valuation: 80,
+      capital: 88,
+      risk: 82,
+      rating: '强势关注',
+    },
+  ],
+  rating_transition: {
+    previous: null,
+    current: '强势关注',
+    changed: false,
+    detail: '当前为首份复盘基线。',
+  },
+  risk_shift: {
+    direction: 'baseline',
+    delta: 0,
+    label: '风险基线',
+    detail: '保存当前报告后，后续会对比风险分变化。',
+  },
+  key_drivers: [
+    {
+      metric: 'baseline',
+      label: '首份基线',
+      delta: 0,
+      direction: 'flat',
+      detail: '当前诊断已作为后续对比基线。',
+    },
+  ],
 }
 
 const reviewActions = {
@@ -386,6 +419,9 @@ const screenCandidates = [
     rating: '强势关注',
     reason: '综合 86，技术 90，趋势结构较强。',
     risk_note: '暂未触发重大规则风险',
+    rule_tags: ['站上均线', '量比放大', '动能为正'],
+    positive_evidence: '技术分 90，价格高于 MA5/MA20，量比 1.16。',
+    invalidation_risk: '若跌破 MA20 或量能回落至 1.0 以下，突破假设降级。',
   },
 ]
 
@@ -435,6 +471,100 @@ const riskExposure = [
     top_title: '临近解禁窗口',
   },
 ]
+
+const portfolioRisk = {
+  scope: 'watchlist',
+  horizon: 'swing',
+  stock_count: 3,
+  weight_mode: 'equal',
+  total_position_weight: 100,
+  average_total_score: 72.7,
+  average_risk_score: 74.3,
+  portfolio_risk_score: 39,
+  risk_level: 'medium',
+  risk_label: '中等风险',
+  summary: '3 只标的组合风险为中等风险，行业集中度最高为 白酒。',
+  concentration: {
+    top_industry: '白酒',
+    top_industry_count: 1,
+    top_industry_ratio: 0.3333,
+    industry_count: 3,
+  },
+  distribution: {
+    high_count: 1,
+    medium_count: 1,
+    low_count: 1,
+  },
+  top_drivers: [
+    {
+      symbol: '002594',
+      name: '比亚迪',
+      industry: '汽车整车',
+      risk_score: 58,
+      total_score: 80,
+      alert_count: 1,
+      primary_risk: '临近解禁窗口',
+      position_weight_pct: 33.33,
+    },
+  ],
+  suggestions: [
+    '优先复核 比亚迪：临近解禁窗口',
+    '1 只标的处于高风险档，先检查风控线和事件窗口。',
+  ],
+  exposures: riskExposure,
+  positions: [
+    { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 33.33 },
+    { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 33.33 },
+    { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 33.33 },
+  ],
+}
+
+const strategyBacktest = {
+  preset: 'strong',
+  horizon: 'swing',
+  holding_days: 5,
+  sample_size: 4,
+  match_count: 2,
+  trade_count: 2,
+  win_rate: 50,
+  average_return_pct: 1.23,
+  best_return_pct: 3.4,
+  worst_return_pct: -0.9,
+  max_drawdown_pct: -2.1,
+  summary: 'strong 在样例数据中命中 2 只标的，形成 2 笔 5 日持有交易。',
+  rule_notes: ['综合分和技术分同时较强。', '样例回测不代表真实历史收益。'],
+  trades: [
+    {
+      symbol: '600519',
+      name: '贵州茅台',
+      industry: '白酒',
+      entry_date: '2026-07-05',
+      exit_date: '2026-07-10',
+      entry_price: 1468.2,
+      exit_price: 1518.1,
+      return_pct: 3.4,
+      max_drawdown_pct: -1.2,
+      holding_days: 5,
+      rule_tags: ['综合高分', '技术强势'],
+      signal_reason: '综合 86，技术 90，趋势结构较强。',
+    },
+  ],
+}
+
+const strategyBacktestComparison = {
+  preset: 'strong',
+  horizon: 'swing',
+  sample_size: 4,
+  match_count: 2,
+  recommended_holding_days: 10,
+  summary: 'strong 已比较 4 个持有周期，当前样例推荐 10 日。',
+  periods: [
+    { holding_days: 3, trade_count: 2, win_rate: 50, average_return_pct: 0.8, max_drawdown_pct: -1.5 },
+    { holding_days: 5, trade_count: 2, win_rate: 50, average_return_pct: 1.23, max_drawdown_pct: -2.1 },
+    { holding_days: 10, trade_count: 2, win_rate: 100, average_return_pct: 5.2, max_drawdown_pct: -2.8 },
+    { holding_days: 20, trade_count: 2, win_rate: 50, average_return_pct: 2.4, max_drawdown_pct: -4.6 },
+  ],
+}
 
 const watchlistSummary = {
   as_of: '2026-07-10',
@@ -612,6 +742,12 @@ describe('App', () => {
       if (url.includes('/rankings')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(rankings) })
       }
+      if (url.includes('/backtests/strategy/periods')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestComparison) })
+      }
+      if (url.includes('/backtests/strategy')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktest) })
+      }
       if (url.includes('/screeners')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(screenCandidates) })
       }
@@ -635,6 +771,9 @@ describe('App', () => {
       }
       if (url.includes('/risk/exposure')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(riskExposure) })
+      }
+      if (url.includes('/risk/portfolio')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(portfolioRisk) })
       }
       if (url.includes('/market/overview')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(overview) })
@@ -692,6 +831,7 @@ describe('App', () => {
   })
 
   afterEach(() => {
+    cleanup()
     vi.unstubAllGlobals()
   })
 
@@ -708,10 +848,15 @@ describe('App', () => {
     expect(screen.getByText('证据链')).toBeInTheDocument()
     expect(screen.getByText('市场概览')).toBeInTheDocument()
     expect(screen.getByText('数据源状态')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '数据连接器' })).toBeInTheDocument()
-    expect(screen.getByText('AKShare')).toBeInTheDocument()
-    expect(screen.getByText('缺包')).toBeInTheDocument()
-    expect(screen.getByText('刷新全部')).toBeInTheDocument()
+    const trustPanel = screen.getByRole('heading', { name: '数据可信度' }).closest('section')!
+    expect(within(trustPanel).getByText('行情来源')).toBeInTheDocument()
+    expect(within(trustPanel).getAllByText('mock').length).toBeGreaterThan(0)
+    expect(within(trustPanel).getByText('正在使用回退源')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('缓存可用')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('最近成功')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('AKShare')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('缺包')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('刷新全部')).toBeInTheDocument()
     expect(screen.getAllByText('数据新鲜度').length).toBeGreaterThan(0)
     expect(screen.getByText('新鲜')).toBeInTheDocument()
     expect(screen.getAllByText('100.0%').length).toBeGreaterThan(0)
@@ -750,6 +895,13 @@ describe('App', () => {
     expect(screen.getByText('策略股票池')).toBeInTheDocument()
     const screenerPanel = screen.getByRole('heading', { name: '策略股票池' }).closest('section')!
     expect(within(screenerPanel).getByText('强势关注')).toBeInTheDocument()
+    expect(within(screenerPanel).getByText('放量突破')).toBeInTheDocument()
+    expect(within(screenerPanel).getByText('资金回流')).toBeInTheDocument()
+    expect(within(screenerPanel).getByText('风险回避')).toBeInTheDocument()
+    expect(within(screenerPanel).getByText('命中规则')).toBeInTheDocument()
+    expect(within(screenerPanel).getByText('站上均线')).toBeInTheDocument()
+    expect(within(screenerPanel).getByText('正面证据')).toBeInTheDocument()
+    expect(within(screenerPanel).getByText('失效风险')).toBeInTheDocument()
     expect(screen.getByText('预警中心')).toBeInTheDocument()
     expect(screen.getByText('自选股体检')).toBeInTheDocument()
     expect(screen.getByText('行业热力')).toBeInTheDocument()
@@ -761,7 +913,7 @@ describe('App', () => {
     expect(within(actionOverviewPanel).getByText('主力资金流出')).toBeInTheDocument()
     expect(within(actionOverviewPanel).getByText(/600519/)).toBeInTheDocument()
     expect(screen.getByText('跟踪时间线')).toBeInTheDocument()
-    expect(screen.getByText('风险敞口')).toBeInTheDocument()
+    expect(screen.getByText('组合风险')).toBeInTheDocument()
     expect(screen.getByText('平均评分')).toBeInTheDocument()
     expect(screen.getByText('走势回放')).toBeInTheDocument()
     expect(screen.getByText('操作清单')).toBeInTheDocument()
@@ -770,6 +922,15 @@ describe('App', () => {
     const changePanel = screen.getByRole('heading', { name: '诊断变化' }).closest('section')!
     expect(within(changePanel).getByText('复盘基线')).toBeInTheDocument()
     expect(within(changePanel).getByText('当前为首份复盘基线')).toBeInTheDocument()
+    expect(within(changePanel).getByText('趋势对比')).toBeInTheDocument()
+    expect(within(changePanel).getByText('本次 · 强势关注')).toBeInTheDocument()
+    expect(within(changePanel).getByText('综合 86 / 风险 82')).toBeInTheDocument()
+    expect(within(changePanel).getByText('评级轨迹')).toBeInTheDocument()
+    expect(within(changePanel).getByText('强势关注')).toBeInTheDocument()
+    expect(within(changePanel).getByText('风险变化')).toBeInTheDocument()
+    expect(within(changePanel).getByText('风险基线')).toBeInTheDocument()
+    expect(within(changePanel).getByText('关键驱动')).toBeInTheDocument()
+    expect(within(changePanel).getByText('当前诊断已作为后续对比基线。')).toBeInTheDocument()
     const reviewPanel = screen.getByRole('heading', { name: '复盘行动' }).closest('section')!
     expect(within(reviewPanel).getAllByText('高优先').length).toBeGreaterThan(0)
     expect(within(reviewPanel).getByText('主力资金流出')).toBeInTheDocument()
@@ -790,5 +951,1173 @@ describe('App', () => {
     expect(within(history).getByText(/600519/)).toBeInTheDocument()
     expect(within(history).getByText(/强势关注/)).toBeInTheDocument()
     expect(within(history).getByText(/86 分/)).toBeInTheDocument()
+  })
+
+  it('shows a diagnosis failure state when market diagnosis times out', async () => {
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/diagnosis/600519')) {
+        return Promise.reject(new Error('行情接口超时'))
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('行情数据加载失败')).toBeInTheDocument())
+    const diagnosisFailure = screen.getByText('行情数据加载失败').closest('.state-panel') as HTMLElement
+    expect(within(diagnosisFailure).getByText('行情接口超时')).toBeInTheDocument()
+    expect(within(diagnosisFailure).getByText('可能是行情源、网络或接口超时导致，当前诊断没有更新。')).toBeInTheDocument()
+    expect(within(diagnosisFailure).getByRole('button', { name: '重试诊断' })).toBeInTheDocument()
+    expect(screen.queryByText('正在生成诊断...')).not.toBeInTheDocument()
+  })
+
+  it('shows panel-level errors when candidate APIs fail', async () => {
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/screeners')) {
+        return Promise.reject(new Error('策略接口超时'))
+      }
+      if (target.includes('/hotspots/candidates')) {
+        return Promise.reject(new Error('热点候选接口超时'))
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const screenerPanel = await waitFor(() => {
+      const panel = document.querySelector('.screener-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('策略股票池加载失败')
+      return panel as HTMLElement
+    })
+    expect(within(screenerPanel).getByText('策略接口超时')).toBeInTheDocument()
+    expect(within(screenerPanel).getByRole('button', { name: '重试策略池' })).toBeInTheDocument()
+
+    const hotspotPanel = await waitFor(() => {
+      const panel = document.querySelector('.hotspot-candidates-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('热点选股池加载失败')
+      return panel as HTMLElement
+    })
+    expect(within(hotspotPanel).getByText('热点候选接口超时')).toBeInTheDocument()
+    expect(within(hotspotPanel).getByRole('button', { name: '重试热点池' })).toBeInTheDocument()
+  })
+
+  it('shows actionable empty states when there are no candidate stocks', async () => {
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/screeners')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
+      }
+      if (target.includes('/hotspots/candidates')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const screenerPanel = await waitFor(() => {
+      const panel = document.querySelector('.screener-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('当前策略没有候选股票')
+      return panel as HTMLElement
+    })
+    expect(within(screenerPanel).getByText('可以切换策略，或等待下一轮行情刷新后再看。')).toBeInTheDocument()
+
+    const hotspotPanel = await waitFor(() => {
+      const panel = document.querySelector('.hotspot-candidates-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('当前热点模式没有候选股票')
+      return panel as HTMLElement
+    })
+    expect(within(hotspotPanel).getByText('可以切换均衡/激进模式，或等待热点数据刷新。')).toBeInTheDocument()
+  })
+
+  it('shows portfolio risk summary with concentration, distribution, drivers and exposures', async () => {
+    render(<App />)
+
+    const riskPanel = await waitFor(() => {
+      const panel = document.querySelector('.exposure-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('组合风险')
+      return panel as HTMLElement
+    })
+
+    expect(within(riskPanel).getByText('风险压力')).toBeInTheDocument()
+    expect(within(riskPanel).getByText('39')).toBeInTheDocument()
+    expect(within(riskPanel).getAllByText('中等风险').length).toBeGreaterThan(0)
+    expect(within(riskPanel).getByText('行业集中')).toBeInTheDocument()
+    expect(riskPanel).toHaveTextContent('白酒 33.3%')
+    expect(within(riskPanel).getByText('风险分布')).toBeInTheDocument()
+    expect(riskPanel).toHaveTextContent('高 1 / 中 1 / 低 1')
+    expect(within(riskPanel).getByText('优先复核 比亚迪：临近解禁窗口')).toBeInTheDocument()
+    expect(within(riskPanel).getByText('事件')).toBeInTheDocument()
+    expect(within(riskPanel).getByText('临近解禁窗口')).toBeInTheDocument()
+  })
+
+  it('refreshes portfolio risk with simulated position weights', async () => {
+    const weightedRisk = {
+      ...portfolioRisk,
+      weight_mode: 'custom',
+      total_position_weight: 80,
+      average_total_score: 86,
+      average_risk_score: 82,
+      concentration: {
+        ...portfolioRisk.concentration,
+        top_industry_ratio: 1,
+      },
+      positions: [
+        { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 80 },
+        { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 0 },
+        { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 0 },
+      ],
+    }
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/risk/portfolio') && target.includes('weights=')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(weightedRisk) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const weightInput = await screen.findByLabelText('模拟仓位 贵州茅台')
+    fireEvent.change(weightInput, { target: { value: '80' } })
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/risk/portfolio'))
+      const portfolioCalls = vi.mocked(fetch).mock.calls
+        .map((call) => decodeURIComponent(String(call[0])))
+        .filter((url) => url.includes('/risk/portfolio'))
+      expect(portfolioCalls.some((url) => url.includes('weights=600519:80'))).toBe(true)
+    })
+    const riskPanel = screen.getByRole('heading', { name: '组合风险' }).closest('section')!
+    await waitFor(() => expect(riskPanel).toHaveTextContent('自定义权重'))
+    expect(riskPanel).toHaveTextContent('总权重 80.0%')
+  })
+
+  it('shows strategy backtest summary with sample trades and drawdown', async () => {
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('策略回测')
+      return panel as HTMLElement
+    })
+
+    expect(within(backtestPanel).getByText('样例交易')).toBeInTheDocument()
+    expect(within(backtestPanel).getAllByText('胜率').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getAllByText('平均收益').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getByText('2')).toBeInTheDocument()
+    expect(within(backtestPanel).getAllByText('50.0%').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getAllByText('+1.23%').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getAllByText('-2.10%').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getByText('贵州茅台')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('600519 · 白酒 · 5 日')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('综合高分')).toBeInTheDocument()
+  })
+
+  it('shows strategy backtest period comparison with the recommended holding period', async () => {
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('周期对比')
+      return panel as HTMLElement
+    })
+
+    expect(within(backtestPanel).getByText('strong 已比较 4 个持有周期，当前样例推荐 10 日。')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('3日')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('10日')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('20日')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('推荐')).toBeInTheDocument()
+    expect(within(backtestPanel).getAllByText('平均收益').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
+    expect(within(backtestPanel).getByText('+5.20%')).toBeInTheDocument()
+  })
+
+  it('keeps the selected strategy backtest when period comparison fails', async () => {
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/backtests/strategy/periods')) {
+        return Promise.reject(new Error('周期对比接口超时'))
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('周期对比暂不可用')
+      return panel as HTMLElement
+    })
+
+    expect(within(backtestPanel).getByText('周期对比接口超时')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('样例交易')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('贵州茅台')).toBeInTheDocument()
+  })
+
+  it('reloads strategy backtest when the holding period changes', async () => {
+    const tenDayBacktest = {
+      ...strategyBacktest,
+      holding_days: 10,
+      summary: 'strong 在样例数据中命中 2 只标的，形成 2 笔 10 日持有交易。',
+      trades: strategyBacktest.trades.map((trade) => ({ ...trade, holding_days: 10, return_pct: 5.2 })),
+    }
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/backtests/strategy') && target.includes('holding_days=10')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(tenDayBacktest) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('策略回测')
+      return panel as HTMLElement
+    })
+
+    fireEvent.click(within(backtestPanel).getByRole('button', { name: '10日' }))
+
+    await waitFor(() => {
+      const backtestCalls = vi.mocked(fetch).mock.calls.map((call) => String(call[0])).filter((url) => url.includes('/backtests/strategy'))
+      expect(backtestCalls.some((url) => url.includes('holding_days=10'))).toBe(true)
+    })
+    expect(backtestPanel).toHaveTextContent('10 日样例持有')
+    expect(backtestPanel).toHaveTextContent('600519 · 白酒 · 10 日')
+    expect(backtestPanel).toHaveTextContent('+5.20%')
+  })
+
+  it('shows a local strategy backtest error when the backtest API fails', async () => {
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/backtests/strategy')) {
+        return Promise.reject(new Error('回测接口超时'))
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('策略回测加载失败')
+      return panel as HTMLElement
+    })
+    expect(within(backtestPanel).getByText('回测接口超时')).toBeInTheDocument()
+    expect(within(backtestPanel).getByRole('button', { name: '重试回测' })).toBeInTheDocument()
+
+    const screenerPanel = screen.getByRole('heading', { name: '策略股票池' }).closest('section')!
+    expect(within(screenerPanel).getByText('强势关注')).toBeInTheDocument()
+  })
+
+  it('disables refresh buttons while a refresh job is running and shows the new job', async () => {
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('刷新全部')).toBeInTheDocument())
+    const connectorPanel = screen.getByText('刷新全部').closest('section')!
+    const refreshedJob = {
+      ...refreshJobs[0],
+      id: 'job-2',
+      finished_at: '2026-07-10T06:05:00Z',
+      duration_ms: 18,
+      message: '已刷新全市场样例范围，覆盖 5 只标的，自选股 3 只。',
+    }
+    const refreshedFreshness = {
+      ...freshness,
+      age_minutes: 0,
+      last_stock_count: 5,
+      expected_stock_count: 5,
+      message: '刚刚刷新完成，覆盖率 100.0%。',
+    }
+    const refreshedReadiness = {
+      ...systemReadiness,
+      status: 'pass',
+      score: 96,
+      summary: '系统数据刚刚刷新完成，就绪度 96 分。',
+    }
+    let refreshJobList = refreshJobs
+    let resolveRefresh: () => void = () => {
+      throw new Error('refresh request resolver was not initialized')
+    }
+    const refreshRequest = new Promise<void>((resolve) => {
+      resolveRefresh = resolve
+    })
+
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/system/refresh-jobs') && options?.method === 'POST') {
+        return refreshRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(refreshedJob),
+        } as Response))
+      }
+      if (target.includes('/system/refresh-jobs')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(refreshJobList) } as Response)
+      }
+      if (target.includes('/system/freshness')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(refreshedFreshness) } as Response)
+      }
+      if (target.includes('/system/readiness')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(refreshedReadiness) } as Response)
+      }
+      if (target.includes('/stocks')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(stocks) } as Response)
+      }
+      if (target.includes('/watchlist/summary')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(watchlistSummary) } as Response)
+      }
+      if (target.includes('/watchlist')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(stocks) } as Response)
+      }
+      if (target.includes('/market/overview')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(overview) } as Response)
+      }
+      if (target.includes('/data-sources')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sources) } as Response)
+      }
+      if (target.includes('/system/data-connectors')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(connectorHealth) } as Response)
+      }
+      if (target.includes('/system/storage')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(storageStatus) } as Response)
+      }
+      if (target.includes('/data-quality?scope=')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(dataQualityOverview) } as Response)
+      }
+      if (target.includes('/reports')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(reports) } as Response)
+      }
+      if (target.includes('/momentum/signals')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(momentumSignals) } as Response)
+      }
+      if (target.includes('/hotspots/brief')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotBrief) } as Response)
+      }
+      if (target.includes('/hotspots/candidates')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotCandidates) } as Response)
+      }
+      if (target.includes('/hotspots/review-actions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(hotspotReviewPlan) } as Response)
+      }
+      if (target.includes('/review-actions?')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActionOverview) } as Response)
+      }
+      if (target.includes('/review-actions/')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(reviewActions) } as Response)
+      }
+      if (target.includes('/alerts')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(alerts) } as Response)
+      }
+      if (target.includes('/timeline')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(timeline) } as Response)
+      }
+      if (target.includes('/risk/portfolio')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(portfolioRisk) } as Response)
+      }
+      if (target.includes('/risk/exposure')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(riskExposure) } as Response)
+      }
+      if (target.includes('/industries/heat')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(industryHeat) } as Response)
+      }
+      if (target.includes('/concepts/heat')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(conceptHeat) } as Response)
+      }
+      if (target.includes('/rankings')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(rankings) } as Response)
+      }
+      if (target.includes('/screeners')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(screenCandidates) } as Response)
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(diagnosis) } as Response)
+    })
+
+    const refreshAll = within(connectorPanel).getByRole('button', { name: '刷新全部' })
+    fireEvent.click(refreshAll)
+
+    expect(refreshAll).toBeDisabled()
+    expect(within(connectorPanel).getByText('刷新中')).toBeInTheDocument()
+
+    refreshJobList = [refreshedJob, ...refreshJobs]
+    resolveRefresh()
+
+    await waitFor(() => expect(within(connectorPanel).getAllByText(refreshedJob.message).length).toBeGreaterThan(0))
+    expect(within(connectorPanel).getAllByText('刚刚刷新完成，覆盖率 100.0%。').length).toBeGreaterThan(0)
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/system/refresh-jobs',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ scope: 'all' }),
+      }),
+    )
+  })
+
+  it('shows an inline data refresh failure message while keeping cached data visible', async () => {
+    render(<App />)
+
+    const connectorPanel = await waitFor(() => {
+      const panel = document.querySelector('.connector-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('数据可信度')
+      return panel as HTMLElement
+    })
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/system/refresh-jobs') && options?.method === 'POST') {
+        return Promise.resolve({ ok: false, status: 504, json: () => Promise.resolve({}) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    fireEvent.click(within(connectorPanel).getByRole('button', { name: '刷新全部' }))
+
+    await waitFor(() => expect(within(connectorPanel).getByText('刷新失败')).toBeInTheDocument())
+    expect(within(connectorPanel).getByText('刷新任务失败：504')).toBeInTheDocument()
+    expect(within(connectorPanel).getByText('已保留当前缓存数据，请检查行情源或稍后重试。')).toBeInTheDocument()
+    expect(within(connectorPanel).getByText('缓存可用')).toBeInTheDocument()
+  })
+
+  it('disables the save report button while a report is being created', async () => {
+    render(<App />)
+
+    const toolbar = await waitFor(() => {
+      const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
+      expect(node).not.toBeNull()
+      return node as HTMLElement
+    })
+    const saveButton = within(toolbar).getByRole('button', { name: '存报告' })
+    const createdReport = {
+      id: 'r2',
+      generated_at: '2026-07-10T09:00:00Z',
+      diagnosis: {
+        ...diagnosis,
+        name: '保存测试报告',
+      },
+    }
+    let resolveCreate: () => void = () => {
+      throw new Error('report resolver was not initialized')
+    }
+    const createRequest = new Promise<void>((resolve) => {
+      resolveCreate = resolve
+    })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/reports') && options?.method === 'POST') {
+        return createRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(createdReport),
+        } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    fireEvent.click(saveButton)
+
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveTextContent('保存中')
+
+    resolveCreate()
+
+    await waitFor(() => expect(within(toolbar).getByRole('button', { name: '存报告' })).toBeEnabled())
+    expect(screen.getByText('保存测试报告')).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/reports',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ symbol: '600519', horizon: 'swing' }),
+      }),
+    )
+  })
+
+  it('exports the current research report with diagnosis, portfolio risk, strategy backtest, and data trust context', async () => {
+    const NativeBlob = Blob
+    let reportBlobParts: BlobPart[] = []
+    vi.stubGlobal('Blob', vi.fn(function (parts?: BlobPart[], options?: BlobPropertyBag) {
+      reportBlobParts = parts ?? []
+      return new NativeBlob(parts, options)
+    }))
+    const createdUrls: Blob[] = []
+    const createObjectURL = vi.fn((blob: Blob) => {
+      createdUrls.push(blob)
+      return 'blob:stock-doctor-report'
+    })
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }))
+
+    const anchor = Document.prototype.createElement.call(document, 'a') as HTMLAnchorElement
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+      if (tagName === 'a') return anchor
+      return Document.prototype.createElement.call(document, tagName, options)
+    })
+
+    render(<App />)
+
+    const weightInput = await screen.findByLabelText('模拟仓位 贵州茅台')
+    fireEvent.change(weightInput, { target: { value: '80' } })
+
+    const toolbar = await waitFor(() => {
+      const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
+      expect(node).not.toBeNull()
+      return node as HTMLElement
+    })
+    const exportButton = within(toolbar).getByRole('button', { name: '导出报告' })
+    fireEvent.click(exportButton)
+
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+    const exported = JSON.parse(String(reportBlobParts[0]))
+    expect(exported.version).toBe('stock-doctor-report-v2')
+    expect(exported.symbol).toBe('600519')
+    expect(exported.horizon).toBe('swing')
+    expect(exported.diagnosis.symbol).toBe('600519')
+    expect(exported.portfolio_risk.risk_label).toBe('中等风险')
+    expect(exported.strategy_backtest.trade_count).toBe(2)
+    expect(exported.portfolio_weight_inputs['600519']).toBe('80')
+    expect(exported.data_trust.connector_health.active_provider).toBe('mock')
+    expect(exported.data_trust.freshness.status).toBe('fresh')
+    expect(anchor.download).toBe('stock-doctor-report-600519-2026-07-11.json')
+    expect(click).toHaveBeenCalled()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-report')
+  })
+
+  it('exports a readable HTML research report from the current v2 payload', async () => {
+    const NativeBlob = Blob
+    let reportBlobParts: BlobPart[] = []
+    vi.stubGlobal('Blob', vi.fn(function (parts?: BlobPart[], options?: BlobPropertyBag) {
+      reportBlobParts = parts ?? []
+      return new NativeBlob(parts, options)
+    }))
+    const createObjectURL = vi.fn(() => 'blob:stock-doctor-html-report')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }))
+
+    const anchor = Document.prototype.createElement.call(document, 'a') as HTMLAnchorElement
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+      if (tagName === 'a') return anchor
+      return Document.prototype.createElement.call(document, tagName, options)
+    })
+
+    render(<App />)
+
+    const toolbar = await waitFor(() => {
+      const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
+      expect(node).not.toBeNull()
+      return node as HTMLElement
+    })
+    fireEvent.click(within(toolbar).getByRole('button', { name: '导出HTML' }))
+
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+    const html = String(reportBlobParts[0])
+    expect(html).toContain('<!doctype html>')
+    expect(html).toContain('贵州茅台')
+    expect(html).toContain('组合风险')
+    expect(html).toContain('策略回测')
+    expect(html).toContain('数据可信度')
+    expect(anchor.download).toBe('stock-doctor-report-600519-2026-07-11.html')
+    expect(click).toHaveBeenCalled()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-html-report')
+  })
+
+  it('disables the topbar watchlist button while the selected stock is updating', async () => {
+    render(<App />)
+
+    const toolbar = await waitFor(() => {
+      const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
+      expect(node).not.toBeNull()
+      return node as HTMLElement
+    })
+    const watchButton = within(toolbar).getByRole('button', { name: '已自选' })
+    const nextWatchlist = stocks.filter((stock) => stock.symbol !== '600519')
+    let resolveUpdate: () => void = () => {
+      throw new Error('watchlist resolver was not initialized')
+    }
+    const updateRequest = new Promise<void>((resolve) => {
+      resolveUpdate = resolve
+    })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/watchlist/600519') && options?.method === 'DELETE') {
+        return updateRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(nextWatchlist),
+        } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    fireEvent.click(watchButton)
+
+    expect(watchButton).toBeDisabled()
+    expect(watchButton).toHaveTextContent('更新中')
+
+    resolveUpdate()
+
+    await waitFor(() => expect(within(toolbar).getByRole('button', { name: '加自选' })).toBeEnabled())
+    expect(fetch).toHaveBeenCalledWith('/api/v1/watchlist/600519', { method: 'DELETE' })
+  })
+
+  it('disables a search result add button while that stock is being added to the watchlist', async () => {
+    render(<App />)
+
+    const searchResults = await waitFor(() => {
+      const block = document.querySelector('.search-results-block') as HTMLElement | null
+      expect(block).not.toBeNull()
+      return block as HTMLElement
+    })
+    const addButton = within(searchResults).getByLabelText('加入自选 平安银行')
+    const nextWatchlist = [stocks[0], { ...stocks[1], name: '平安银行已加入' }]
+    let resolveAdd: () => void = () => {
+      throw new Error('search watchlist resolver was not initialized')
+    }
+    const addRequest = new Promise<void>((resolve) => {
+      resolveAdd = resolve
+    })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/watchlist') && options?.method === 'POST') {
+        return addRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(nextWatchlist),
+        } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    fireEvent.click(addButton)
+
+    expect(addButton).toBeDisabled()
+    expect(within(searchResults).getByLabelText('加入中 平安银行')).toBeDisabled()
+
+    resolveAdd()
+
+    await waitFor(() => {
+      const watchlistBlock = document.querySelector('.watchlist-block') as HTMLElement | null
+      expect(watchlistBlock).not.toBeNull()
+      expect(watchlistBlock).toHaveTextContent('平安银行已加入')
+    })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/watchlist',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ symbol: '000001' }),
+      }),
+    )
+  })
+
+  it('protects note save and delete actions while requests are pending', async () => {
+    render(<App />)
+
+    const notesPanel = await waitFor(() => {
+      const panel = document.querySelector('.notes-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    const textarea = within(notesPanel).getByPlaceholderText('记录复盘、观察点或待验证假设')
+    fireEvent.change(textarea, { target: { value: '新的复盘笔记' } })
+
+    const savedNote = {
+      id: 'n2',
+      symbol: '600519',
+      body: '新的复盘笔记',
+      created_at: '2026-07-10T06:30:00Z',
+    }
+    let resolveSave: () => void = () => {
+      throw new Error('note save resolver was not initialized')
+    }
+    let resolveDelete: () => void = () => {
+      throw new Error('note delete resolver was not initialized')
+    }
+    const saveRequest = new Promise<void>((resolve) => {
+      resolveSave = resolve
+    })
+    const deleteRequest = new Promise<void>((resolve) => {
+      resolveDelete = resolve
+    })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/notes') && options?.method === 'POST') {
+        return saveRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(savedNote),
+        } as Response))
+      }
+      if (target.includes('/notes/n1') && options?.method === 'DELETE') {
+        return deleteRequest.then(() => ({ ok: true } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    const saveButton = within(notesPanel).getByRole('button', { name: '保存' })
+    fireEvent.click(saveButton)
+
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveTextContent('保存中')
+
+    resolveSave()
+
+    await waitFor(() => expect(within(notesPanel).getByText('新的复盘笔记')).toBeInTheDocument())
+    const noteRow = within(notesPanel).getByText('观察量能是否继续温和放大').closest('article')!
+    const deleteButton = within(noteRow).getByLabelText('删除研究笔记')
+    fireEvent.click(deleteButton)
+
+    expect(deleteButton).toBeDisabled()
+    expect(within(notesPanel).getByLabelText('删除中研究笔记')).toBeDisabled()
+
+    resolveDelete()
+
+    await waitFor(() => expect(within(notesPanel).queryByText('观察量能是否继续温和放大')).not.toBeInTheDocument())
+  })
+
+  it('protects price alert save and delete actions while requests are pending', async () => {
+    render(<App />)
+
+    const alertsPanel = await waitFor(() => {
+      const panel = document.querySelector('.price-alert-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    const input = within(alertsPanel).getByPlaceholderText('自定义价位')
+    fireEvent.change(input, { target: { value: '1490' } })
+
+    const savedAlert = {
+      ...priceAlerts[0],
+      id: 'pa2',
+      target_price: 1490,
+      label: '自定义价位',
+      status: 'active',
+    }
+    let resolveSave: () => void = () => {
+      throw new Error('price alert save resolver was not initialized')
+    }
+    let resolveDelete: () => void = () => {
+      throw new Error('price alert delete resolver was not initialized')
+    }
+    const saveRequest = new Promise<void>((resolve) => {
+      resolveSave = resolve
+    })
+    const deleteRequest = new Promise<void>((resolve) => {
+      resolveDelete = resolve
+    })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/price-alerts') && options?.method === 'POST') {
+        return saveRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(savedAlert),
+        } as Response))
+      }
+      if (target.includes('/price-alerts/pa1') && options?.method === 'DELETE') {
+        return deleteRequest.then(() => ({ ok: true } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    const saveButton = within(alertsPanel).getByRole('button', { name: '保存' })
+    fireEvent.click(saveButton)
+
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveTextContent('保存中')
+    expect(within(alertsPanel).getByRole('button', { name: /风控/ })).toBeDisabled()
+
+    resolveSave()
+
+    await waitFor(() => expect(within(alertsPanel).getByText('自定义价位')).toBeInTheDocument())
+    const alertRow = within(alertsPanel).getByText('突破观察').closest('article')!
+    const deleteButton = within(alertRow).getByLabelText('删除价位提醒')
+    fireEvent.click(deleteButton)
+
+    expect(deleteButton).toBeDisabled()
+    expect(within(alertsPanel).getByLabelText('删除中价位提醒')).toBeDisabled()
+
+    resolveDelete()
+
+    await waitFor(() => expect(within(alertsPanel).queryByText('突破观察')).not.toBeInTheDocument())
+  })
+
+  it('protects storage export, preview, and import actions while requests are pending', async () => {
+    const createObjectURL = vi.fn(() => 'blob:stock-doctor-state')
+    const revokeObjectURL = vi.fn()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }))
+
+    render(<App />)
+
+    const storagePanel = await waitFor(() => {
+      const panel = document.querySelector('.storage-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    const exportSnapshot = {
+      exported_at: '2026-07-10T07:00:00Z',
+      backend: 'json',
+      watchlist: ['600519'],
+      reports,
+      notes,
+      price_alerts: priceAlerts,
+      review_action_statuses: [],
+    }
+    const preview = {
+      mode: 'merge',
+      can_import: true,
+      collections: storageStatus.collections,
+      total_records: 6,
+      warnings: [],
+      skipped_records: 0,
+    }
+    const importResult = {
+      ...preview,
+      imported_at: '2026-07-10T07:05:00Z',
+      status: 'imported',
+      storage: { ...storageStatus, total_records: 7 },
+    }
+    let resolveExport: () => void = () => {
+      throw new Error('storage export resolver was not initialized')
+    }
+    let resolvePreview: () => void = () => {
+      throw new Error('storage preview resolver was not initialized')
+    }
+    let resolveImport: () => void = () => {
+      throw new Error('storage import resolver was not initialized')
+    }
+    const exportRequest = new Promise<void>((resolve) => {
+      resolveExport = resolve
+    })
+    const previewRequest = new Promise<void>((resolve) => {
+      resolvePreview = resolve
+    })
+    const importRequest = new Promise<void>((resolve) => {
+      resolveImport = resolve
+    })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/system/export')) {
+        return exportRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(exportSnapshot),
+        } as Response))
+      }
+      if (target.includes('/system/import/preview') && options?.method === 'POST') {
+        return previewRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(preview),
+        } as Response))
+      }
+      if (target.includes('/system/import') && options?.method === 'POST') {
+        return importRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(importResult),
+        } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    const exportButton = within(storagePanel).getByRole('button', { name: '导出' })
+    fireEvent.click(exportButton)
+
+    expect(exportButton).toBeDisabled()
+    expect(exportButton).toHaveTextContent('导出中')
+
+    resolveExport()
+
+    await waitFor(() => expect(exportButton).toHaveTextContent('导出'))
+    expect(createObjectURL).toHaveBeenCalled()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-state')
+
+    const importInput = within(storagePanel).getByLabelText('预检')
+    const file = new File([JSON.stringify(exportSnapshot)], 'backup.json', { type: 'application/json' })
+    Object.defineProperty(file, 'text', {
+      value: () => Promise.resolve(JSON.stringify(exportSnapshot)),
+    })
+    fireEvent.change(importInput, { target: { files: [file] } })
+
+    await waitFor(() => expect(within(storagePanel).getByLabelText('预检中')).toBeDisabled())
+
+    resolvePreview()
+
+    await waitFor(() => expect(within(storagePanel).getByText('backup.json')).toBeInTheDocument())
+    const importButton = within(storagePanel).getByRole('button', { name: '导入' })
+    fireEvent.click(importButton)
+
+    expect(importButton).toBeDisabled()
+    expect(importButton).toHaveTextContent('导入中')
+
+    resolveImport()
+
+    await waitFor(() => expect(within(storagePanel).queryByText('backup.json')).not.toBeInTheDocument())
+  })
+
+  it('shows local failure feedback when note save fails and keeps the draft', async () => {
+    render(<App />)
+
+    const notesPanel = await waitFor(() => {
+      const panel = document.querySelector('.notes-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    const textarea = within(notesPanel).getByPlaceholderText('记录复盘、观察点或待验证假设')
+    fireEvent.change(textarea, { target: { value: '失败后仍保留的笔记' } })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/notes') && options?.method === 'POST') {
+        return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    fireEvent.click(within(notesPanel).getByRole('button', { name: '保存' }))
+
+    await waitFor(() => expect(within(notesPanel).getByText('研究笔记操作失败')).toBeInTheDocument())
+    expect(within(notesPanel).getByText('保存笔记失败：503')).toBeInTheDocument()
+    expect(within(notesPanel).getByText('草稿和已有笔记已保留，请稍后重试。')).toBeInTheDocument()
+    expect(textarea).toHaveValue('失败后仍保留的笔记')
+  })
+
+  it('shows local failure feedback when a price alert delete fails and keeps the alert', async () => {
+    render(<App />)
+
+    const alertsPanel = await waitFor(() => {
+      const panel = document.querySelector('.price-alert-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    const alertRow = within(alertsPanel).getByText('突破观察').closest('article')!
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/price-alerts/pa1') && options?.method === 'DELETE') {
+        return Promise.resolve({ ok: false, status: 504, json: () => Promise.resolve({}) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    fireEvent.click(within(alertRow).getByLabelText('删除价位提醒'))
+
+    await waitFor(() => expect(within(alertsPanel).getByText('价位提醒操作失败')).toBeInTheDocument())
+    expect(within(alertsPanel).getByText('删除价位提醒失败：504')).toBeInTheDocument()
+    expect(within(alertsPanel).getByText('输入内容和已有提醒已保留，请稍后重试。')).toBeInTheDocument()
+    expect(within(alertsPanel).getByText('突破观察')).toBeInTheDocument()
+  })
+
+  it('shows local failure feedback for import preview and apply failures', async () => {
+    render(<App />)
+
+    const storagePanel = await waitFor(() => {
+      const panel = document.querySelector('.storage-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    const exportSnapshot = {
+      exported_at: '2026-07-10T07:00:00Z',
+      backend: 'json',
+      watchlist: ['600519'],
+      reports,
+      notes,
+      price_alerts: priceAlerts,
+      review_action_statuses: [],
+    }
+    const preview = {
+      mode: 'merge',
+      can_import: true,
+      collections: storageStatus.collections,
+      total_records: 6,
+      warnings: [],
+      skipped_records: 0,
+    }
+    let previewShouldFail = true
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/system/import/preview') && options?.method === 'POST') {
+        if (previewShouldFail) {
+          return Promise.resolve({ ok: false, status: 422, json: () => Promise.resolve({}) } as Response)
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(preview) } as Response)
+      }
+      if (target.includes('/system/import') && options?.method === 'POST') {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    const failedFile = new File([JSON.stringify(exportSnapshot)], 'bad-backup.json', { type: 'application/json' })
+    Object.defineProperty(failedFile, 'text', {
+      value: () => Promise.resolve(JSON.stringify(exportSnapshot)),
+    })
+    fireEvent.change(within(storagePanel).getByLabelText('预检'), { target: { files: [failedFile] } })
+
+    await waitFor(() => expect(within(storagePanel).getByText('系统存储操作失败')).toBeInTheDocument())
+    expect(within(storagePanel).getByText('导入预检失败：422')).toBeInTheDocument()
+    expect(within(storagePanel).getByText('当前本地数据和导入状态已保留，请检查备份文件后重试。')).toBeInTheDocument()
+
+    previewShouldFail = false
+    const goodFile = new File([JSON.stringify(exportSnapshot)], 'good-backup.json', { type: 'application/json' })
+    Object.defineProperty(goodFile, 'text', {
+      value: () => Promise.resolve(JSON.stringify(exportSnapshot)),
+    })
+    fireEvent.change(within(storagePanel).getByLabelText('预检'), { target: { files: [goodFile] } })
+
+    await waitFor(() => expect(within(storagePanel).getByText('good-backup.json')).toBeInTheDocument())
+    expect(within(storagePanel).queryByText('导入预检失败：422')).not.toBeInTheDocument()
+
+    fireEvent.click(within(storagePanel).getByRole('button', { name: '导入' }))
+
+    await waitFor(() => expect(within(storagePanel).getByText('数据导入失败：500')).toBeInTheDocument())
+    expect(within(storagePanel).getByText('good-backup.json')).toBeInTheDocument()
+  })
+
+  it('disables a review action row while its status is updating', async () => {
+    render(<App />)
+
+    const reviewPanel = await waitFor(() => {
+      const panel = document.querySelector('.review-actions-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    const actionRow = within(reviewPanel).getByText('主力资金流出').closest('article')!
+    const updatedReviewActions = {
+      ...reviewActions,
+      pending_count: 1,
+      done_count: 1,
+      items: reviewActions.items.map((item) => (
+        item.id === 'alerts-资金-主力资金流出' ? { ...item, status: 'done' } : item
+      )),
+    }
+    const updatedOverview = {
+      ...reviewActionOverview,
+      pending_count: 6,
+      done_count: 1,
+    }
+    let resolveUpdate: () => void = () => {
+      throw new Error('review action resolver was not initialized')
+    }
+    const updateRequest = new Promise<void>((resolve) => {
+      resolveUpdate = resolve
+    })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/review-actions/600519/alerts-%E8%B5%84%E9%87%91-%E4%B8%BB%E5%8A%9B%E8%B5%84%E9%87%91%E6%B5%81%E5%87%BA') && options?.method === 'PATCH') {
+        return updateRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(updatedReviewActions),
+        } as Response))
+      }
+      if (target.includes('/review-actions?')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(updatedOverview) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    const doneButton = within(actionRow).getByRole('button', { name: '完成' })
+    fireEvent.click(doneButton)
+
+    expect(doneButton).toBeDisabled()
+    expect(within(actionRow).getByText('更新中')).toBeInTheDocument()
+
+    resolveUpdate()
+
+    await waitFor(() => expect(within(actionRow).getByRole('button', { name: '完成' })).toHaveClass('selected'))
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/review-actions/600519/alerts-%E8%B5%84%E9%87%91-%E4%B8%BB%E5%8A%9B%E8%B5%84%E9%87%91%E6%B5%81%E5%87%BA?horizon=swing',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'done' }),
+      }),
+    )
+  })
+
+  it('disables a hotspot action row while its status is updating', async () => {
+    render(<App />)
+
+    const hotspotPanel = await waitFor(() => {
+      const panel = document.querySelector('.hotspot-review-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      return panel as HTMLElement
+    })
+    const actionRow = within(hotspotPanel).getByText('盘中复核 比亚迪 热点承接').closest('article')!
+    const updatedPlan = {
+      ...hotspotReviewPlan,
+      pending_count: 0,
+      done_count: 1,
+      actions: hotspotReviewPlan.actions.map((item) => (
+        item.id === 'hotspot-002594-新能源汽车' ? { ...item, status: 'done' } : item
+      )),
+    }
+    let resolveUpdate: () => void = () => {
+      throw new Error('hotspot action resolver was not initialized')
+    }
+    const updateRequest = new Promise<void>((resolve) => {
+      resolveUpdate = resolve
+    })
+
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/hotspots/review-actions/hotspot-002594-%E6%96%B0%E8%83%BD%E6%BA%90%E6%B1%BD%E8%BD%A6') && options?.method === 'PATCH') {
+        return updateRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(updatedPlan),
+        } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    const doneButton = within(actionRow).getByRole('button', { name: '完成' })
+    fireEvent.click(doneButton)
+
+    expect(doneButton).toBeDisabled()
+    expect(within(actionRow).getByText('更新中')).toBeInTheDocument()
+
+    resolveUpdate()
+
+    await waitFor(() => expect(within(actionRow).getByRole('button', { name: '完成' })).toHaveClass('selected'))
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/hotspots/review-actions/hotspot-002594-%E6%96%B0%E8%83%BD%E6%BA%90%E6%B1%BD%E8%BD%A6?horizon=swing&mode=balanced',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'done' }),
+      }),
+    )
   })
 })

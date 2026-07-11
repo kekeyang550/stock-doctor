@@ -31,6 +31,13 @@ def test_change_report_returns_baseline_without_previous_report():
     assert report.previous_generated_at is None
     assert report.score_delta == 0
     assert report.changes[0].key == "baseline"
+    assert len(report.score_trend) == 1
+    assert report.score_trend[0].label == "本次"
+    assert report.rating_transition.previous is None
+    assert report.rating_transition.current == current.rating
+    assert report.rating_transition.changed is False
+    assert report.risk_shift.direction == "baseline"
+    assert report.key_drivers[0].metric == "baseline"
 
 
 def test_change_report_compares_against_previous_report():
@@ -54,3 +61,13 @@ def test_change_report_compares_against_previous_report():
     assert report.rating_changed is True
     assert report.previous_rating == "稳健观察"
     assert any(item.key == "rating" for item in report.changes)
+    assert [point.label for point in report.score_trend] == ["上次", "本次"]
+    assert report.score_trend[0].total == previous_diagnosis.score.total
+    assert report.score_trend[1].total == current.score.total
+    assert report.rating_transition.previous == "稳健观察"
+    assert report.rating_transition.current == current.rating
+    assert report.rating_transition.changed is True
+    assert report.risk_shift.direction == "improved"
+    assert report.risk_shift.delta == 2
+    assert report.key_drivers[0].metric == "total"
+    assert report.key_drivers[0].delta == 8
