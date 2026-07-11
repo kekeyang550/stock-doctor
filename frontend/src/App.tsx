@@ -638,6 +638,27 @@ export default function App() {
     }
   }, [buildCurrentResearchReportPayload, selectedSymbol])
 
+  const exportCurrentResearchReportMarkdown = useCallback(() => {
+    const payload = buildCurrentResearchReportPayload()
+    if (!payload) return
+    setError(null)
+    setExportingReportPackage(true)
+    try {
+      const markdown = buildResearchReportMarkdown(payload)
+      const blob = new Blob([markdown], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.md`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Markdown 报告导出失败')
+    } finally {
+      setExportingReportPackage(false)
+    }
+  }, [buildCurrentResearchReportPayload, selectedSymbol])
+
   const removeReport = useCallback(async (reportId: string) => {
     setError(null)
     try {
@@ -884,6 +905,10 @@ export default function App() {
               <FileText size={16} />
               <span>{exportingReportPackage ? '导出中' : '导出HTML'}</span>
             </button>
+            <button className="watch-button" type="button" onClick={exportCurrentResearchReportMarkdown} disabled={!diagnosis || exportingReportPackage}>
+              <FileText size={16} />
+              <span>{exportingReportPackage ? '导出中' : '导出MD'}</span>
+            </button>
             <div className="segments" role="tablist" aria-label="周期">
               {horizonOptions.map((option) => (
                 <button
@@ -1077,6 +1102,129 @@ export default function App() {
       </section>
     </main>
   )
+}
+
+function buildResearchReportMarkdown(payload: Record<string, any>) {
+  const diagnosis = payload.diagnosis ?? {}
+  const diagnosisChange = payload.diagnosis_change ?? {}
+  const score = diagnosis.score ?? {}
+  const trendInsight = diagnosisChange.trend_insight ?? null
+  const ratingTransition = diagnosisChange.rating_transition ?? null
+  const riskShift = diagnosisChange.risk_shift ?? null
+  const portfolioRisk = payload.portfolio_risk ?? {}
+  const strategyBacktest = payload.strategy_backtest ?? {}
+  const strategyBacktestHistory = payload.strategy_backtest_history ?? {}
+  const reviewActions = payload.review_actions ?? {}
+  const dataTrust = payload.data_trust ?? {}
+  const connectorHealth = dataTrust.connector_health ?? {}
+  const cacheStatus = connectorHealth.cache_status ?? {}
+  const freshness = dataTrust.freshness ?? {}
+  const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
+  const industryExposures = Array.isArray(portfolioRisk.industry_exposures) ? portfolioRisk.industry_exposures : []
+  const riskContributions = Array.isArray(portfolioRisk.risk_contributions) ? portfolioRisk.risk_contributions : []
+  const rebalanceActions = Array.isArray(portfolioRisk.rebalance_actions) ? portfolioRisk.rebalance_actions : []
+  const backtestHistoryItems = Array.isArray(strategyBacktestHistory.items) ? strategyBacktestHistory.items : []
+  const cacheBuckets = Array.isArray(cacheStatus.buckets) ? cacheStatus.buckets : []
+  const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
+  const lines: string[] = []
+
+  lines.push(`# ${markdownText(diagnosis.name ?? payload.symbol)} 研究报告`)
+  lines.push('')
+  lines.push(`- 代码: ${markdownText(payload.symbol)}`)
+  lines.push(`- 周期: ${markdownText(payload.horizon)}`)
+  lines.push(`- 导出时间: ${markdownText(payload.exported_at)}`)
+  lines.push('')
+
+  lines.push('## 诊断摘要')
+  lines.push('')
+  lines.push(`- 评级: ${markdownText(diagnosis.rating ?? '-')}`)
+  lines.push(`- 综合/技术/资金/风险: ${markdownText(score.total ?? '-')} / ${markdownText(score.technical ?? '-')} / ${markdownText(score.capital ?? '-')} / ${markdownText(score.risk ?? '-')}`)
+  lines.push(`- 摘要: ${markdownText(diagnosis.summary ?? '暂无诊断摘要')}`)
+  lines.push('')
+
+  lines.push('## 诊断变化')
+  lines.push('')
+  lines.push(`- 状态: ${markdownText(diagnosisChange.status ?? '-')}`)
+  lines.push(`- 综合变化: ${markdownText(diagnosisChange.score_delta ?? 0)}`)
+  lines.push(`- 摘要: ${markdownText(diagnosisChange.summary ?? '暂无诊断变化')}`)
+  if (trendInsight) {
+    lines.push(`- 趋势洞察: ${markdownText(trendInsight.summary)}`)
+    lines.push(`- 综合趋势: ${markdownText(reportScoreDirectionLabel(trendInsight.score_direction))}`)
+    lines.push(`- 风险趋势: ${markdownText(reportRiskDirectionLabel(trendInsight.risk_direction))}`)
+    lines.push(`- 评级变化 ${markdownText(trendInsight.rating_change_count ?? 0)} 次`)
+    lines.push(`- 区间: 综合 ${markdownText(trendInsight.total_low ?? '-')}-${markdownText(trendInsight.total_high ?? '-')} / 风险 ${markdownText(trendInsight.risk_low ?? '-')}-${markdownText(trendInsight.risk_high ?? '-')}`)
+  } else {
+    lines.push('- 趋势洞察: 暂无趋势洞察')
+  }
+  lines.push(`- 评级轨迹: ${ratingTransition ? markdownText(ratingTransition.detail) : '暂无评级轨迹'}`)
+  lines.push(`- 风险变化: ${riskShift ? markdownText(`${riskShift.label}: ${riskShift.detail}`) : '暂无风险变化'}`)
+  lines.push('')
+
+  lines.push('## 组合风险')
+  lines.push('')
+  lines.push(`- 风险等级: ${markdownText(portfolioRisk.risk_label ?? '-')}`)
+  lines.push(`- 风险压力: ${markdownText(portfolioRisk.portfolio_risk_score ?? '-')}`)
+  lines.push(`- 权重模式: ${portfolioRisk.weight_mode === 'custom' ? '自定义权重' : '等权模拟'}`)
+  lines.push(`- 总权重: ${markdownText(portfolioRisk.total_weight_pct ?? '-')}%`)
+  lines.push('')
+  lines.push('### 模拟仓位')
+  markdownList(lines, positions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${item.industry} - ${item.weight_pct}%`)
+  lines.push('')
+  lines.push('### 行业暴露')
+  markdownList(lines, industryExposures.slice(0, 8), (item) => `${item.industry}: 权重 ${item.weight_pct}%, ${item.stock_count} 只, 风险压力 ${item.risk_score}`)
+  lines.push('')
+  lines.push('### 风险贡献')
+  markdownList(lines, riskContributions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - 权重 ${item.weight_pct}%, 风险分 ${item.risk_score}, 贡献 ${item.contribution_score}`)
+  lines.push('')
+  lines.push('### 再平衡建议')
+  markdownList(lines, rebalanceActions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${reportRebalanceActionLabel(item.action)} - 当前 ${item.current_weight_pct}% / 建议 ${item.suggested_weight_pct}% / 调整 ${item.adjustment_pct}%`)
+  lines.push('')
+
+  lines.push('## 策略回测')
+  lines.push('')
+  lines.push(`- 价格来源: ${markdownText(strategyBacktestPriceSourceLabel(strategyBacktest.price_source))}`)
+  lines.push(`- 持有周期: ${markdownText(strategyBacktest.holding_days ?? '-')} 日`)
+  lines.push(`- 交易数/胜率: ${markdownText(strategyBacktest.trade_count ?? 0)} / ${markdownText(strategyBacktest.win_rate ?? 0)}%`)
+  lines.push(`- 平均收益/最大回撤: ${markdownText(formatReportSignedPercent(strategyBacktest.average_return_pct ?? 0))} / ${markdownText(formatReportSignedPercent(strategyBacktest.max_drawdown_pct ?? 0))}`)
+  lines.push(`- 稳定性: ${markdownText(strategyBacktest.stability_score ?? 0)} (${markdownText(strategyBacktest.stability_label ?? '暂无评估')})`)
+  lines.push('')
+  lines.push('### 历史对比')
+  lines.push(markdownText(strategyBacktestHistory.summary ?? '暂无回测历史对比'))
+  markdownList(lines, backtestHistoryItems.slice(0, 6), (item) => `${item.holding_days} 日 ${strategyBacktestPriceSourceLabel(item.price_source)} - 平均收益 ${formatReportSignedPercent(item.average_return_pct ?? 0)}, 最大回撤 ${formatReportSignedPercent(item.max_drawdown_pct ?? 0)}, 稳定 ${item.stability_score}, 可信 ${item.sample_confidence_score}`)
+  lines.push('')
+
+  lines.push('## 数据可信度')
+  lines.push('')
+  lines.push(`- 连接器: ${markdownText(connectorHealth.active_provider ?? '-')}`)
+  lines.push(`- Fallback: ${markdownText(connectorHealth.fallback_provider ?? '-')}`)
+  lines.push(`- 新鲜度: ${markdownText(freshness.status ?? '-')}`)
+  lines.push(`- 覆盖率: ${markdownText(freshness.coverage_pct ?? '-')}%`)
+  lines.push('')
+  lines.push('### 缓存桶')
+  markdownList(lines, cacheBuckets, (bucket) => `${bucket.label}: ${bucket.active_entries}/${bucket.entries} 有效, 已过期 ${bucket.expired_entries}, 命中 ${bucket.hit_count} / 未命中 ${bucket.miss_count}, 命中率 ${bucket.hit_rate_pct}%`)
+  lines.push('')
+
+  lines.push('## 复盘行动')
+  lines.push('')
+  lines.push(`- 高/中/低优先级: ${markdownText(reviewActions.high_count ?? 0)} / ${markdownText(reviewActions.medium_count ?? 0)} / ${markdownText(reviewActions.low_count ?? 0)}`)
+  markdownList(lines, reviewActionItems.slice(0, 8), (item) => `${item.title} - ${item.priority} - ${item.status} - ${item.detail}`)
+  lines.push('')
+
+  return `${lines.join('\n').trim()}\n`
+}
+
+function markdownList(lines: string[], items: any[], render: (item: any) => string) {
+  if (!items.length) {
+    lines.push('- 暂无')
+    return
+  }
+  for (const item of items) {
+    lines.push(`- ${markdownText(render(item))}`)
+  }
+}
+
+function markdownText(value: unknown) {
+  return String(value ?? '').replace(/\|/g, '\\|')
 }
 
 function buildResearchReportHtml(payload: Record<string, any>) {

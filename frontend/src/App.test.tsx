@@ -2196,6 +2196,52 @@ describe('App', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-html-report')
   })
 
+  it('exports a readable Markdown research report from the current v2 payload', async () => {
+    const NativeBlob = Blob
+    let reportBlobParts: BlobPart[] = []
+    let reportBlobOptions: BlobPropertyBag | undefined
+    vi.stubGlobal('Blob', vi.fn(function (parts?: BlobPart[], options?: BlobPropertyBag) {
+      reportBlobParts = parts ?? []
+      reportBlobOptions = options
+      return new NativeBlob(parts, options)
+    }))
+    const createObjectURL = vi.fn(() => 'blob:stock-doctor-md-report')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }))
+    const anchor = Document.prototype.createElement.call(document, 'a') as HTMLAnchorElement
+    const click = vi.spyOn(anchor, 'click').mockImplementation(() => undefined)
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+      if (tagName === 'a') return anchor as unknown as HTMLAnchorElement
+      return Document.prototype.createElement.call(document, tagName, options)
+    })
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('强势关注')).toBeInTheDocument())
+
+    const toolbar = await waitFor(() => {
+      const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
+      expect(node).not.toBeNull()
+      return node as HTMLElement
+    })
+    fireEvent.click(within(toolbar).getByRole('button', { name: '导出MD' }))
+
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+    const markdown = String(reportBlobParts[0])
+    expect(reportBlobOptions?.type).toBe('text/markdown')
+    expect(markdown).toContain('# 贵州茅台 研究报告')
+    expect(markdown).toContain('## 诊断变化')
+    expect(markdown).toContain('趋势洞察')
+    expect(markdown).toContain('最近 3 次诊断综合分持续走强')
+    expect(markdown).toContain('## 组合风险')
+    expect(markdown).toContain('再平衡建议')
+    expect(markdown).toContain('## 策略回测')
+    expect(markdown).toContain('历史对比')
+    expect(markdown).toContain('## 数据可信度')
+    expect(markdown).toContain('缓存桶')
+    expect(anchor.download).toBe('stock-doctor-report-600519-2026-07-11.md')
+    expect(click).toHaveBeenCalled()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-md-report')
+  })
+
   it('disables the topbar watchlist button while the selected stock is updating', async () => {
     render(<App />)
 
