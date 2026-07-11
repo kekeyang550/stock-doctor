@@ -84,6 +84,9 @@ class ProviderCacheBucketStatus(BaseModel):
     active_entries: int = Field(ge=0)
     expired_entries: int = Field(ge=0)
     nearest_expires_in_seconds: int = Field(ge=0)
+    hit_count: int = Field(default=0, ge=0)
+    miss_count: int = Field(default=0, ge=0)
+    hit_rate_pct: float = Field(default=0, ge=0, le=100)
     status: str = Field(pattern="^(empty|active|partial|expired)$")
 
 

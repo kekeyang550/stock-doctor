@@ -313,6 +313,8 @@ def test_akshare_provider_reports_cache_status_buckets():
 
     cold = provider.get_cache_status()
     provider.list_stocks()
+    provider.list_stocks()
+    provider.get_snapshot("688002")
     provider.get_snapshot("688002")
     provider.get_price_history("688002", days=10)
     warm = provider.get_cache_status()
@@ -325,6 +327,21 @@ def test_akshare_provider_reports_cache_status_buckets():
         "stock_list": 1,
         "snapshots": 1,
         "history": 1,
+    }
+    assert {bucket["key"]: bucket["hit_count"] for bucket in warm["buckets"]} == {
+        "stock_list": 2,
+        "snapshots": 1,
+        "history": 1,
+    }
+    assert {bucket["key"]: bucket["miss_count"] for bucket in warm["buckets"]} == {
+        "stock_list": 1,
+        "snapshots": 1,
+        "history": 1,
+    }
+    assert {bucket["key"]: bucket["hit_rate_pct"] for bucket in warm["buckets"]} == {
+        "stock_list": 66.7,
+        "snapshots": 50,
+        "history": 50,
     }
     assert all(bucket["nearest_expires_in_seconds"] == 10 for bucket in warm["buckets"])
     assert all(bucket["status"] == "expired" for bucket in expired["buckets"])

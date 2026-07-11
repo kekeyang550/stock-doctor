@@ -93,6 +93,9 @@ const connectorHealth = {
         active_entries: 1,
         expired_entries: 0,
         nearest_expires_in_seconds: 240,
+        hit_count: 5,
+        miss_count: 0,
+        hit_rate_pct: 100,
         status: 'active',
       },
       {
@@ -102,6 +105,9 @@ const connectorHealth = {
         active_entries: 2,
         expired_entries: 1,
         nearest_expires_in_seconds: 80,
+        hit_count: 8,
+        miss_count: 2,
+        hit_rate_pct: 80,
         status: 'partial',
       },
       {
@@ -111,6 +117,9 @@ const connectorHealth = {
         active_entries: 0,
         expired_entries: 1,
         nearest_expires_in_seconds: 0,
+        hit_count: 1,
+        miss_count: 3,
+        hit_rate_pct: 25,
         status: 'expired',
       },
     ],
@@ -987,8 +996,10 @@ describe('App', () => {
     expect(within(trustPanel).getByText('缓存命中')).toBeInTheDocument()
     expect(within(trustPanel).getByText('股票列表')).toBeInTheDocument()
     expect(within(trustPanel).getByText('1/1 有效')).toBeInTheDocument()
+    expect(within(trustPanel).getByText(/命中 5 \/ 未命中 0 · 命中率 100.0%/)).toBeInTheDocument()
     expect(within(trustPanel).getByText('行情快照')).toBeInTheDocument()
     expect(within(trustPanel).getByText('2/3 有效')).toBeInTheDocument()
+    expect(within(trustPanel).getByText(/命中 8 \/ 未命中 2 · 命中率 80.0%/)).toBeInTheDocument()
     expect(within(trustPanel).getByText('历史行情')).toBeInTheDocument()
     expect(within(trustPanel).getByText('0/1 有效')).toBeInTheDocument()
     expect(within(trustPanel).getByText('过期阈值')).toBeInTheDocument()
@@ -1952,6 +1963,7 @@ describe('App', () => {
     expect(html).toContain('1/1 有效')
     expect(html).toContain('行情快照')
     expect(html).toContain('2/3 有效')
+    expect(html).toContain('命中 8 / 未命中 2 · 命中率 80.0%')
     expect(html).toContain('历史行情')
     expect(html).toContain('0/1 有效')
     expect(html).toContain('复盘行动')

@@ -49,6 +49,11 @@ class AkshareMarketDataProvider:
         self._stock_cache: tuple[float, list[StockSummary]] | None = None
         self._snapshot_cache: dict[str, tuple[float, StockSnapshot]] = {}
         self._history_rows_cache: dict[str, tuple[float, list[dict]]] = {}
+        self._cache_stats = {
+            "stock_list": {"hit": 0, "miss": 0},
+            "snapshots": {"hit": 0, "miss": 0},
+            "history": {"hit": 0, "miss": 0},
+        }
         self._last_error: str | None = None
         self._partial_notes: set[str] = set()
 
@@ -56,7 +61,9 @@ class AkshareMarketDataProvider:
         if self._ak is None:
             return self._fallback.list_stocks()
         if self._stock_cache is not None and self._is_cache_fresh(self._stock_cache[0]):
+            self._record_cache_hit("stock_list")
             return self._stock_cache[1]
+        self._record_cache_miss("stock_list")
         try:
             stocks = self._load_a_share_list()
         except Exception as exc:
@@ -135,7 +142,9 @@ class AkshareMarketDataProvider:
         normalized = symbol.strip().upper()
         cached = self._snapshot_cache.get(normalized)
         if cached is not None and self._is_cache_fresh(cached[0]):
+            self._record_cache_hit("snapshots")
             return cached[1]
+        self._record_cache_miss("snapshots")
         fallback_snapshot = self._fallback.get_snapshot(normalized)
         if fallback_snapshot is not None:
             return fallback_snapshot
@@ -237,7 +246,9 @@ class AkshareMarketDataProvider:
             return []
         cached = self._history_rows_cache.get(symbol)
         if cached is not None and self._is_cache_fresh(cached[0]):
+            self._record_cache_hit("history")
             return cached[1]
+        self._record_cache_miss("history")
         method = getattr(self._ak, "stock_zh_a_hist", None)
         if method is None:
             return []
@@ -510,6 +521,8 @@ class AkshareMarketDataProvider:
         return self._now() - created_at <= self._cache_ttl_seconds
 
     def _cache_bucket_status(self, key: str, label: str, entries: list[tuple[float, object]]) -> dict:
+        stats = self._cache_stats[key]
+        total_lookups = stats["hit"] + stats["miss"]
         active_ages = [
             max(0.0, self._cache_ttl_seconds - (self._now() - created_at))
             for created_at, _value in entries
@@ -533,5 +546,14 @@ class AkshareMarketDataProvider:
             "active_entries": active_entries,
             "expired_entries": expired_entries,
             "nearest_expires_in_seconds": int(min(active_ages)) if active_ages else 0,
+            "hit_count": stats["hit"],
+            "miss_count": stats["miss"],
+            "hit_rate_pct": round((stats["hit"] / total_lookups) * 100, 1) if total_lookups else 0,
             "status": status,
         }
+
+    def _record_cache_hit(self, key: str) -> None:
+        self._cache_stats[key]["hit"] += 1
+
+    def _record_cache_miss(self, key: str) -> None:
+        self._cache_stats[key]["miss"] += 1

@@ -68,6 +68,9 @@ export type ProviderCacheBucketStatus = {
   active_entries: number
   expired_entries: number
   nearest_expires_in_seconds: number
+  hit_count?: number
+  miss_count?: number
+  hit_rate_pct?: number
   status: 'empty' | 'active' | 'partial' | 'expired'
 }
 

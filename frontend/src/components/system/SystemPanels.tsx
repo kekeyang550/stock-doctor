@@ -410,10 +410,11 @@ function cacheBucketStatusClass(status: ProviderCacheBucketStatus['status']) {
 
 
 function cacheBucketDetail(bucket: ProviderCacheBucketStatus) {
-  if (bucket.entries === 0) return '暂无缓存条目。'
-  if (bucket.active_entries === 0) return `全部 ${bucket.entries} 条缓存已过期。`
+  const hitText = `命中 ${bucket.hit_count ?? 0} / 未命中 ${bucket.miss_count ?? 0} · 命中率 ${(bucket.hit_rate_pct ?? 0).toFixed(1)}%`
+  if (bucket.entries === 0) return `暂无缓存条目。${hitText}`
+  if (bucket.active_entries === 0) return `全部 ${bucket.entries} 条缓存已过期。${hitText}`
   const expiredText = bucket.expired_entries > 0 ? `，${bucket.expired_entries} 条已过期` : ''
-  return `最近 ${bucket.nearest_expires_in_seconds} 秒后过期${expiredText}。`
+  return `最近 ${bucket.nearest_expires_in_seconds} 秒后过期${expiredText}。${hitText}`
 }
 
 

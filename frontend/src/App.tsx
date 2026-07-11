@@ -1218,7 +1218,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       </div>
       <p>${escapeHtml(freshness.message ?? "")}</p>
       <h3>缓存桶</h3>
-      ${cacheBuckets.map((bucket: any) => `<div class="row"><strong>${escapeHtml(bucket.label)}</strong><small>${escapeHtml(bucket.active_entries ?? 0)}/${escapeHtml(bucket.entries ?? 0)} 有效 · 已过期 ${escapeHtml(bucket.expired_entries ?? 0)} · 最近 ${escapeHtml(bucket.nearest_expires_in_seconds ?? 0)} 秒后过期 · ${escapeHtml(reportCacheStatusLabel(bucket.status))}</small></div>`).join("") || "<p>暂无缓存遥测</p>"}
+      ${cacheBuckets.map((bucket: any) => `<div class="row"><strong>${escapeHtml(bucket.label)}</strong><small>${escapeHtml(bucket.active_entries ?? 0)}/${escapeHtml(bucket.entries ?? 0)} 有效 · 已过期 ${escapeHtml(bucket.expired_entries ?? 0)} · 最近 ${escapeHtml(bucket.nearest_expires_in_seconds ?? 0)} 秒后过期 · 命中 ${escapeHtml(bucket.hit_count ?? 0)} / 未命中 ${escapeHtml(bucket.miss_count ?? 0)} · 命中率 ${escapeHtml(formatReportPercent(bucket.hit_rate_pct ?? 0))} · ${escapeHtml(reportCacheStatusLabel(bucket.status))}</small></div>`).join("") || "<p>暂无缓存遥测</p>"}
     </section>
 
     <section>
@@ -1277,6 +1277,12 @@ function formatReportSignedPercent(value: unknown) {
   const numeric = Number(value ?? 0)
   if (!Number.isFinite(numeric)) return '0.00%'
   return `${numeric > 0 ? '+' : ''}${numeric.toFixed(2)}%`
+}
+
+function formatReportPercent(value: unknown) {
+  const numeric = Number(value ?? 0)
+  if (!Number.isFinite(numeric)) return '0.0%'
+  return `${numeric.toFixed(1)}%`
 }
 
 function readStoredBacktestParameters(): BacktestParameters {
