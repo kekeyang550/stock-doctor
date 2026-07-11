@@ -1088,6 +1088,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const rebalanceActions = Array.isArray(portfolioRisk.rebalance_actions) ? portfolioRisk.rebalance_actions : []
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
   const equityCurve = Array.isArray(strategyBacktest.equity_curve) ? strategyBacktest.equity_curve : []
+  const stabilityNotes = Array.isArray(strategyBacktest.stability_notes) ? strategyBacktest.stability_notes : []
   const latestEquityPoint = equityCurve.length ? equityCurve[equityCurve.length - 1] : null
   const maxPathDrawdown = equityCurve.length
     ? Math.min(...equityCurve.map((point: any) => Number(point.drawdown_pct ?? 0)))
@@ -1211,11 +1212,15 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       ${equityCurve.slice(1, 7).map((point: any) => `<div class="row"><strong>${escapeHtml(point.label ?? point.name ?? point.symbol ?? "-")}</strong><small>${escapeHtml(point.symbol ?? "")} · 累计 ${escapeHtml(formatReportSignedPercent(point.equity_pct ?? 0))} · 单笔 ${escapeHtml(formatReportSignedPercent(point.trade_return_pct ?? 0))} · 路径回撤 ${escapeHtml(formatReportSignedPercent(point.drawdown_pct ?? 0))}</small></div>`).join("") || "<p>暂无权益曲线</p>"}
       <h3>稳定性</h3>
       <div class="grid">
+        <div class="metric"><span>稳定评分</span><strong>${escapeHtml(strategyBacktest.stability_score ?? 0)}</strong></div>
+        <div class="metric"><span>稳定等级</span><strong>${escapeHtml(strategyBacktest.stability_label ?? "暂无评估")}</strong></div>
         <div class="metric"><span>收益波动</span><strong>${escapeHtml(strategyBacktest.return_volatility_pct ?? 0)}%</strong></div>
         <div class="metric"><span>最长连续亏损</span><strong>${escapeHtml(strategyBacktest.max_consecutive_loss_count ?? 0)} 笔</strong></div>
         <div class="metric"><span>最佳连续收益</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktest.best_path_gain_pct ?? 0))}</strong></div>
         <div class="metric"><span>最差连续亏损</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktest.worst_path_loss_pct ?? 0))}</strong></div>
       </div>
+      <h4>稳定性说明</h4>
+      ${stabilityNotes.map((note: any) => `<div class="row"><small>${escapeHtml(note)}</small></div>`).join("") || "<p>暂无稳定性说明</p>"}
       <h3>周期对比</h3>
       <p>${escapeHtml(strategyBacktestComparison.summary ?? "")}</p>
       ${strategyBacktestComparison.recommendation_reason ? `<p><strong>周期推荐依据：</strong>${escapeHtml(strategyBacktestComparison.recommendation_reason)}</p>` : ""}

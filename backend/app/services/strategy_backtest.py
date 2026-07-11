@@ -101,6 +101,16 @@ class StrategyBacktestService:
         max_drawdown = min((trade.max_drawdown_pct for trade in trades), default=0.0)
         return_drawdown_ratio = self._return_drawdown_ratio(average_return, max_drawdown)
         chronological_trades = self._chronological_trades(trades)
+        return_volatility = self._return_volatility(returns)
+        max_consecutive_loss_count = self._max_consecutive_loss_count(chronological_trades)
+        best_path_gain = self._best_path_gain(chronological_trades)
+        worst_path_loss = self._worst_path_loss(chronological_trades)
+        stability_score = self._stability_score(
+            return_volatility,
+            max_consecutive_loss_count,
+            worst_path_loss,
+            average_return,
+        )
 
         return StrategyBacktestReport(
             preset=preset,
@@ -128,10 +138,18 @@ class StrategyBacktestService:
             return_p75_pct=self._percentile(returns, 0.75),
             max_drawdown_pct=round(max_drawdown, 2),
             return_drawdown_ratio=return_drawdown_ratio,
-            return_volatility_pct=self._return_volatility(returns),
-            max_consecutive_loss_count=self._max_consecutive_loss_count(chronological_trades),
-            best_path_gain_pct=self._best_path_gain(chronological_trades),
-            worst_path_loss_pct=self._worst_path_loss(chronological_trades),
+            return_volatility_pct=return_volatility,
+            max_consecutive_loss_count=max_consecutive_loss_count,
+            best_path_gain_pct=best_path_gain,
+            worst_path_loss_pct=worst_path_loss,
+            stability_score=stability_score,
+            stability_label=self._stability_label(stability_score),
+            stability_notes=self._stability_notes(
+                return_volatility,
+                max_consecutive_loss_count,
+                worst_path_loss,
+                average_return,
+            ),
             summary=self._summary(preset, len(candidates), trades, average_return, max_drawdown),
             rule_notes=self._rule_notes(preset),
             equity_curve=self._equity_curve(chronological_trades),
@@ -390,6 +408,53 @@ class StrategyBacktestService:
             current = min(trade.return_pct, current + trade.return_pct)
             worst = min(worst, current)
         return round(worst, 2)
+
+    def _stability_score(
+        self,
+        return_volatility_pct: float,
+        max_consecutive_loss_count: int,
+        worst_path_loss_pct: float,
+        average_return_pct: float,
+    ) -> int:
+        penalty = min(return_volatility_pct * 4, 35)
+        penalty += min(max_consecutive_loss_count * 8, 25)
+        penalty += min(abs(min(0, worst_path_loss_pct)) * 2, 25)
+        if average_return_pct < 0:
+            penalty += 15
+        return max(0, min(100, int(round(100 - penalty))))
+
+    def _stability_label(self, score: int) -> str:
+        if score >= 75:
+            return "稳定"
+        if score >= 55:
+            return "需观察"
+        return "波动偏高"
+
+    def _stability_notes(
+        self,
+        return_volatility_pct: float,
+        max_consecutive_loss_count: int,
+        worst_path_loss_pct: float,
+        average_return_pct: float,
+    ) -> list[str]:
+        notes: list[str] = []
+        if return_volatility_pct <= 2:
+            notes.append("收益波动较低，样例路径较平滑。")
+        else:
+            notes.append(f"收益波动 {return_volatility_pct:.2f}%，需要结合样本数量复核。")
+        if max_consecutive_loss_count <= 0:
+            notes.append("样例路径未出现连续亏损。")
+        else:
+            notes.append(f"最长连续亏损 {max_consecutive_loss_count} 笔，需观察回撤压力。")
+        if worst_path_loss_pct < -5:
+            notes.append(f"最差连续亏损 {worst_path_loss_pct:.2f}%，路径亏损压力偏高。")
+        else:
+            notes.append("最差连续亏损可控，路径亏损压力不高。")
+        if average_return_pct >= 0:
+            notes.append(f"平均收益 {average_return_pct:.2f}%，样例期望为正。")
+        else:
+            notes.append(f"平均收益 {average_return_pct:.2f}%，样例期望为负。")
+        return notes
 
     def _equity_curve(self, trades: list[StrategyBacktestTrade]) -> list[StrategyBacktestCurvePoint]:
         curve = [

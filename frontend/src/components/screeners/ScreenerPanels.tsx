@@ -698,6 +698,7 @@ export function StrategyBacktestPanel({
   const equityCurve = Array.isArray(report?.equity_curve) ? report.equity_curve : []
   const latestEquityPoint = equityCurve[equityCurve.length - 1]
   const maxPathDrawdown = equityCurve.length ? Math.min(...equityCurve.map((point) => point.drawdown_pct)) : 0
+  const stabilityNotes = Array.isArray(report?.stability_notes) ? report.stability_notes : []
 
   return (
     <section className="panel strategy-backtest-panel">
@@ -851,6 +852,14 @@ export function StrategyBacktestPanel({
           <div className="backtest-cost-card">
             <strong>稳定性</strong>
             <span>
+              <small>稳定评分</small>
+              <b>{report.stability_score ?? 0}</b>
+            </span>
+            <span>
+              <small>稳定等级</small>
+              <b>{report.stability_label ?? '暂无评估'}</b>
+            </span>
+            <span>
               <small>收益波动</small>
               <b>{formatPlainPercent(report.return_volatility_pct ?? 0)}</b>
             </span>
@@ -866,6 +875,12 @@ export function StrategyBacktestPanel({
               <small>最差连续亏损</small>
               <b className="down">{formatSignedPercent(report.worst_path_loss_pct ?? 0)}</b>
             </span>
+            {stabilityNotes.length ? (
+              <span className="backtest-wide-note">
+                <small>稳定性说明</small>
+                <b>{stabilityNotes.slice(0, 2).join(' · ')}</b>
+              </span>
+            ) : null}
           </div>
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
           <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />

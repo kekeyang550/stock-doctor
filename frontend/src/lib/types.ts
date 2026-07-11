@@ -483,6 +483,9 @@ export type StrategyBacktestReport = {
   max_consecutive_loss_count?: number
   best_path_gain_pct?: number
   worst_path_loss_pct?: number
+  stability_score?: number
+  stability_label?: string
+  stability_notes?: string[]
   summary: string
   rule_notes: string[]
   equity_curve?: StrategyBacktestCurvePoint[]

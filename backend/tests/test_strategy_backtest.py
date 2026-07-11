@@ -52,6 +52,10 @@ def test_strategy_backtest_reports_returns_and_drawdown():
     assert report.max_consecutive_loss_count >= 0
     assert report.best_path_gain_pct >= report.best_return_pct or report.best_return_pct <= 0
     assert report.worst_path_loss_pct <= report.worst_return_pct or report.worst_return_pct >= 0
+    assert 0 <= report.stability_score <= 100
+    assert report.stability_label in {"稳定", "需观察", "波动偏高"}
+    assert report.stability_notes
+    assert any("收益" in note or "亏损" in note or "波动" in note for note in report.stability_notes)
     assert report.equity_curve
     assert report.equity_curve[0].step == 0
     assert report.equity_curve[0].label == "起点"

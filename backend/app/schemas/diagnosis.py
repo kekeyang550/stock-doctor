@@ -742,6 +742,9 @@ class StrategyBacktestReport(BaseModel):
     max_consecutive_loss_count: int = 0
     best_path_gain_pct: float = 0
     worst_path_loss_pct: float = 0
+    stability_score: int = 0
+    stability_label: str = "暂无评估"
+    stability_notes: list[str] = Field(default_factory=list)
     summary: str
     rule_notes: list[str]
     equity_curve: list[StrategyBacktestCurvePoint] = Field(default_factory=list)

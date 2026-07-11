@@ -630,6 +630,9 @@ const strategyBacktest = {
   max_consecutive_loss_count: 1,
   best_path_gain_pct: 3.4,
   worst_path_loss_pct: -2.1,
+  stability_score: 78,
+  stability_label: '稳定',
+  stability_notes: ['收益波动较低，样例路径较平滑。', '最长连续亏损 1 笔，回撤压力可控。'],
   equity_curve: [
     { step: 0, label: '起点', equity_pct: 0, drawdown_pct: 0, trade_return_pct: 0, symbol: null, name: null },
     { step: 1, label: '贵州茅台', equity_pct: 3.4, drawdown_pct: 0, trade_return_pct: 3.4, symbol: '600519', name: '贵州茅台' },
@@ -1362,6 +1365,10 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('最长连续亏损')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('最佳连续收益')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('最差连续亏损')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('稳定评分')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('稳定等级')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('稳定性说明')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('78')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('2')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('50.0%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('+1.23%').length).toBeGreaterThan(0)
@@ -2011,6 +2018,10 @@ describe('App', () => {
     expect(html).toContain('最长连续亏损')
     expect(html).toContain('最佳连续收益')
     expect(html).toContain('最差连续亏损')
+    expect(html).toContain('稳定评分')
+    expect(html).toContain('稳定等级')
+    expect(html).toContain('稳定性说明')
+    expect(html).toContain('收益波动较低')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('缓存命中')
