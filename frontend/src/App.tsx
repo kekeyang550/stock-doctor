@@ -1076,6 +1076,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const reviewActions = payload.review_actions ?? {}
   const dataTrust = payload.data_trust ?? {}
   const connectorHealth = dataTrust.connector_health ?? {}
+  const cacheStatus = connectorHealth.cache_status ?? {}
   const freshness = dataTrust.freshness ?? {}
   const weightInputs = payload.portfolio_weight_inputs ?? {}
   const scoreTrend = Array.isArray(diagnosisChange.score_trend) ? diagnosisChange.score_trend : []
@@ -1088,6 +1089,9 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
   const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
   const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
+  const cacheBuckets = Array.isArray(cacheStatus.buckets) ? cacheStatus.buckets : []
+  const activeCacheEntries = cacheBuckets.reduce((total: number, bucket: any) => total + Number(bucket.active_entries ?? 0), 0)
+  const totalCacheEntries = cacheBuckets.reduce((total: number, bucket: any) => total + Number(bucket.entries ?? 0), 0)
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -1209,8 +1213,12 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>Fallback</span><strong>${escapeHtml(connectorHealth.fallback_provider ?? "-")}</strong></div>
         <div class="metric"><span>缓存状态</span><strong>${escapeHtml(freshness.status ?? "-")}</strong></div>
         <div class="metric"><span>覆盖率</span><strong>${escapeHtml(freshness.coverage_pct ?? "-")}%</strong></div>
+        <div class="metric"><span>缓存命中</span><strong>${escapeHtml(cacheBuckets.length ? `${activeCacheEntries}/${totalCacheEntries} 有效` : "暂无遥测")}</strong></div>
+        <div class="metric"><span>缓存 TTL</span><strong>${escapeHtml(cacheStatus.ttl_seconds ?? connectorHealth.runtime_config?.cache_ttl_seconds ?? "-")} 秒</strong></div>
       </div>
       <p>${escapeHtml(freshness.message ?? "")}</p>
+      <h3>缓存桶</h3>
+      ${cacheBuckets.map((bucket: any) => `<div class="row"><strong>${escapeHtml(bucket.label)}</strong><small>${escapeHtml(bucket.active_entries ?? 0)}/${escapeHtml(bucket.entries ?? 0)} 有效 · 已过期 ${escapeHtml(bucket.expired_entries ?? 0)} · 最近 ${escapeHtml(bucket.nearest_expires_in_seconds ?? 0)} 秒后过期 · ${escapeHtml(reportCacheStatusLabel(bucket.status))}</small></div>`).join("") || "<p>暂无缓存遥测</p>"}
     </section>
 
     <section>
@@ -1256,6 +1264,13 @@ function reviewActionStatusLabel(status: unknown) {
   if (status === 'watching') return '观察中'
   if (status === 'done') return '已完成'
   return '未设置'
+}
+
+function reportCacheStatusLabel(status: unknown) {
+  if (status === 'active') return '全部有效'
+  if (status === 'partial') return '部分有效'
+  if (status === 'expired') return '全部过期'
+  return '暂无缓存'
 }
 
 function formatReportSignedPercent(value: unknown) {
