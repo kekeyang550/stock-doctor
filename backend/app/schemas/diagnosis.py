@@ -702,6 +702,16 @@ class StrategyBacktestTrade(BaseModel):
     signal_reason: str
 
 
+class StrategyBacktestCurvePoint(BaseModel):
+    step: int
+    label: str
+    equity_pct: float
+    drawdown_pct: float
+    trade_return_pct: float = 0
+    symbol: str | None = None
+    name: str | None = None
+
+
 class StrategyBacktestReport(BaseModel):
     preset: str
     horizon: str = Field(pattern="^(intraday|swing|position)$")
@@ -730,6 +740,7 @@ class StrategyBacktestReport(BaseModel):
     return_drawdown_ratio: float = 0
     summary: str
     rule_notes: list[str]
+    equity_curve: list[StrategyBacktestCurvePoint] = Field(default_factory=list)
     trades: list[StrategyBacktestTrade]
 
 

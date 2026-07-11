@@ -443,6 +443,16 @@ export type StrategyBacktestTrade = {
   signal_reason: string
 }
 
+export type StrategyBacktestCurvePoint = {
+  step: number
+  label: string
+  equity_pct: number
+  drawdown_pct: number
+  trade_return_pct: number
+  symbol: string | null
+  name: string | null
+}
+
 export type StrategyBacktestReport = {
   preset: string
   horizon: 'intraday' | 'swing' | 'position'
@@ -471,6 +481,7 @@ export type StrategyBacktestReport = {
   return_drawdown_ratio: number
   summary: string
   rule_notes: string[]
+  equity_curve?: StrategyBacktestCurvePoint[]
   trades: StrategyBacktestTrade[]
 }
 

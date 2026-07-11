@@ -1087,6 +1087,11 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const riskContributions = Array.isArray(portfolioRisk.risk_contributions) ? portfolioRisk.risk_contributions : []
   const rebalanceActions = Array.isArray(portfolioRisk.rebalance_actions) ? portfolioRisk.rebalance_actions : []
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
+  const equityCurve = Array.isArray(strategyBacktest.equity_curve) ? strategyBacktest.equity_curve : []
+  const latestEquityPoint = equityCurve.length ? equityCurve[equityCurve.length - 1] : null
+  const maxPathDrawdown = equityCurve.length
+    ? Math.min(...equityCurve.map((point: any) => Number(point.drawdown_pct ?? 0)))
+    : 0
   const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
   const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
   const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
@@ -1198,6 +1203,12 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>中位</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktest.return_median_pct ?? 0))}</strong></div>
         <div class="metric"><span>P25 / P75</span><strong>P25 ${escapeHtml(formatReportSignedPercent(strategyBacktest.return_p25_pct ?? 0))} · P75 ${escapeHtml(formatReportSignedPercent(strategyBacktest.return_p75_pct ?? 0))}</strong></div>
       </div>
+      <h3>权益曲线</h3>
+      <div class="grid">
+        <div class="metric"><span>累计收益</span><strong>${escapeHtml(formatReportSignedPercent(latestEquityPoint?.equity_pct ?? 0))}</strong></div>
+        <div class="metric"><span>路径最大回撤</span><strong>${escapeHtml(formatReportSignedPercent(maxPathDrawdown))}</strong></div>
+      </div>
+      ${equityCurve.slice(1, 7).map((point: any) => `<div class="row"><strong>${escapeHtml(point.label ?? point.name ?? point.symbol ?? "-")}</strong><small>${escapeHtml(point.symbol ?? "")} · 累计 ${escapeHtml(formatReportSignedPercent(point.equity_pct ?? 0))} · 单笔 ${escapeHtml(formatReportSignedPercent(point.trade_return_pct ?? 0))} · 路径回撤 ${escapeHtml(formatReportSignedPercent(point.drawdown_pct ?? 0))}</small></div>`).join("") || "<p>暂无权益曲线</p>"}
       <h3>周期对比</h3>
       <p>${escapeHtml(strategyBacktestComparison.summary ?? "")}</p>
       ${strategyBacktestComparison.recommendation_reason ? `<p><strong>周期推荐依据：</strong>${escapeHtml(strategyBacktestComparison.recommendation_reason)}</p>` : ""}

@@ -47,6 +47,14 @@ def test_strategy_backtest_reports_returns_and_drawdown():
     assert report.return_p25_pct <= report.return_p75_pct
     assert report.max_drawdown_pct <= 0
     assert report.return_drawdown_ratio == round(report.average_return_pct / abs(report.max_drawdown_pct), 2)
+    assert report.equity_curve
+    assert report.equity_curve[0].step == 0
+    assert report.equity_curve[0].label == "起点"
+    assert report.equity_curve[0].equity_pct == 0
+    assert report.equity_curve[0].drawdown_pct == 0
+    assert report.equity_curve[-1].equity_pct == round(sum(trade.return_pct for trade in report.trades), 2)
+    assert all(point.drawdown_pct <= 0 for point in report.equity_curve)
+    assert any(point.symbol and point.name for point in report.equity_curve[1:])
     assert report.trades[0].holding_days == 5
     assert report.trades[0].rule_tags
 

@@ -626,6 +626,11 @@ const strategyBacktest = {
   return_p75_pct: 3.4,
   max_drawdown_pct: -2.1,
   return_drawdown_ratio: 0.59,
+  equity_curve: [
+    { step: 0, label: '起点', equity_pct: 0, drawdown_pct: 0, trade_return_pct: 0, symbol: null, name: null },
+    { step: 1, label: '贵州茅台', equity_pct: 3.4, drawdown_pct: 0, trade_return_pct: 3.4, symbol: '600519', name: '贵州茅台' },
+    { step: 2, label: '宁德时代', equity_pct: 1.3, drawdown_pct: -2.1, trade_return_pct: -2.1, symbol: '300750', name: '宁德时代' },
+  ],
   summary: 'strong 在样例数据中命中 2 只标的，形成 2 笔 5 日持有交易。',
   rule_notes: ['综合分和技术分同时较强。', '样例回测不代表真实历史收益。'],
   trades: [
@@ -1344,6 +1349,10 @@ describe('App', () => {
     expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('收益回撤比').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('收益分布')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('权益曲线')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('累计收益')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('路径最大回撤')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText(/宁德时代/)).toBeInTheDocument()
     expect(within(backtestPanel).getByText('2')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('50.0%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('+1.23%').length).toBeGreaterThan(0)
@@ -1366,7 +1375,7 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('10 bps')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('单笔成本')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('0.30%')).toBeInTheDocument()
-    expect(within(backtestPanel).getByText('贵州茅台')).toBeInTheDocument()
+    expect(within(backtestPanel).getAllByText('贵州茅台').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('600519 · 白酒 · 5 日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('净收益 +3.40%')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('毛收益 +3.40% · 成本 0.30% · 历史K线')).toBeInTheDocument()
@@ -1419,7 +1428,7 @@ describe('App', () => {
 
     expect(within(backtestPanel).getByText('周期对比接口超时')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('样例交易')).toBeInTheDocument()
-    expect(within(backtestPanel).getByText('贵州茅台')).toBeInTheDocument()
+    expect(within(backtestPanel).getAllByText('贵州茅台').length).toBeGreaterThan(0)
   })
 
   it('reloads strategy backtest when the holding period changes', async () => {
@@ -1985,6 +1994,9 @@ describe('App', () => {
     expect(html).toContain('胜 1 / 负 1 / 平 0')
     expect(html).toContain('<span>中位</span><strong>+1.25%</strong>')
     expect(html).toContain('P25 -0.90% · P75 +3.40%')
+    expect(html).toContain('权益曲线')
+    expect(html).toContain('路径最大回撤')
+    expect(html).toContain('宁德时代')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('缓存命中')

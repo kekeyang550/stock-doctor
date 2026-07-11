@@ -5,6 +5,7 @@ from app.schemas.diagnosis import (
     HistoricalPriceBar,
     StockSnapshot,
     StrategyBacktestComparison,
+    StrategyBacktestCurvePoint,
     StrategyBacktestPeriodSummary,
     StrategyBacktestPresetComparison,
     StrategyBacktestPresetSummary,
@@ -128,6 +129,7 @@ class StrategyBacktestService:
             return_drawdown_ratio=return_drawdown_ratio,
             summary=self._summary(preset, len(candidates), trades, average_return, max_drawdown),
             rule_notes=self._rule_notes(preset),
+            equity_curve=self._equity_curve(trades),
             trades=sorted(trades, key=lambda item: item.return_pct, reverse=True),
         )
 
@@ -346,6 +348,36 @@ class StrategyBacktestService:
         fraction = position - lower_index
         value = ordered[lower_index] + (ordered[upper_index] - ordered[lower_index]) * fraction
         return round(value, 2)
+
+    def _equity_curve(self, trades: list[StrategyBacktestTrade]) -> list[StrategyBacktestCurvePoint]:
+        curve = [
+            StrategyBacktestCurvePoint(
+                step=0,
+                label="起点",
+                equity_pct=0,
+                drawdown_pct=0,
+                trade_return_pct=0,
+                symbol=None,
+                name=None,
+            )
+        ]
+        equity = 0.0
+        peak = 0.0
+        for index, trade in enumerate(sorted(trades, key=lambda item: (item.exit_date, item.symbol)), start=1):
+            equity += trade.return_pct
+            peak = max(peak, equity)
+            curve.append(
+                StrategyBacktestCurvePoint(
+                    step=index,
+                    label=trade.name,
+                    equity_pct=round(equity, 2),
+                    drawdown_pct=round(equity - peak, 2),
+                    trade_return_pct=round(trade.return_pct, 2),
+                    symbol=trade.symbol,
+                    name=trade.name,
+                )
+            )
+        return curve
 
     def _build_trade(
         self,

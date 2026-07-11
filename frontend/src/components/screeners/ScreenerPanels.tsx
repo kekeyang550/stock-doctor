@@ -695,6 +695,10 @@ export function StrategyBacktestPanel({
   presetComparisonError: string | null
   onRetry: () => void
 }) {
+  const equityCurve = Array.isArray(report?.equity_curve) ? report.equity_curve : []
+  const latestEquityPoint = equityCurve[equityCurve.length - 1]
+  const maxPathDrawdown = equityCurve.length ? Math.min(...equityCurve.map((point) => point.drawdown_pct)) : 0
+
   return (
     <section className="panel strategy-backtest-panel">
       <div className="panel-title split-title">
@@ -823,6 +827,27 @@ export function StrategyBacktestPanel({
               <b>P25 {formatSignedPercent(report.return_p25_pct ?? 0)} · P75 {formatSignedPercent(report.return_p75_pct ?? 0)}</b>
             </span>
           </div>
+          {equityCurve.length > 1 ? (
+            <div className="backtest-cost-card">
+              <strong>权益曲线</strong>
+              <span>
+                <small>累计收益</small>
+                <b className={(latestEquityPoint?.equity_pct ?? 0) >= 0 ? 'up' : 'down'}>{formatSignedPercent(latestEquityPoint?.equity_pct ?? 0)}</b>
+              </span>
+              <span>
+                <small>路径最大回撤</small>
+                <b className="down">{formatSignedPercent(maxPathDrawdown)}</b>
+              </span>
+              {equityCurve.slice(1, 6).map((point) => (
+                <span key={`${point.step}-${point.symbol ?? point.label}`}>
+                  <small>{point.label}</small>
+                  <b>
+                    累计 {formatSignedPercent(point.equity_pct)} · 单笔 {formatSignedPercent(point.trade_return_pct)} · 回撤 {formatSignedPercent(point.drawdown_pct)}
+                  </b>
+                </span>
+              ))}
+            </div>
+          ) : null}
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
           <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />
           <p className="backtest-summary">{report.summary}</p>
