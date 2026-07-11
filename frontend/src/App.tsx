@@ -571,6 +571,7 @@ export default function App() {
         },
         strategy_backtest_comparison: strategyBacktestComparison,
         strategy_preset_comparison: strategyBacktestPresetComparison,
+        review_actions: reviewActions,
         data_quality: dataQuality,
         data_trust: {
           sources: dataSources,
@@ -579,7 +580,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, selectedSymbol, strategyBacktest, strategyBacktestComparison, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, reviewActions, selectedSymbol, strategyBacktest, strategyBacktestComparison, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1072,6 +1073,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const strategyBacktestParameters = payload.strategy_backtest_parameters ?? {}
   const strategyBacktestComparison = payload.strategy_backtest_comparison ?? {}
   const strategyPresetComparison = payload.strategy_preset_comparison ?? {}
+  const reviewActions = payload.review_actions ?? {}
   const dataTrust = payload.data_trust ?? {}
   const connectorHealth = dataTrust.connector_health ?? {}
   const freshness = dataTrust.freshness ?? {}
@@ -1083,6 +1085,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
   const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
   const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
+  const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -1197,6 +1200,20 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       </div>
       <p>${escapeHtml(freshness.message ?? "")}</p>
     </section>
+
+    <section>
+      <h2>复盘行动</h2>
+      <div class="grid">
+        <div class="metric"><span>高优先级</span><strong>${escapeHtml(reviewActions.high_count ?? 0)}</strong></div>
+        <div class="metric"><span>中优先级</span><strong>${escapeHtml(reviewActions.medium_count ?? 0)}</strong></div>
+        <div class="metric"><span>低优先级</span><strong>${escapeHtml(reviewActions.low_count ?? 0)}</strong></div>
+        <div class="metric"><span>待处理</span><strong>${escapeHtml(reviewActions.pending_count ?? 0)}</strong></div>
+        <div class="metric"><span>观察中</span><strong>${escapeHtml(reviewActions.watching_count ?? 0)}</strong></div>
+        <div class="metric"><span>已完成</span><strong>${escapeHtml(reviewActions.done_count ?? 0)}</strong></div>
+      </div>
+      <p>${escapeHtml(reviewActions.name ?? diagnosis.name ?? "")} · ${escapeHtml(reviewActions.horizon ?? payload.horizon ?? "")} · ${escapeHtml(reviewActions.generated_at ?? "")}</p>
+      ${reviewActionItems.map((item: any) => `<div class="row"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(reviewActionPriorityLabel(item.priority))} · ${escapeHtml(reviewActionStatusLabel(item.status))} · ${escapeHtml(item.category)} · ${escapeHtml(item.detail)} · 来源 ${escapeHtml(item.source)}</small></div>`).join("") || "<p>暂无复盘行动</p>"}
+    </section>
   </main>
 </body>
 </html>`
@@ -1213,6 +1230,20 @@ function escapeHtml(value: unknown) {
 
 function strategyBacktestPriceSourceLabel(source: unknown) {
   return source === 'historical-kline' ? '历史K线' : '样例趋势'
+}
+
+function reviewActionPriorityLabel(priority: unknown) {
+  if (priority === 'high') return '高优先级'
+  if (priority === 'medium') return '中优先级'
+  if (priority === 'low') return '低优先级'
+  return '未分级'
+}
+
+function reviewActionStatusLabel(status: unknown) {
+  if (status === 'pending') return '待处理'
+  if (status === 'watching') return '观察中'
+  if (status === 'done') return '已完成'
+  return '未设置'
 }
 
 function readStoredBacktestParameters(): BacktestParameters {

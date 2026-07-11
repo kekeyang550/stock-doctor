@@ -1782,6 +1782,8 @@ describe('App', () => {
       '低估值观察',
       '资金承压',
     ])
+    expect(exported.review_actions.pending_count).toBe(2)
+    expect(exported.review_actions.items.map((item: { title: string }) => item.title)).toContain('验证论证假设 1')
     expect(exported.portfolio_weight_inputs['600519']).toBe('80')
     expect(exported.data_trust.connector_health.active_provider).toBe('mock')
     expect(exported.data_trust.freshness.status).toBe('fresh')
@@ -1859,6 +1861,11 @@ describe('App', () => {
     expect(html).toContain('0.59')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
+    expect(html).toContain('复盘行动')
+    expect(html).toContain('待处理')
+    expect(html).toContain('主力资金流出')
+    expect(html).toContain('验证论证假设 1')
+    expect(html).toContain('论证验证')
     expect(html).toContain('数据可信度')
     expect(anchor.download).toBe('stock-doctor-report-600519-2026-07-11.html')
     expect(click).toHaveBeenCalled()
