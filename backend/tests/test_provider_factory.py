@@ -77,6 +77,23 @@ class FakeAkshareWithHistory:
         ]
 
 
+class FakeAkshareWithChangingSpot:
+    def __init__(self):
+        self.spot_calls = 0
+
+    def stock_zh_a_spot_em(self):
+        self.spot_calls += 1
+        return [
+            {
+                "代码": "688006",
+                "名称": "缓存测试",
+                "行业": "软件服务",
+                "最新价": str(10 + self.spot_calls),
+                "涨跌幅": "0.5",
+            },
+        ]
+
+
 class FakeAkshareWithFundamentals:
     def stock_zh_a_spot_em(self):
         return [
@@ -249,6 +266,44 @@ def test_akshare_provider_caches_remote_snapshot_enrichment():
 
     assert first is second
     assert akshare.history_calls == 1
+
+
+def test_akshare_provider_stock_list_cache_expires_after_ttl():
+    now = 1000.0
+    akshare = FakeAkshareWithChangingSpot()
+    provider = AkshareMarketDataProvider(ak_module=akshare, cache_ttl_seconds=10, clock=lambda: now)
+
+    first = provider.list_stocks()
+    now = 1005.0
+    second = provider.list_stocks()
+    now = 1011.0
+    third = provider.list_stocks()
+
+    assert first[0].last_price == 11
+    assert second[0].last_price == 11
+    assert third[0].last_price == 12
+    assert akshare.spot_calls == 2
+
+
+def test_akshare_provider_snapshot_and_history_cache_expire_after_ttl():
+    now = 1000.0
+    akshare = FakeAkshareWithHistory()
+    provider = AkshareMarketDataProvider(ak_module=akshare, cache_ttl_seconds=10, clock=lambda: now)
+
+    first = provider.get_snapshot("688002")
+    now = 1005.0
+    second = provider.get_snapshot("688002")
+    bars = provider.get_price_history("688002", days=10)
+    now = 1011.0
+    refreshed = provider.get_snapshot("688002")
+    now = 1022.0
+    refreshed_bars = provider.get_price_history("688002", days=10)
+
+    assert first is second
+    assert refreshed is not first
+    assert len(bars) == 10
+    assert len(refreshed_bars) == 10
+    assert akshare.history_calls == 3
 
 
 def test_akshare_provider_warms_watchlist_snapshot_cache(tmp_path):

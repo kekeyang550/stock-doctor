@@ -1,5 +1,8 @@
 from datetime import date
+from time import monotonic
+from typing import Callable
 
+from app.config import settings
 from app.schemas.diagnosis import (
     CapitalSnapshot,
     FundamentalSnapshot,
@@ -21,7 +24,13 @@ class AkshareMarketDataProvider:
     and should be normalized behind this adapter before reaching the diagnosis engine.
     """
 
-    def __init__(self, ak_module=None, state_store: StateStore | None = None) -> None:
+    def __init__(
+        self,
+        ak_module=None,
+        state_store: StateStore | None = None,
+        cache_ttl_seconds: int | None = None,
+        clock: Callable[[], float] | None = None,
+    ) -> None:
         if ak_module is not None:
             self._ak = ak_module
         else:
@@ -35,16 +44,19 @@ class AkshareMarketDataProvider:
         self._state_store = self._fallback._state_store
         self._default_watchlist = self._fallback._default_watchlist
         self._watchlist_symbols = self._state_store.load_watchlist(self._default_watchlist)
-        self._stock_cache: list[StockSummary] | None = None
-        self._snapshot_cache: dict[str, StockSnapshot] = {}
+        self._cache_ttl_seconds = cache_ttl_seconds if cache_ttl_seconds is not None else settings.data_cache_ttl_seconds
+        self._clock = clock or monotonic
+        self._stock_cache: tuple[float, list[StockSummary]] | None = None
+        self._snapshot_cache: dict[str, tuple[float, StockSnapshot]] = {}
+        self._history_rows_cache: dict[str, tuple[float, list[dict]]] = {}
         self._last_error: str | None = None
         self._partial_notes: set[str] = set()
 
     def list_stocks(self) -> list[StockSummary]:
         if self._ak is None:
             return self._fallback.list_stocks()
-        if self._stock_cache is not None:
-            return self._stock_cache
+        if self._stock_cache is not None and self._is_cache_fresh(self._stock_cache[0]):
+            return self._stock_cache[1]
         try:
             stocks = self._load_a_share_list()
         except Exception as exc:
@@ -54,7 +66,7 @@ class AkshareMarketDataProvider:
             self._last_error = "AKShare returned an empty stock list"
             return self._fallback.list_stocks()
         self._last_error = None
-        self._stock_cache = stocks
+        self._stock_cache = (self._now(), stocks)
         return stocks
 
     def get_market_overview(self) -> MarketOverview:
@@ -121,8 +133,9 @@ class AkshareMarketDataProvider:
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
         normalized = symbol.strip().upper()
-        if normalized in self._snapshot_cache:
-            return self._snapshot_cache[normalized]
+        cached = self._snapshot_cache.get(normalized)
+        if cached is not None and self._is_cache_fresh(cached[0]):
+            return cached[1]
         fallback_snapshot = self._fallback.get_snapshot(normalized)
         if fallback_snapshot is not None:
             return fallback_snapshot
@@ -130,7 +143,7 @@ class AkshareMarketDataProvider:
         if summary is None or summary.last_price <= 0:
             return None
         snapshot = self._summary_to_conservative_snapshot(summary)
-        self._snapshot_cache[normalized] = snapshot
+        self._snapshot_cache[normalized] = (self._now(), snapshot)
         return snapshot
 
     def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
@@ -211,6 +224,9 @@ class AkshareMarketDataProvider:
     def _call_history_rows(self, symbol: str) -> list[dict]:
         if self._ak is None:
             return []
+        cached = self._history_rows_cache.get(symbol)
+        if cached is not None and self._is_cache_fresh(cached[0]):
+            return cached[1]
         method = getattr(self._ak, "stock_zh_a_hist", None)
         if method is None:
             return []
@@ -225,7 +241,9 @@ class AkshareMarketDataProvider:
         except Exception as exc:
             self._last_error = str(exc)
             return []
-        return self._payload_to_rows(payload)
+        rows = self._payload_to_rows(payload)
+        self._history_rows_cache[symbol] = (self._now(), rows)
+        return rows
 
     def _payload_to_rows(self, payload) -> list[dict]:
         if isinstance(payload, list):
@@ -471,3 +489,11 @@ class AkshareMarketDataProvider:
             self._last_error = str(exc)
             return []
         return self._payload_to_rows(payload)
+
+    def _now(self) -> float:
+        return self._clock()
+
+    def _is_cache_fresh(self, created_at: float) -> bool:
+        if self._cache_ttl_seconds <= 0:
+            return False
+        return self._now() - created_at <= self._cache_ttl_seconds
