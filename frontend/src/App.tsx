@@ -569,6 +569,7 @@ export default function App() {
           limit: backtestLimit,
           holding_days: backtestHoldingDays,
         },
+        strategy_backtest_comparison: strategyBacktestComparison,
         strategy_preset_comparison: strategyBacktestPresetComparison,
         data_quality: dataQuality,
         data_trust: {
@@ -578,7 +579,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, selectedSymbol, strategyBacktest, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, selectedSymbol, strategyBacktest, strategyBacktestComparison, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1066,6 +1067,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const portfolioRisk = payload.portfolio_risk ?? {}
   const strategyBacktest = payload.strategy_backtest ?? {}
   const strategyBacktestParameters = payload.strategy_backtest_parameters ?? {}
+  const strategyBacktestComparison = payload.strategy_backtest_comparison ?? {}
   const strategyPresetComparison = payload.strategy_preset_comparison ?? {}
   const dataTrust = payload.data_trust ?? {}
   const connectorHealth = dataTrust.connector_health ?? {}
@@ -1073,6 +1075,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const weightInputs = payload.portfolio_weight_inputs ?? {}
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
   const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
+  const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
   const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
 
   return `<!doctype html>
@@ -1146,6 +1149,10 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>收益回撤比</span><strong>${escapeHtml(strategyBacktest.return_drawdown_ratio ?? 0)}</strong></div>
       </div>
       <p>${escapeHtml(strategyBacktest.summary ?? "")}</p>
+      <h3>周期对比</h3>
+      <p>${escapeHtml(strategyBacktestComparison.summary ?? "")}</p>
+      ${strategyBacktestComparison.recommendation_reason ? `<p><strong>周期推荐依据：</strong>${escapeHtml(strategyBacktestComparison.recommendation_reason)}</p>` : ""}
+      ${periodSummaries.slice(0, 6).map((period: any) => `<div class="row"><strong>${escapeHtml(period.holding_days)} 日${period.holding_days === strategyBacktestComparison.recommended_holding_days ? " · 推荐" : ""}</strong><small>交易 ${escapeHtml(period.trade_count ?? 0)} · 胜率 ${escapeHtml(period.win_rate ?? 0)}% · 平均收益 ${escapeHtml(period.average_return_pct ?? 0)}% · 最大回撤 ${escapeHtml(period.max_drawdown_pct ?? 0)}% · 收益回撤比 ${escapeHtml(period.return_drawdown_ratio ?? 0)} · ${escapeHtml(strategyBacktestPriceSourceLabel(period.price_source))} · ${escapeHtml(period.history_bar_count ? `${period.history_bar_count} 根` : "-")}</small></div>`).join("") || "<p>暂无周期对比</p>"}
       <h3>策略横向对比</h3>
       <p>${escapeHtml(strategyPresetComparison.summary ?? "")}</p>
       ${strategyPresetComparison.recommendation_reason ? `<p><strong>策略推荐依据：</strong>${escapeHtml(strategyPresetComparison.recommendation_reason)}</p>` : ""}

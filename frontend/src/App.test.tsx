@@ -1774,6 +1774,8 @@ describe('App', () => {
       limit: 8,
       holding_days: 5,
     })
+    expect(exported.strategy_backtest_comparison.recommended_holding_days).toBe(10)
+    expect(exported.strategy_backtest_comparison.recommendation_reason).toContain('收益回撤比 1.86')
     expect(exported.strategy_preset_comparison.recommended_preset).toBe('strong')
     expect(exported.strategy_preset_comparison.presets.map((item: { label: string }) => item.label)).toEqual([
       '强势关注',
@@ -1836,6 +1838,11 @@ describe('App', () => {
     expect(html).toContain('参数口径')
     expect(html).toContain('样本数量')
     expect(html).toContain('8')
+    expect(html).toContain('周期对比')
+    expect(html).toContain('周期推荐依据')
+    expect(html).toContain('推荐 10 日，因为收益回撤比 1.86')
+    expect(html).toContain('10 日 · 推荐')
+    expect(html).toContain('交易 2 · 胜率 100%')
     expect(html).toContain('策略横向对比')
     expect(html).toContain('策略推荐依据')
     expect(html).toContain('推荐 强势关注，因为收益回撤比 0.59')
