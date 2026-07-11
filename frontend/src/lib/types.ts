@@ -270,6 +270,18 @@ export type DiagnosisChangeDriver = {
   detail: string
 }
 
+export type DiagnosisTrendInsight = {
+  sample_count: number
+  score_direction: 'up' | 'down' | 'flat' | 'mixed' | 'baseline'
+  risk_direction: 'improved' | 'worsened' | 'flat' | 'mixed' | 'baseline'
+  rating_change_count: number
+  total_high: number
+  total_low: number
+  risk_high: number
+  risk_low: number
+  summary: string
+}
+
 export type DiagnosisChangeReport = {
   symbol: string
   name: string
@@ -290,6 +302,7 @@ export type DiagnosisChangeReport = {
   rating_transition: DiagnosisRatingTransition
   risk_shift: DiagnosisRiskShift
   key_drivers: DiagnosisChangeDriver[]
+  trend_insight?: DiagnosisTrendInsight | null
 }
 
 export type ReviewActionItem = {

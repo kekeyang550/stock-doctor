@@ -295,6 +295,18 @@ class DiagnosisChangeDriver(BaseModel):
     detail: str
 
 
+class DiagnosisTrendInsight(BaseModel):
+    sample_count: int
+    score_direction: str = Field(pattern="^(up|down|flat|mixed|baseline)$")
+    risk_direction: str = Field(pattern="^(improved|worsened|flat|mixed|baseline)$")
+    rating_change_count: int
+    total_high: int
+    total_low: int
+    risk_high: int
+    risk_low: int
+    summary: str
+
+
 class DiagnosisChangeReport(BaseModel):
     symbol: str
     name: str
@@ -315,6 +327,7 @@ class DiagnosisChangeReport(BaseModel):
     rating_transition: DiagnosisRatingTransition
     risk_shift: DiagnosisRiskShift
     key_drivers: list[DiagnosisChangeDriver]
+    trend_insight: DiagnosisTrendInsight | None = None
 
 
 class ReviewActionItem(BaseModel):

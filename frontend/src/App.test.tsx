@@ -269,6 +269,26 @@ const diagnosisChange = {
   ],
   score_trend: [
     {
+      label: '历史1',
+      generated_at: '2026-07-08T06:00:00Z',
+      total: 72,
+      technical: 77,
+      valuation: 76,
+      capital: 71,
+      risk: 73,
+      rating: '谨慎观望',
+    },
+    {
+      label: '上次',
+      generated_at: '2026-07-09T06:00:00Z',
+      total: 79,
+      technical: 83,
+      valuation: 78,
+      capital: 80,
+      risk: 78,
+      rating: '稳健观察',
+    },
+    {
       label: '本次',
       generated_at: '2026-07-10T06:00:00Z',
       total: 86,
@@ -279,6 +299,17 @@ const diagnosisChange = {
       rating: '强势关注',
     },
   ],
+  trend_insight: {
+    sample_count: 3,
+    score_direction: 'up',
+    risk_direction: 'improved',
+    rating_change_count: 2,
+    total_high: 86,
+    total_low: 72,
+    risk_high: 82,
+    risk_low: 73,
+    summary: '最近 3 次诊断综合分持续走强，评级变化 2 次，风险分持续改善。',
+  },
   rating_transition: {
     previous: null,
     current: '强势关注',
@@ -1211,8 +1242,14 @@ describe('App', () => {
     expect(within(changePanel).getByText('复盘基线')).toBeInTheDocument()
     expect(within(changePanel).getByText('当前为首份复盘基线')).toBeInTheDocument()
     expect(within(changePanel).getByText('趋势对比')).toBeInTheDocument()
+    expect(within(changePanel).getByText('历史1 · 谨慎观望')).toBeInTheDocument()
+    expect(within(changePanel).getByText('上次 · 稳健观察')).toBeInTheDocument()
     expect(within(changePanel).getByText('本次 · 强势关注')).toBeInTheDocument()
     expect(within(changePanel).getByText('综合 86 / 风险 82')).toBeInTheDocument()
+    expect(within(changePanel).getByText('趋势洞察')).toBeInTheDocument()
+    expect(within(changePanel).getByText('综合趋势')).toBeInTheDocument()
+    expect(within(changePanel).getByText('持续走强')).toBeInTheDocument()
+    expect(within(changePanel).getByText('评级变化 2 次')).toBeInTheDocument()
     expect(within(changePanel).getByText('评级轨迹')).toBeInTheDocument()
     expect(within(changePanel).getByText('强势关注')).toBeInTheDocument()
     expect(within(changePanel).getByText('风险变化')).toBeInTheDocument()
@@ -2075,6 +2112,9 @@ describe('App', () => {
     expect(html).toContain('风险变化')
     expect(html).toContain('关键驱动')
     expect(html).toContain('当前诊断已作为后续对比基线。')
+    expect(html).toContain('趋势洞察')
+    expect(html).toContain('最近 3 次诊断综合分持续走强')
+    expect(html).toContain('评级变化 2 次')
     expect(html).toContain('组合风险')
     expect(html).toContain('行业暴露')
     expect(html).toContain('汽车整车 · 权重 33.33%')

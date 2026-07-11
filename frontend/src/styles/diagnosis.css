@@ -381,7 +381,8 @@
 }
 
 .change-trend-block,
-.change-driver-list {
+.change-driver-list,
+.trend-insight-card {
   display: grid;
   gap: 8px;
   margin-top: 10px;
@@ -401,7 +402,8 @@
 
 .change-trend-strip article,
 .change-insight-grid article,
-.change-driver {
+.change-driver,
+.trend-insight-card {
   border: 1px solid #e0e8db;
   border-radius: 8px;
   background: #ffffff;
@@ -424,6 +426,40 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 10px;
+}
+
+.trend-insight-card {
+  background: #f8fbf6;
+}
+
+.trend-insight-card p {
+  color: #38483f;
+  font-weight: 700;
+  margin: 0;
+}
+
+.trend-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.trend-insight-grid span {
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px;
+}
+
+.trend-insight-grid small {
+  color: #6a7a70;
+}
+
+.trend-insight-grid strong {
+  color: #24372f;
+  font-size: 13px;
 }
 
 .risk-shift.improved {

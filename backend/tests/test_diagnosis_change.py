@@ -71,3 +71,44 @@ def test_change_report_compares_against_previous_report():
     assert report.risk_shift.delta == 2
     assert report.key_drivers[0].metric == "total"
     assert report.key_drivers[0].delta == 8
+
+
+def test_change_report_builds_multi_point_trend_insight():
+    current = make_diagnosis()
+    older_diagnosis = current.model_copy(
+        update={
+            "rating": "谨慎观望",
+            "score": current.score.model_copy(update={"total": current.score.total - 14, "risk": current.score.risk - 9}),
+        }
+    )
+    previous_diagnosis = current.model_copy(
+        update={
+            "rating": "稳健观察",
+            "score": current.score.model_copy(update={"total": current.score.total - 7, "risk": current.score.risk - 4}),
+        }
+    )
+    older = ReportRecord(
+        id="older",
+        generated_at="2026-07-08T06:00:00+00:00",
+        diagnosis=older_diagnosis,
+    )
+    previous = ReportRecord(
+        id="previous",
+        generated_at="2026-07-09T06:00:00+00:00",
+        diagnosis=previous_diagnosis,
+    )
+
+    report = DiagnosisChangeService().build_change(
+        current=current,
+        previous=previous,
+        recent_reports=[previous, older],
+    )
+
+    assert [point.label for point in report.score_trend] == ["历史1", "上次", "本次"]
+    assert report.trend_insight.sample_count == 3
+    assert report.trend_insight.score_direction == "up"
+    assert report.trend_insight.risk_direction == "improved"
+    assert report.trend_insight.rating_change_count == 2
+    assert report.trend_insight.total_low == current.score.total - 14
+    assert report.trend_insight.total_high == current.score.total
+    assert "最近 3 次诊断综合分持续走强" in report.trend_insight.summary

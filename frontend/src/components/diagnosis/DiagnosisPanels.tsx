@@ -394,6 +394,7 @@ function DiagnosisChangePanel({ report }: { report: DiagnosisChangeReport | null
   const changes = Array.isArray(report?.changes) ? report.changes : []
   const ratingTransition = report?.rating_transition
   const riskShift = report?.risk_shift
+  const trendInsight = report?.trend_insight
 
   return (
     <section className="panel diagnosis-change-panel">
@@ -439,6 +440,30 @@ function DiagnosisChangePanel({ report }: { report: DiagnosisChangeReport | null
               <p className="empty-text">暂无趋势对比数据</p>
             )}
           </div>
+          {trendInsight ? (
+            <div className="trend-insight-card">
+              <div className="mini-section-title">趋势洞察</div>
+              <p>{trendInsight.summary}</p>
+              <div className="trend-insight-grid">
+                <span>
+                  <small>综合趋势</small>
+                  <strong>{scoreDirectionLabel(trendInsight.score_direction)}</strong>
+                </span>
+                <span>
+                  <small>风险趋势</small>
+                  <strong>{riskDirectionLabel(trendInsight.risk_direction)}</strong>
+                </span>
+                <span>
+                  <small>评级变化</small>
+                  <strong>评级变化 {trendInsight.rating_change_count} 次</strong>
+                </span>
+                <span>
+                  <small>区间</small>
+                  <strong>综合 {trendInsight.total_low}-{trendInsight.total_high} / 风险 {trendInsight.risk_low}-{trendInsight.risk_high}</strong>
+                </span>
+              </div>
+            </div>
+          ) : null}
           {ratingTransition || riskShift ? (
             <div className="change-insight-grid">
               {ratingTransition ? (
@@ -520,6 +545,26 @@ function changeStatusLabel(status: DiagnosisChangeReport['status']) {
   if (status === 'weakened') return '转弱'
   if (status === 'flat') return '持平'
   return '变化'
+}
+
+
+
+function scoreDirectionLabel(direction: NonNullable<DiagnosisChangeReport['trend_insight']>['score_direction']) {
+  if (direction === 'up') return '持续走强'
+  if (direction === 'down') return '持续转弱'
+  if (direction === 'flat') return '保持平稳'
+  if (direction === 'mixed') return '波动反复'
+  return '基线'
+}
+
+
+
+function riskDirectionLabel(direction: NonNullable<DiagnosisChangeReport['trend_insight']>['risk_direction']) {
+  if (direction === 'improved') return '持续改善'
+  if (direction === 'worsened') return '持续走弱'
+  if (direction === 'flat') return '保持平稳'
+  if (direction === 'mixed') return '波动反复'
+  return '基线'
 }
 
 

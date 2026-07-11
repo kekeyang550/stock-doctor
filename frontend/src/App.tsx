@@ -1085,6 +1085,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const score = diagnosis.score ?? {}
   const ratingTransition = diagnosisChange.rating_transition ?? null
   const riskShift = diagnosisChange.risk_shift ?? null
+  const trendInsight = diagnosisChange.trend_insight ?? null
   const portfolioRisk = payload.portfolio_risk ?? {}
   const strategyBacktest = payload.strategy_backtest ?? {}
   const strategyBacktestParameters = payload.strategy_backtest_parameters ?? {}
@@ -1170,6 +1171,16 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <p>${escapeHtml(diagnosisChange.summary ?? "")}</p>
       <h3>趋势对比</h3>
       ${scoreTrend.map((point: any) => `<div class="row"><strong>${escapeHtml(point.label)} · ${escapeHtml(point.rating)}</strong><small>综合 ${escapeHtml(point.total)} · 技术 ${escapeHtml(point.technical)} · 估值 ${escapeHtml(point.valuation)} · 资金 ${escapeHtml(point.capital)} · 风险 ${escapeHtml(point.risk)} · ${escapeHtml(point.generated_at)}</small></div>`).join("") || "<p>暂无趋势对比</p>"}
+      <h3>趋势洞察</h3>
+      ${trendInsight ? `
+      <p>${escapeHtml(trendInsight.summary)}</p>
+      <div class="grid">
+        <div class="metric"><span>综合趋势</span><strong>${escapeHtml(reportScoreDirectionLabel(trendInsight.score_direction))}</strong></div>
+        <div class="metric"><span>风险趋势</span><strong>${escapeHtml(reportRiskDirectionLabel(trendInsight.risk_direction))}</strong></div>
+        <div class="metric"><span>评级变化</span><strong>评级变化 ${escapeHtml(trendInsight.rating_change_count ?? 0)} 次</strong></div>
+        <div class="metric"><span>区间</span><strong>综合 ${escapeHtml(trendInsight.total_low ?? "-")}-${escapeHtml(trendInsight.total_high ?? "-")} / 风险 ${escapeHtml(trendInsight.risk_low ?? "-")}-${escapeHtml(trendInsight.risk_high ?? "-")}</strong></div>
+      </div>
+      ` : "<p>暂无趋势洞察</p>"}
       <h3>评级轨迹</h3>
       <p>${ratingTransition ? `${escapeHtml(ratingTransition.previous ? `${ratingTransition.previous} -> ${ratingTransition.current}` : ratingTransition.current)}：${escapeHtml(ratingTransition.detail)}` : "暂无评级轨迹"}</p>
       <h3>风险变化</h3>
@@ -1339,6 +1350,22 @@ function reportRebalanceActionLabel(action: unknown) {
   if (action === 'reduce') return '降权'
   if (action === 'increase') return '补强'
   return '保持'
+}
+
+function reportScoreDirectionLabel(direction: unknown) {
+  if (direction === 'up') return '持续走强'
+  if (direction === 'down') return '持续转弱'
+  if (direction === 'flat') return '保持平稳'
+  if (direction === 'mixed') return '波动反复'
+  return '基线'
+}
+
+function reportRiskDirectionLabel(direction: unknown) {
+  if (direction === 'improved') return '持续改善'
+  if (direction === 'worsened') return '持续走弱'
+  if (direction === 'flat') return '保持平稳'
+  if (direction === 'mixed') return '波动反复'
+  return '基线'
 }
 
 function formatReportSignedPercent(value: unknown) {
