@@ -1280,6 +1280,16 @@ describe('App', () => {
     const conceptPanel = screen.getByRole('heading', { name: '题材热榜' }).closest('section')!
     expect(within(conceptPanel).getByText('新能源汽车')).toBeInTheDocument()
     expect(screen.getByText('异动雷达')).toBeInTheDocument()
+    const actionCenterPanel = screen.getByRole('heading', { name: '行动中心' }).closest('section')!
+    expect(actionCenterPanel).toHaveTextContent('10 项动作')
+    expect(actionCenterPanel).toHaveTextContent('高 2')
+    expect(actionCenterPanel).toHaveTextContent('中 6')
+    expect(actionCenterPanel).toHaveTextContent('低 2')
+    expect(within(actionCenterPanel).getByText('自选股复盘')).toBeInTheDocument()
+    expect(within(actionCenterPanel).getByText('热点跟踪')).toBeInTheDocument()
+    expect(within(actionCenterPanel).getByText('回测复盘')).toBeInTheDocument()
+    expect(within(actionCenterPanel).getByText('盘中复核 比亚迪 热点承接')).toBeInTheDocument()
+    expect(within(actionCenterPanel).getByText('切换推荐持有周期复测')).toBeInTheDocument()
     const actionOverviewPanel = screen.getByRole('heading', { name: '行动总览' }).closest('section')!
     expect(within(actionOverviewPanel).getByText('主力资金流出')).toBeInTheDocument()
     expect(within(actionOverviewPanel).getByText(/600519/)).toBeInTheDocument()

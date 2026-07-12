@@ -12,6 +12,7 @@ import {
 } from './components/hotspots/HotspotPanels'
 import { PriceAlertsPanel, ReportHistory, ResearchNotesPanel } from './components/research/ResearchPanels'
 import {
+  ActionCenterPanel,
   AlertCenter,
   DataQualityOverviewPanel,
   RankingPanel,
@@ -990,6 +991,13 @@ export default function App() {
           updatingActionId={updatingHotspotActionId}
           onSelect={setSelectedSymbol}
           onStatusChange={setHotspotActionStatus}
+        />
+
+        <ActionCenterPanel
+          reviewOverview={reviewActionOverview}
+          hotspotPlan={hotspotReviewPlan}
+          backtestPlan={strategyBacktestActions}
+          onSelect={setSelectedSymbol}
         />
 
         <WatchlistSummaryPanel summary={watchlistSummary} onSelect={setSelectedSymbol} />

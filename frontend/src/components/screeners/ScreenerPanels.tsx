@@ -1,5 +1,5 @@
 import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type {
   AlertItem,
   ChecklistItem,
@@ -164,6 +164,133 @@ export function ReviewActionOverviewPanel({
       )}
     </section>
   )
+}
+
+
+export function ActionCenterPanel({
+  reviewOverview,
+  hotspotPlan,
+  backtestPlan,
+  onSelect,
+}: {
+  reviewOverview: ReviewActionOverview | null
+  hotspotPlan: HotspotReviewPlan | null
+  backtestPlan: StrategyBacktestActionPlan | null
+  onSelect: (symbol: string) => void
+}) {
+  const totals = {
+    high: (reviewOverview?.high_count ?? 0) + (hotspotPlan?.high_count ?? 0) + (backtestPlan?.high_count ?? 0),
+    medium: (reviewOverview?.medium_count ?? 0) + (hotspotPlan?.medium_count ?? 0) + (backtestPlan?.medium_count ?? 0),
+    low: (reviewOverview?.low_count ?? 0) + (hotspotPlan?.low_count ?? 0) + (backtestPlan?.low_count ?? 0),
+    pending: (reviewOverview?.pending_count ?? 0) + (hotspotPlan?.pending_count ?? 0) + (backtestPlan?.pending_count ?? 0),
+    watching: (reviewOverview?.watching_count ?? 0) + (hotspotPlan?.watching_count ?? 0) + (backtestPlan?.watching_count ?? 0),
+    done: (reviewOverview?.done_count ?? 0) + (hotspotPlan?.done_count ?? 0) + (backtestPlan?.done_count ?? 0),
+  }
+  const ready = reviewOverview && hotspotPlan && backtestPlan
+  const actionTotal = totals.pending + totals.watching + totals.done
+
+  return (
+    <section className="panel action-center-panel">
+      <div className="panel-title split-title">
+        <span>
+          <ListChecks size={18} />
+          <h3>行动中心</h3>
+        </span>
+        <small>{ready ? `${actionTotal} 项动作` : '加载中'}</small>
+      </div>
+      {ready ? (
+        <>
+          <div className="action-center-metrics">
+            <SummaryMetric label="待处理" value={totals.pending} />
+            <SummaryMetric label="观察中" value={totals.watching} />
+            <SummaryMetric label="已完成" value={totals.done} />
+          </div>
+          <div className="action-center-priority">
+            <span className="high">高 {totals.high}</span>
+            <span className="medium">中 {totals.medium}</span>
+            <span className="low">低 {totals.low}</span>
+          </div>
+          <div className="action-center-sections">
+            <ActionCenterSection title="自选股复盘" count={reviewOverview.pending_count + reviewOverview.watching_count + reviewOverview.done_count}>
+              {reviewOverview.summaries.length ? (
+                reviewOverview.summaries.slice(0, 3).map((item) => (
+                  <button type="button" key={item.symbol} className={`action-center-row ${item.top_priority}`} onClick={() => onSelect(item.symbol)}>
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.symbol} · {item.item_count} 项 · {item.industry || '自选股'}</small>
+                    </span>
+                    <b>{item.top_action}</b>
+                  </button>
+                ))
+              ) : (
+                <p className="empty-text">暂无自选股复盘动作</p>
+              )}
+            </ActionCenterSection>
+            <ActionCenterSection title="热点跟踪" count={hotspotPlan.pending_count + hotspotPlan.watching_count + hotspotPlan.done_count}>
+              {hotspotPlan.actions.length ? (
+                hotspotPlan.actions.slice(0, 3).map((item) => (
+                  <button type="button" key={item.id} className={`action-center-row ${item.priority}`} onClick={() => onSelect(item.symbol)}>
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.concept} · {reviewStatusLabel(item.status)}</small>
+                    </span>
+                    <b>{item.title}</b>
+                  </button>
+                ))
+              ) : (
+                <p className="empty-text">暂无热点跟踪动作</p>
+              )}
+            </ActionCenterSection>
+            <ActionCenterSection title="回测复盘" count={backtestPlan.pending_count + backtestPlan.watching_count + backtestPlan.done_count}>
+              {backtestPlan.actions.length ? (
+                backtestPlan.actions.slice(0, 3).map((item) => (
+                  <article key={item.id} className={`action-center-row passive ${item.priority}`}>
+                    <span>
+                      <strong>{item.category}</strong>
+                      <small>{item.metric} · {reviewStatusLabel(item.status)}</small>
+                    </span>
+                    <b>{item.title}</b>
+                  </article>
+                ))
+              ) : (
+                <p className="empty-text">暂无回测复盘动作</p>
+              )}
+            </ActionCenterSection>
+          </div>
+        </>
+      ) : (
+        <p className="empty-text">正在汇总复盘、热点和回测动作...</p>
+      )}
+    </section>
+  )
+}
+
+
+function ActionCenterSection({
+  title,
+  count,
+  children,
+}: {
+  title: string
+  count: number
+  children: ReactNode
+}) {
+  return (
+    <div className="action-center-section">
+      <div>
+        <strong>{title}</strong>
+        <small>{count} 项</small>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+
+function reviewStatusLabel(status: 'pending' | 'watching' | 'done') {
+  if (status === 'done') return '已完成'
+  if (status === 'watching') return '观察中'
+  return '待处理'
 }
 
 
