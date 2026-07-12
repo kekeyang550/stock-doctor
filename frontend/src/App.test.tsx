@@ -1620,6 +1620,24 @@ describe('App', () => {
     })
   })
 
+  it('filters strategy backtest actions by status', async () => {
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('切换推荐持有周期复测')
+      return panel as HTMLElement
+    })
+    const filter = within(backtestPanel).getByLabelText('回测动作状态筛选')
+
+    fireEvent.click(within(filter).getByRole('button', { name: '已完成' }))
+    expect(within(backtestPanel).getByText('当前筛选下没有回测复盘动作')).toBeInTheDocument()
+
+    fireEvent.click(within(filter).getByRole('button', { name: '待处理' }))
+    expect(within(backtestPanel).getByText('切换推荐持有周期复测')).toBeInTheDocument()
+  })
+
   it('shows strategy backtest period comparison with the recommended holding period', async () => {
     render(<App />)
 
@@ -2139,6 +2157,8 @@ describe('App', () => {
     expect(exported.strategy_backtest_comparison.recommended_holding_days).toBe(10)
     expect(exported.strategy_backtest_comparison.recommendation_reason).toContain('收益回撤比 1.86')
     expect(exported.strategy_backtest_actions.actions.map((item: { title: string }) => item.title)).toContain('切换推荐持有周期复测')
+    expect(exported.strategy_backtest_actions.pending_count).toBe(2)
+    expect(exported.strategy_backtest_actions.actions.map((item: { status: string }) => item.status)).toContain('pending')
     expect(exported.strategy_preset_comparison.recommended_preset).toBe('strong')
     expect(exported.strategy_preset_comparison.presets.map((item: { label: string }) => item.label)).toEqual([
       '强势关注',
@@ -2257,6 +2277,8 @@ describe('App', () => {
     expect(html).toContain('最近回测')
     expect(html).toContain('回测复盘动作')
     expect(html).toContain('切换推荐持有周期复测')
+    expect(html).toContain('<span>待处理</span><strong>2</strong>')
+    expect(html).toContain('中优先级 · 待处理 · 周期选择')
     expect(html).toContain('当前 5 日 / 推荐 10 日')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
@@ -2319,7 +2341,9 @@ describe('App', () => {
     expect(markdown).toContain('## 策略回测')
     expect(markdown).toContain('历史对比')
     expect(markdown).toContain('### 回测复盘动作')
+    expect(markdown).toContain('状态统计: 待处理 2 / 观察中 0 / 已完成 0')
     expect(markdown).toContain('切换推荐持有周期复测')
+    expect(markdown).toContain('周期选择 - 中优先级 - 待处理')
     expect(markdown).toContain('## 数据可信度')
     expect(markdown).toContain('缓存桶')
     expect(anchor.download).toBe(`stock-doctor-report-600519-${new Date().toISOString().slice(0, 10)}.md`)

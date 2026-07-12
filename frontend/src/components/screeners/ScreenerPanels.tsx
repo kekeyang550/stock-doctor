@@ -1,4 +1,5 @@
 import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
+import { useState } from 'react'
 import type {
   AlertItem,
   ChecklistItem,
@@ -1028,6 +1029,8 @@ function BacktestActionPlan({
   onStatusChange: (actionId: string, status: StrategyBacktestActionPlan['actions'][number]['status']) => void
 }) {
   const actions = Array.isArray(plan?.actions) ? plan.actions : []
+  const [statusFilter, setStatusFilter] = useState<StrategyBacktestActionPlan['actions'][number]['status'] | 'all'>('all')
+  const filteredActions = actions.filter((action) => statusFilter === 'all' || action.status === statusFilter)
   if (error) {
     return (
       <div className="panel-state error-state compact-state">
@@ -1057,8 +1060,27 @@ function BacktestActionPlan({
           高 {plan.high_count} · 中 {plan.medium_count} · 低 {plan.low_count} · 已完成 {plan.done_count ?? 0}
         </span>
       </div>
+      <div className="mini-segments backtest-status-filter" aria-label="回测动作状态筛选">
+        {([
+          ['all', '全部'],
+          ['pending', '待处理'],
+          ['watching', '观察中'],
+          ['done', '已完成'],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={statusFilter === value ? 'selected' : ''}
+            onClick={() => setStatusFilter(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="backtest-action-list">
-        {actions.slice(0, 5).map((action) => {
+        {filteredActions.length === 0 ? (
+          <p className="empty-text">当前筛选下没有回测复盘动作</p>
+        ) : filteredActions.slice(0, 5).map((action) => {
           const updating = action.id === updatingActionId
           return (
             <article key={action.id} className={`backtest-action ${action.priority} ${action.status}`}>

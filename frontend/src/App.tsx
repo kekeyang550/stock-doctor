@@ -1239,7 +1239,8 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   markdownList(lines, backtestHistoryItems.slice(0, 6), (item) => `${item.holding_days} 日 ${strategyBacktestPriceSourceLabel(item.price_source)} - 平均收益 ${formatReportSignedPercent(item.average_return_pct ?? 0)}, 最大回撤 ${formatReportSignedPercent(item.max_drawdown_pct ?? 0)}, 稳定 ${item.stability_score}, 可信 ${item.sample_confidence_score}`)
   lines.push('')
   lines.push('### 回测复盘动作')
-  markdownList(lines, backtestActionItems.slice(0, 8), (item) => `${item.category} - ${reviewActionPriorityLabel(item.priority)} - ${item.title} - ${item.metric} - ${item.detail}`)
+  lines.push(`- 状态统计: 待处理 ${markdownText(strategyBacktestActions.pending_count ?? 0)} / 观察中 ${markdownText(strategyBacktestActions.watching_count ?? 0)} / 已完成 ${markdownText(strategyBacktestActions.done_count ?? 0)}`)
+  markdownList(lines, backtestActionItems.slice(0, 8), (item) => `${item.category} - ${reviewActionPriorityLabel(item.priority)} - ${reviewActionStatusLabel(item.status)} - ${item.title} - ${item.metric} - ${item.detail}`)
   lines.push('')
 
   lines.push('## 数据可信度')
@@ -1472,8 +1473,11 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>高优先级</span><strong>${escapeHtml(strategyBacktestActions.high_count ?? 0)}</strong></div>
         <div class="metric"><span>中优先级</span><strong>${escapeHtml(strategyBacktestActions.medium_count ?? 0)}</strong></div>
         <div class="metric"><span>低优先级</span><strong>${escapeHtml(strategyBacktestActions.low_count ?? 0)}</strong></div>
+        <div class="metric"><span>待处理</span><strong>${escapeHtml(strategyBacktestActions.pending_count ?? 0)}</strong></div>
+        <div class="metric"><span>观察中</span><strong>${escapeHtml(strategyBacktestActions.watching_count ?? 0)}</strong></div>
+        <div class="metric"><span>已完成</span><strong>${escapeHtml(strategyBacktestActions.done_count ?? 0)}</strong></div>
       </div>
-      ${backtestActionItems.slice(0, 8).map((item: any) => `<div class="row"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(reviewActionPriorityLabel(item.priority))} · ${escapeHtml(item.category)} · ${escapeHtml(item.metric)} · ${escapeHtml(item.detail)} · 触发：${escapeHtml(item.trigger)}</small></div>`).join("") || "<p>暂无回测复盘动作</p>"}
+      ${backtestActionItems.slice(0, 8).map((item: any) => `<div class="row"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(reviewActionPriorityLabel(item.priority))} · ${escapeHtml(reviewActionStatusLabel(item.status))} · ${escapeHtml(item.category)} · ${escapeHtml(item.metric)} · ${escapeHtml(item.detail)} · 触发：${escapeHtml(item.trigger)}</small></div>`).join("") || "<p>暂无回测复盘动作</p>"}
       <h3>周期对比</h3>
       <p>${escapeHtml(strategyBacktestComparison.summary ?? "")}</p>
       ${strategyBacktestComparison.recommendation_reason ? `<p><strong>周期推荐依据：</strong>${escapeHtml(strategyBacktestComparison.recommendation_reason)}</p>` : ""}

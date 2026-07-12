@@ -845,6 +845,10 @@
   gap: 8px;
 }
 
+.backtest-status-filter {
+  justify-content: flex-start;
+}
+
 .backtest-action {
   border: 1px solid #d8e4d6;
   border-left: 4px solid #7d8d82;
