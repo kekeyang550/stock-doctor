@@ -2095,6 +2095,7 @@ describe('App', () => {
     })
     expect(exported.strategy_backtest_comparison.recommended_holding_days).toBe(10)
     expect(exported.strategy_backtest_comparison.recommendation_reason).toContain('收益回撤比 1.86')
+    expect(exported.strategy_backtest_actions.actions.map((item: { title: string }) => item.title)).toContain('切换推荐持有周期复测')
     expect(exported.strategy_preset_comparison.recommended_preset).toBe('strong')
     expect(exported.strategy_preset_comparison.presets.map((item: { label: string }) => item.label)).toEqual([
       '强势关注',
@@ -2211,6 +2212,9 @@ describe('App', () => {
     expect(html).toContain('历史对比')
     expect(html).toContain('稳定评分变化')
     expect(html).toContain('最近回测')
+    expect(html).toContain('回测复盘动作')
+    expect(html).toContain('切换推荐持有周期复测')
+    expect(html).toContain('当前 5 日 / 推荐 10 日')
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('缓存命中')
@@ -2271,6 +2275,8 @@ describe('App', () => {
     expect(markdown).toContain('再平衡建议')
     expect(markdown).toContain('## 策略回测')
     expect(markdown).toContain('历史对比')
+    expect(markdown).toContain('### 回测复盘动作')
+    expect(markdown).toContain('切换推荐持有周期复测')
     expect(markdown).toContain('## 数据可信度')
     expect(markdown).toContain('缓存桶')
     expect(anchor.download).toBe(`stock-doctor-report-600519-${new Date().toISOString().slice(0, 10)}.md`)

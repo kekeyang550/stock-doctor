@@ -599,6 +599,7 @@ export default function App() {
         },
         strategy_backtest_comparison: strategyBacktestComparison,
         strategy_backtest_history: strategyBacktestHistory,
+        strategy_backtest_actions: strategyBacktestActions,
         strategy_preset_comparison: strategyBacktestPresetComparison,
         review_actions: reviewActions,
         data_quality: dataQuality,
@@ -609,7 +610,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, reviewActions, selectedSymbol, strategyBacktest, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, reviewActions, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1130,6 +1131,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const portfolioRisk = payload.portfolio_risk ?? {}
   const strategyBacktest = payload.strategy_backtest ?? {}
   const strategyBacktestHistory = payload.strategy_backtest_history ?? {}
+  const strategyBacktestActions = payload.strategy_backtest_actions ?? {}
   const reviewActions = payload.review_actions ?? {}
   const dataTrust = payload.data_trust ?? {}
   const connectorHealth = dataTrust.connector_health ?? {}
@@ -1140,6 +1142,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const riskContributions = Array.isArray(portfolioRisk.risk_contributions) ? portfolioRisk.risk_contributions : []
   const rebalanceActions = Array.isArray(portfolioRisk.rebalance_actions) ? portfolioRisk.rebalance_actions : []
   const backtestHistoryItems = Array.isArray(strategyBacktestHistory.items) ? strategyBacktestHistory.items : []
+  const backtestActionItems = Array.isArray(strategyBacktestActions.actions) ? strategyBacktestActions.actions : []
   const cacheBuckets = Array.isArray(cacheStatus.buckets) ? cacheStatus.buckets : []
   const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
   const lines: string[] = []
@@ -1208,6 +1211,9 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(markdownText(strategyBacktestHistory.summary ?? '暂无回测历史对比'))
   markdownList(lines, backtestHistoryItems.slice(0, 6), (item) => `${item.holding_days} 日 ${strategyBacktestPriceSourceLabel(item.price_source)} - 平均收益 ${formatReportSignedPercent(item.average_return_pct ?? 0)}, 最大回撤 ${formatReportSignedPercent(item.max_drawdown_pct ?? 0)}, 稳定 ${item.stability_score}, 可信 ${item.sample_confidence_score}`)
   lines.push('')
+  lines.push('### 回测复盘动作')
+  markdownList(lines, backtestActionItems.slice(0, 8), (item) => `${item.category} - ${reviewActionPriorityLabel(item.priority)} - ${item.title} - ${item.metric} - ${item.detail}`)
+  lines.push('')
 
   lines.push('## 数据可信度')
   lines.push('')
@@ -1255,6 +1261,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const strategyBacktestParameters = payload.strategy_backtest_parameters ?? {}
   const strategyBacktestComparison = payload.strategy_backtest_comparison ?? {}
   const strategyBacktestHistory = payload.strategy_backtest_history ?? {}
+  const strategyBacktestActions = payload.strategy_backtest_actions ?? {}
   const strategyPresetComparison = payload.strategy_preset_comparison ?? {}
   const reviewActions = payload.review_actions ?? {}
   const dataTrust = payload.data_trust ?? {}
@@ -1281,6 +1288,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
     : 0
   const periodSummaries = Array.isArray(strategyBacktestComparison.periods) ? strategyBacktestComparison.periods : []
   const backtestHistoryItems = Array.isArray(strategyBacktestHistory.items) ? strategyBacktestHistory.items : []
+  const backtestActionItems = Array.isArray(strategyBacktestActions.actions) ? strategyBacktestActions.actions : []
   const presetSummaries = Array.isArray(strategyPresetComparison.presets) ? strategyPresetComparison.presets : []
   const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
   const cacheBuckets = Array.isArray(cacheStatus.buckets) ? cacheStatus.buckets : []
@@ -1432,6 +1440,13 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       </div>
       <h4>最近回测</h4>
       ${backtestHistoryItems.slice(0, 6).map((item: any) => `<div class="row"><strong>${escapeHtml(item.holding_days)} 日 · ${escapeHtml(strategyBacktestPriceSourceLabel(item.price_source))}</strong><small>${escapeHtml(item.created_at ?? "-")} · 平均收益 ${escapeHtml(formatReportSignedPercent(item.average_return_pct ?? 0))} · 最大回撤 ${escapeHtml(formatReportSignedPercent(item.max_drawdown_pct ?? 0))} · 稳定 ${escapeHtml(item.stability_score ?? 0)} · 可信 ${escapeHtml(item.sample_confidence_score ?? 0)}</small></div>`).join("") || "<p>暂无最近回测</p>"}
+      <h3>回测复盘动作</h3>
+      <div class="grid">
+        <div class="metric"><span>高优先级</span><strong>${escapeHtml(strategyBacktestActions.high_count ?? 0)}</strong></div>
+        <div class="metric"><span>中优先级</span><strong>${escapeHtml(strategyBacktestActions.medium_count ?? 0)}</strong></div>
+        <div class="metric"><span>低优先级</span><strong>${escapeHtml(strategyBacktestActions.low_count ?? 0)}</strong></div>
+      </div>
+      ${backtestActionItems.slice(0, 8).map((item: any) => `<div class="row"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(reviewActionPriorityLabel(item.priority))} · ${escapeHtml(item.category)} · ${escapeHtml(item.metric)} · ${escapeHtml(item.detail)} · 触发：${escapeHtml(item.trigger)}</small></div>`).join("") || "<p>暂无回测复盘动作</p>"}
       <h3>周期对比</h3>
       <p>${escapeHtml(strategyBacktestComparison.summary ?? "")}</p>
       ${strategyBacktestComparison.recommendation_reason ? `<p><strong>周期推荐依据：</strong>${escapeHtml(strategyBacktestComparison.recommendation_reason)}</p>` : ""}
