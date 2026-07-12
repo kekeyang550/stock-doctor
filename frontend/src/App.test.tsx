@@ -672,8 +672,8 @@ const strategyBacktest = {
     { step: 1, label: '贵州茅台', equity_pct: 3.4, drawdown_pct: 0, trade_return_pct: 3.4, symbol: '600519', name: '贵州茅台' },
     { step: 2, label: '宁德时代', equity_pct: 1.3, drawdown_pct: -2.1, trade_return_pct: -2.1, symbol: '300750', name: '宁德时代' },
   ],
-  summary: 'strong 在样例数据中命中 2 只标的，形成 2 笔 5 日持有交易。',
-  rule_notes: ['综合分和技术分同时较强。', '样例回测不代表真实历史收益。'],
+  summary: 'strong 在当前数据中命中 2 只标的，形成 2 笔 5 日持有交易。',
+  rule_notes: ['综合分和技术分同时较强。', '回测不代表真实未来收益。'],
   trades: [
     {
       symbol: '600519',
@@ -1707,7 +1707,7 @@ describe('App', () => {
     const tenDayBacktest = {
       ...strategyBacktest,
       holding_days: 10,
-      summary: 'strong 在样例数据中命中 2 只标的，形成 2 笔 10 日持有交易。',
+      summary: 'strong 在当前数据中命中 2 只标的，形成 2 笔 10 日持有交易。',
       trades: strategyBacktest.trades.map((trade) => ({ ...trade, holding_days: 10, return_pct: 5.2 })),
     }
     const defaultFetch = vi.mocked(fetch).getMockImplementation()!
@@ -1734,7 +1734,7 @@ describe('App', () => {
       const backtestCalls = vi.mocked(fetch).mock.calls.map((call) => String(call[0])).filter((url) => url.includes('/backtests/strategy'))
       expect(backtestCalls.some((url) => url.includes('holding_days=10'))).toBe(true)
     })
-    expect(backtestPanel).toHaveTextContent('10 日样例持有')
+    expect(backtestPanel).toHaveTextContent('10 日持有')
     expect(backtestPanel).toHaveTextContent('600519 · 白酒 · 10 日')
     expect(backtestPanel).toHaveTextContent('+5.20%')
   })

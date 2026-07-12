@@ -139,13 +139,17 @@ async def search_stocks(
 ) -> list[StockSearchResult]:
     query = q.strip().lower()
     watchlist_symbols = {stock.symbol for stock in data_provider.get_watchlist()}
-    candidates = data_provider.list_stocks()
-    if query:
-        candidates = [
-            stock
-            for stock in candidates
-            if query in stock.symbol.lower() or query in stock.name.lower() or query in stock.industry.lower()
-        ]
+    provider_search = getattr(data_provider, "search_stocks", None)
+    if callable(provider_search):
+        candidates = provider_search(q.strip(), limit=max(limit * 2, limit))
+    else:
+        candidates = data_provider.list_stocks()
+        if query:
+            candidates = [
+                stock
+                for stock in candidates
+                if query in stock.symbol.lower() or query in stock.name.lower() or query in stock.industry.lower()
+            ]
     candidates = sorted(candidates, key=lambda stock: (stock.symbol not in watchlist_symbols, stock.symbol))
     results = []
     for stock in candidates[:limit]:

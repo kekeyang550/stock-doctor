@@ -1,4 +1,5 @@
 import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
+import { connectorTelemetry, humanizeConnectorMessage } from '../../lib/sourceLabels'
 import type {
   AlertItem,
   ChecklistItem,
@@ -245,6 +246,7 @@ export function DataConnectorPanel({
   const cacheBuckets = health?.cache_status?.buckets ?? []
   const totalCacheEntries = cacheBuckets.reduce((total, bucket) => total + bucket.entries, 0)
   const activeCacheEntries = cacheBuckets.reduce((total, bucket) => total + bucket.active_entries, 0)
+  const sourceTelemetry = connectorTelemetry(activeConnector?.message)
   return (
     <section className="panel connector-panel">
       <div className="panel-title split-title">
@@ -269,7 +271,23 @@ export function DataConnectorPanel({
             </button>
           </div>
           <div className="data-trust-summary">
-            <TrustCard label="行情来源" value={health.active_provider} detail={activeConnector?.message ?? '当前数据源状态未知'} status={activeConnector?.status ?? 'unknown'} />
+            <TrustCard label="行情来源" value={health.active_provider} detail={humanizeConnectorMessage(activeConnector?.message ?? '当前数据源状态未知')} status={activeConnector?.status ?? 'unknown'} />
+            {sourceTelemetry.enabled.length ? (
+              <TrustCard
+                label="已启用来源"
+                value={`${sourceTelemetry.enabled.length} 路`}
+                detail={sourceTelemetry.enabled.join('、')}
+                status="online"
+              />
+            ) : null}
+            {sourceTelemetry.conservative.length ? (
+              <TrustCard
+                label="保守估算"
+                value={`${sourceTelemetry.conservative.length} 项`}
+                detail={sourceTelemetry.conservative.join('、')}
+                status="fallback"
+              />
+            ) : null}
             <TrustCard
               label="Fallback 状态"
               value={usingFallback ? '正在使用回退源' : '主源直连'}
@@ -500,7 +518,7 @@ function ConnectorRow({ connector }: { connector: DataConnectorStatus }) {
         <span>{connector.role}</span>
       </div>
       <em>{connector.active ? '启用' : connectorStatusLabel(connector.status)}</em>
-      <p>{connector.message}</p>
+      <p>{humanizeConnectorMessage(connector.message)}</p>
       <small>{connector.next_action}</small>
     </article>
   )

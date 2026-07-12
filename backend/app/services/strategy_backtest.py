@@ -704,9 +704,9 @@ class StrategyBacktestService:
 
     def _summary(self, preset: str, match_count: int, trades: list[StrategyBacktestTrade], average_return: float, max_drawdown: float) -> str:
         if not trades:
-            return f"{preset} 当前样例未形成可回测交易。"
+            return f"{preset} 当前数据命中 {match_count} 只标的，未形成可回测交易。"
         return (
-            f"{preset} 在样例数据中命中 {match_count} 只标的，"
+            f"{preset} 在当前数据中命中 {match_count} 只标的，"
             f"形成 {len(trades)} 笔 {trades[0].holding_days} 日持有交易，"
             f"平均收益 {average_return:.2f}%，最大回撤 {max_drawdown:.2f}%。"
         )
@@ -717,7 +717,7 @@ class StrategyBacktestService:
             "value": ["行业估值分位较低且风险可控。", "适合验证低估值修复，不代表短线动能。"],
             "capital-risk": ["用于暴露资金压力，不作为买入信号。", "收益统计仅帮助观察回避策略效果。"],
             "breakout-volume": ["价格站上关键均线且量能放大。", "若量能回落或跌破 MA20，突破假设降级。"],
-            "capital-return": ["资金回流且不过热。", "适合验证温和资金修复样例。"],
+            "capital-return": ["资金回流且不过热。", "适合验证温和资金修复路径。"],
             "risk-avoidance": ["事件、技术或资金压力触发回避。", "用于复核风险暴露，不作为机会优先信号。"],
         }
-        return notes.get(preset, ["当前策略使用样例规则生成，仅作研究参考。"])
+        return notes.get(preset, ["当前策略使用规则生成，仅作研究参考。"])

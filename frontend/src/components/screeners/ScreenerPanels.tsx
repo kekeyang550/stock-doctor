@@ -904,20 +904,20 @@ export function StrategyBacktestPanel({
           ))}
         </div>
       </div>
-      <p className="backtest-period-note">{report ? `${report.holding_days} 日样例持有` : '加载中'}</p>
+      <p className="backtest-period-note">{report ? `${report.holding_days} 日持有` : '加载中'}</p>
       {error ? (
         <div className="panel-state error-state">
           <strong>策略回测加载失败</strong>
           <span>{error}</span>
-          <small>本阶段仅使用样例数据回测，失败不会影响候选股列表。</small>
+          <small>回测失败不会影响候选股列表，当前缓存数据会保留。</small>
           <button type="button" onClick={onRetry}>重试回测</button>
         </div>
       ) : !report ? (
-        <p className="empty-text">正在生成样例回测...</p>
+        <p className="empty-text">正在生成回测...</p>
       ) : report.trade_count === 0 ? (
         <div className="panel-state empty-state">
-          <strong>当前策略暂无可回测样例</strong>
-          <span>可以切换策略或等待样例行情刷新后再看。</span>
+          <strong>当前策略暂无可回测交易</strong>
+          <span>{report.summary || '可以切换策略或等待行情刷新后再看。'}</span>
         </div>
       ) : (
         <>

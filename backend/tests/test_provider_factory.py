@@ -1,8 +1,12 @@
+import struct
 from datetime import date, timedelta
 
 from app.services.akshare_provider import AkshareMarketDataProvider
+from app.services.eastmoney_provider import EastmoneyMarketDataProvider
+from app.services.local_stock_directory import LocalStockDirectoryProvider
 from app.services.market_data import MockMarketDataProvider
 from app.services.storage import JsonStateStore
+from app.services.tdx_local_provider import TdxLocalHistoryProvider
 
 
 def test_akshare_provider_falls_back_without_package():
@@ -134,6 +138,164 @@ class FakeAkshareWithRiskNames:
         return [
             {"代码": "688005", "名称": "ST测试", "行业": "风险警示", "最新价": "2.1", "涨跌幅": "9.92"},
         ]
+
+
+class FakeResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._payload
+
+
+class FakeTextResponse:
+    def __init__(self, text):
+        self.text = text
+        self.encoding = "utf-8"
+
+    def raise_for_status(self):
+        return None
+
+
+class FakeEastmoneySession:
+    def __init__(self):
+        self.trust_env = True
+        self.urls = []
+
+    def get(self, url, params=None, timeout=None, headers=None):
+        self.urls.append(url)
+        if "qt.gtimg.cn" in url:
+            fields = ["0"] * 90
+            fields[1] = "CMB Bank"
+            fields[2] = "600036"
+            fields[3] = "42.18"
+            fields[32] = "0.85"
+            fields[38] = "0.38"
+            fields[46] = "0.84"
+            fields[52] = "6.14"
+            return FakeTextResponse(f'v_sh600036="{"~".join(fields)}";')
+        if "stock/fflow/daykline/get" in url:
+            return FakeResponse(
+                {
+                    "data": {
+                        "klines": [
+                            "2026-05-30,-114420576.0,114798976.0,-378400.0,-199498704.0,85078128.0"
+                        ]
+                    }
+                }
+            )
+        if "MoneyFlow.ssl_qsfx_zjlrqs" in url:
+            return FakeResponse(
+                [
+                    {
+                        "opendate": "2026-07-10",
+                        "trade": "42.18",
+                        "turnover": "2110925671.0000",
+                        "netamount": "57699684.6000",
+                        "r0_net": "3722838.2700",
+                        "r0_ratio": "0.18",
+                    }
+                ]
+            )
+        if "stock/get" in url:
+            symbol = str(params.get("secid", "")).split(".")[-1] if params else "600036"
+            return FakeResponse(
+                {
+                    "data": {
+                        "f57": symbol,
+                        "f58": "CMB Bank" if symbol == "600036" else symbol,
+                        "f162": 6.14,
+                        "f167": 0.84,
+                        "f168": 0.38,
+                        "f184": 3.81,
+                        "f185": 1.52,
+                    }
+                }
+            )
+        if "clist/get" in url:
+            return FakeResponse(
+                {
+                    "data": {
+                        "diff": [
+                            {"f12": "600519", "f14": "贵州茅台", "f2": 1288.8, "f3": 1.2, "f100": "白酒"},
+                            {"f12": "300750", "f14": "宁德时代", "f2": 214.5, "f3": -0.8, "f100": "电池"},
+                        ]
+                    }
+                }
+            )
+        if "ulist.np/get" in url:
+            return FakeResponse({"data": {"diff": [{"f12": "000300", "f14": "沪深300", "f2": 4216.38, "f3": 0.72}]}})
+        if "kline/get" in url:
+            start = date(2026, 4, 1)
+            return FakeResponse(
+                {
+                    "data": {
+                        "klines": [
+                            f"{(start + timedelta(days=index)).isoformat()},{10 + index * 0.08:.2f},"
+                            f"{10 + index * 0.1:.2f},{10 + index * 0.11:.2f},{10 + index * 0.07:.2f},"
+                            f"{1000 + index * 10},1200000,1.1,0.2,0.02,1.5"
+                            for index in range(60)
+                        ]
+                    }
+                }
+            )
+        return FakeResponse({})
+
+
+class FailingEastmoneyDetailSession(FakeEastmoneySession):
+    def get(self, url, params=None, timeout=None, headers=None):
+        if "stock/get" in url:
+            raise RuntimeError("quote detail unavailable")
+        return super().get(url, params=params, timeout=timeout, headers=headers)
+
+
+class FailingEastmoneyFundFlowSession(FakeEastmoneySession):
+    def get(self, url, params=None, timeout=None, headers=None):
+        if "stock/fflow/daykline/get" in url:
+            raise RuntimeError("eastmoney fund flow unavailable")
+        return super().get(url, params=params, timeout=timeout, headers=headers)
+
+
+def write_tdx_day_file(vipdoc_path, symbol: str, rows: list[tuple[int, float, float, float, float, float, int]]):
+    market = "sh" if symbol.startswith(("5", "6", "9")) else "sz"
+    folder = vipdoc_path / market / "lday"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{market}{symbol}.day"
+    payload = b"".join(
+        struct.pack(
+            "<IIIIIfII",
+            trade_date,
+            round(open_price * 100),
+            round(high * 100),
+            round(low * 100),
+            round(close * 100),
+            amount,
+            volume,
+            0,
+        )
+        for trade_date, open_price, high, low, close, amount, volume in rows
+    )
+    path.write_bytes(payload)
+    return path
+
+
+def write_ths_stockname_file(path):
+    path.write_text(
+        "\n".join(
+            [
+                "[name_16_16]",
+                "ConfigVer=20260712_test",
+                "600036=招商银行|招商银行@f",
+                "600519=贵州茅台|贵州茅台@f",
+                "751074=招商银行|招商银行@f",
+            ]
+        ),
+        encoding="gbk",
+    )
+    return path
 
 
 def test_akshare_provider_normalizes_spot_list():
@@ -468,3 +630,240 @@ def test_akshare_provider_can_watch_remote_snapshot_stock(tmp_path):
     assert added is True
     assert [stock.symbol for stock in watchlist] == ["688001"]
     assert "688001" in store.load_watchlist([])
+
+
+def test_eastmoney_provider_normalizes_live_stock_list():
+    session = FakeEastmoneySession()
+    provider = EastmoneyMarketDataProvider(session=session)
+
+    stocks = provider.list_stocks()
+
+    assert session.trust_env is False
+    assert [stock.symbol for stock in stocks] == ["300750", "600519"]
+    assert stocks[1].name == "贵州茅台"
+    assert stocks[1].last_price == 1288.8
+    assert stocks[1].industry == "白酒"
+
+
+def test_eastmoney_provider_builds_snapshot_from_history():
+    provider = EastmoneyMarketDataProvider(session=FakeEastmoneySession())
+
+    snapshot = provider.get_snapshot("600519")
+    sources = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert snapshot.symbol == "600519"
+    assert snapshot.as_of == "2026-05-30"
+    assert snapshot.last_price == 15.9
+    assert snapshot.technical.ma5 == 15.7
+    assert snapshot.technical.ma20 == 14.95
+    assert snapshot.capital.turnover_rate == 1.5
+    assert sources[0]["name"] == "东方财富"
+    assert sources[0]["status"] == "online"
+    assert "fundamental" in sources[0]["role"]
+
+
+def test_eastmoney_provider_exposes_real_price_history_rows():
+    provider = EastmoneyMarketDataProvider(session=FakeEastmoneySession())
+
+    bars = provider.get_price_history("600519", days=10)
+
+    assert len(bars) == 10
+    assert bars[0].date == "2026-05-21"
+    assert bars[-1].date == "2026-05-30"
+    assert bars[-1].close == 15.9
+    assert bars[-1].volume == 1590
+
+
+def test_eastmoney_provider_builds_market_overview():
+    provider = EastmoneyMarketDataProvider(session=FakeEastmoneySession())
+
+    overview = provider.get_market_overview()
+
+    assert overview.index_name == "沪深300"
+    assert overview.index_level == 4216.38
+    assert overview.index_change_pct == 0.72
+    assert overview.advancing == 1
+    assert overview.declining == 1
+    assert overview.hot_industries[0] == "白酒"
+
+
+def test_eastmoney_provider_searches_direct_a_share_code_from_tencent():
+    provider = EastmoneyMarketDataProvider(
+        session=FakeEastmoneySession(),
+        stock_directory=LocalStockDirectoryProvider(stockname_paths=[]),
+    )
+
+    results = provider.search_stocks("600036")
+
+    assert results
+    assert results[0].symbol == "600036"
+    assert results[0].name == "CMB Bank"
+    assert results[0].last_price == 42.18
+    assert results[0].change_pct == 0.85
+
+
+def test_local_stock_directory_reads_ths_stockname_file(tmp_path):
+    path = write_ths_stockname_file(tmp_path / "stockname_16_0.txt")
+    directory = LocalStockDirectoryProvider(stockname_paths=[path])
+
+    results = directory.search("招商", limit=5)
+    source = directory.get_data_source()
+
+    assert [entry.symbol for entry in results] == ["600036"]
+    assert results[0].name == "招商银行"
+    assert source["status"] == "online"
+    assert "已加载" in source["role"]
+
+
+def test_eastmoney_provider_searches_local_stock_directory_by_name(tmp_path):
+    path = write_ths_stockname_file(tmp_path / "stockname_16_0.txt")
+    directory = LocalStockDirectoryProvider(stockname_paths=[path])
+    provider = EastmoneyMarketDataProvider(session=FakeEastmoneySession(), stock_directory=directory)
+
+    results = provider.search_stocks("招商")
+    sources = provider.get_data_sources()
+
+    assert results
+    assert results[0].symbol == "600036"
+    assert results[0].name == "招商银行"
+    assert any(source["name"] == "同花顺本地股票名表" and source["status"] == "online" for source in sources)
+
+
+def test_eastmoney_provider_can_watch_direct_search_stock(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = EastmoneyMarketDataProvider(
+        session=FakeEastmoneySession(),
+        state_store=store,
+        stock_directory=LocalStockDirectoryProvider(stockname_paths=[]),
+    )
+
+    added = provider.add_to_watchlist("600036")
+    snapshot = provider.get_snapshot("600036")
+    watchlist = provider.get_watchlist()
+
+    assert added is True
+    assert snapshot is not None
+    assert snapshot.symbol == "600036"
+    assert snapshot.name == "CMB Bank"
+    assert snapshot.as_of == "2026-05-30"
+    assert snapshot.fundamental.pe_ttm == 6.14
+    assert snapshot.fundamental.pb == 0.84
+    assert snapshot.fundamental.roe == 13.7
+    assert snapshot.fundamental.revenue_growth == 3.81
+    assert snapshot.fundamental.profit_growth == 1.52
+    assert snapshot.capital.main_inflow_million == -114.4
+    assert snapshot.capital.turnover_rate == 1.5
+    assert any(stock.symbol == "600036" for stock in watchlist)
+    assert "600036" in store.load_watchlist([])
+
+
+def test_eastmoney_provider_uses_sina_fund_flow_fallback(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = EastmoneyMarketDataProvider(
+        session=FailingEastmoneyFundFlowSession(),
+        state_store=store,
+        stock_directory=LocalStockDirectoryProvider(stockname_paths=[]),
+    )
+
+    snapshot = provider.get_snapshot("600036")
+    sources = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert snapshot.capital.main_inflow_million == 3.7
+    assert snapshot.capital.turnover_rate == 1.5
+    assert "sina-capital-flow" in sources[0]["role"]
+    assert "capital-flow" in sources[0]["role"]
+
+
+def test_eastmoney_provider_uses_tencent_quote_detail_fallback(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = EastmoneyMarketDataProvider(
+        session=FailingEastmoneyDetailSession(),
+        state_store=store,
+        stock_directory=LocalStockDirectoryProvider(stockname_paths=[]),
+    )
+
+    snapshot = provider.get_snapshot("600036")
+    sources = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert snapshot.fundamental.pe_ttm == 6.14
+    assert snapshot.fundamental.pb == 0.84
+    assert snapshot.fundamental.roe == 13.7
+    assert snapshot.fundamental.revenue_growth == 6
+    assert snapshot.fundamental.profit_growth == 6
+    assert snapshot.capital.turnover_rate == 1.5
+    assert "tencent-quote-detail" in sources[0]["role"]
+    assert "growth" in sources[0]["role"]
+
+
+def test_eastmoney_provider_reports_cache_status_buckets():
+    now = 1000.0
+    provider = EastmoneyMarketDataProvider(session=FakeEastmoneySession(), cache_ttl_seconds=10, clock=lambda: now)
+
+    cold = provider.get_cache_status()
+    provider.list_stocks()
+    provider.list_stocks()
+    provider.get_snapshot("600519")
+    provider.get_snapshot("600519")
+    provider.get_price_history("600519", days=10)
+    warm = provider.get_cache_status()
+
+    assert [bucket["key"] for bucket in cold["buckets"]] == ["stock_list", "snapshots", "history"]
+    assert {bucket["key"]: bucket["active_entries"] for bucket in warm["buckets"]} == {
+        "stock_list": 1,
+        "snapshots": 1,
+        "history": 1,
+    }
+    assert {bucket["key"]: bucket["hit_count"] for bucket in warm["buckets"]} == {
+        "stock_list": 2,
+        "snapshots": 1,
+        "history": 1,
+    }
+
+
+def test_tdx_local_history_provider_reads_day_file(tmp_path):
+    write_tdx_day_file(
+        tmp_path,
+        "600519",
+        [
+            (20260708, 1188.77, 1200.98, 1177.00, 1199.30, 3_071_933_440.0, 2_577_602),
+            (20260709, 1191.00, 1191.99, 1178.00, 1182.19, 4_035_216_896.0, 3_409_634),
+            (20260710, 1182.20, 1204.98, 1170.28, 1204.98, 6_223_343_616.0, 5_221_255),
+        ],
+    )
+    provider = TdxLocalHistoryProvider(vipdoc_path=tmp_path)
+
+    bars = provider.get_price_history("600519", days=2)
+    source = provider.get_data_source(["600519"])
+
+    assert [bar.date for bar in bars] == ["2026-07-09", "2026-07-10"]
+    assert bars[-1].close == 1204.98
+    assert bars[-1].volume == 5_221_255
+    assert source["name"] == "通达信本地日线"
+    assert source["status"] == "online"
+    assert "2026-07-10" in source["role"]
+
+
+def test_eastmoney_provider_reports_tdx_reference_source(tmp_path):
+    write_tdx_day_file(
+        tmp_path,
+        "600519",
+        [
+            (20260529, 15.60, 15.80, 15.50, 15.80, 1000.0, 1580),
+            (20260530, 15.80, 16.00, 15.70, 15.90, 1000.0, 1590),
+        ],
+    )
+    provider = EastmoneyMarketDataProvider(
+        session=FakeEastmoneySession(),
+        tdx_provider=TdxLocalHistoryProvider(vipdoc_path=tmp_path),
+    )
+
+    bars = provider.get_price_history("600519", days=10)
+    sources = provider.get_data_sources()
+
+    assert bars[-1].date == "2026-05-30"
+    tdx = next(source for source in sources if source["name"] == "通达信本地日线")
+    assert tdx["status"] == "online"
+    assert "最近校验" in tdx["role"]

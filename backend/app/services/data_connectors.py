@@ -17,6 +17,11 @@ class DataConnectorHealthService:
         akshare_installed = find_spec("akshare") is not None
         active_provider = settings.data_provider
         source_by_name = self._source_by_name(provider)
+        eastmoney_source = source_by_name.get("东方财富")
+        tencent_source = source_by_name.get("腾讯行情")
+        sina_source = source_by_name.get("新浪资金流")
+        tdx_source = source_by_name.get("通达信本地日线")
+        local_stock_directory_source = source_by_name.get("同花顺本地股票名表")
         akshare_source = source_by_name.get("AKShare")
 
         connectors = [
@@ -32,6 +37,115 @@ class DataConnectorHealthService:
                 last_checked_at=checked_at,
                 message="本地样例数据可用。",
                 next_action="继续作为回归测试和真实数据失败时的兜底数据源。",
+            ),
+            DataConnectorStatus(
+                name="东方财富",
+                status=self._provider_source_status(active_provider, "eastmoney", eastmoney_source),
+                active=active_provider == "eastmoney",
+                role="A 股行情、指数和历史 K 线直连适配",
+                package="requests",
+                package_installed=find_spec("requests") is not None,
+                configured_provider=active_provider,
+                latency_ms=None,
+                last_checked_at=checked_at,
+                message=self._provider_source_message(active_provider, "eastmoney", eastmoney_source, "东方财富直连适配器"),
+                next_action=self._provider_source_next_action(active_provider, "eastmoney", eastmoney_source),
+            ),
+            DataConnectorStatus(
+                name="腾讯行情",
+                status=tencent_source.get("status", "fallback") if tencent_source is not None else "fallback",
+                active=active_provider == "eastmoney" and tencent_source is not None and tencent_source.get("status") == "online",
+                role="真实报价和历史 K 线备用适配",
+                package="requests",
+                package_installed=find_spec("requests") is not None,
+                configured_provider=active_provider,
+                latency_ms=None,
+                last_checked_at=checked_at,
+                message=(
+                    f"适配器报告：{tencent_source.get('role', '未返回状态详情')}"
+                    if tencent_source is not None
+                    else "东方财富直连可用时保持备用；触发备用后会显示在线。"
+                ),
+                next_action=(
+                    "继续观察备用源缓存命中和 K 线覆盖。"
+                    if tencent_source is not None and tencent_source.get("status") == "online"
+                    else "当东方财富接口断开时，后端会自动尝试腾讯行情备用源。"
+                ),
+            ),
+            DataConnectorStatus(
+                name="新浪资金流",
+                status=sina_source.get("status", "fallback") if sina_source is not None else "fallback",
+                active=active_provider == "eastmoney" and sina_source is not None and sina_source.get("status") == "online",
+                role="个股资金流备用适配",
+                package="requests",
+                package_installed=find_spec("requests") is not None,
+                configured_provider=active_provider,
+                latency_ms=None,
+                last_checked_at=checked_at,
+                message=(
+                    f"适配器报告：{sina_source.get('role', '未返回状态详情')}"
+                    if sina_source is not None
+                    else "东方财富资金流接口可用时保持备用；触发备用后会显示在线。"
+                ),
+                next_action=(
+                    "继续观察资金流字段覆盖率和主源恢复情况。"
+                    if sina_source is not None and sina_source.get("status") == "online"
+                    else "当东方财富资金流接口不可用时，后端会自动尝试新浪资金流备用源。"
+                ),
+            ),
+            DataConnectorStatus(
+                name="通达信本地日线",
+                status=tdx_source.get("status", "fallback") if tdx_source is not None else "fallback",
+                active=active_provider == "eastmoney" and tdx_source is not None and tdx_source.get("status") == "online",
+                role="本地历史 K 线参考与兜底",
+                package=None,
+                package_installed=True,
+                configured_provider=active_provider,
+                latency_ms=0 if tdx_source is not None and tdx_source.get("status") == "online" else None,
+                last_checked_at=checked_at,
+                message=(
+                    f"适配器报告：{tdx_source.get('role', '未返回状态详情')}"
+                    if tdx_source is not None
+                    else "未收到通达信本地日线适配器状态。"
+                ),
+                next_action=(
+                    "继续作为历史 K 线交叉校验；若过期，请在通达信客户端补全日线数据。"
+                    if tdx_source is not None and tdx_source.get("status") == "online"
+                    else "确认通达信 vipdoc 路径和日线下载状态。"
+                ),
+            ),
+            DataConnectorStatus(
+                name="同花顺本地股票名表",
+                status=(
+                    local_stock_directory_source.get("status", "fallback")
+                    if local_stock_directory_source is not None
+                    else "fallback"
+                ),
+                active=(
+                    active_provider == "eastmoney"
+                    and local_stock_directory_source is not None
+                    and local_stock_directory_source.get("status") == "online"
+                ),
+                role="本地 A 股代码/名称索引",
+                package=None,
+                package_installed=True,
+                configured_provider=active_provider,
+                latency_ms=0
+                if local_stock_directory_source is not None
+                and local_stock_directory_source.get("status") == "online"
+                else None,
+                last_checked_at=checked_at,
+                message=(
+                    f"适配器报告：{local_stock_directory_source.get('role', '未返回状态详情')}"
+                    if local_stock_directory_source is not None
+                    else "未收到本地股票名表状态；名称搜索会退回当前行情列表和代码直连。"
+                ),
+                next_action=(
+                    "继续作为名称搜索和代码补全索引；如搜索不到新股，可更新同花顺基础资料。"
+                    if local_stock_directory_source is not None
+                    and local_stock_directory_source.get("status") == "online"
+                    else "确认同花顺 stockname 路径是否存在，或通过 STOCK_DOCTOR_THS_STOCKNAME_PATHS 指定。"
+                ),
             ),
             DataConnectorStatus(
                 name="AKShare",
@@ -72,6 +186,43 @@ class DataConnectorHealthService:
             connectors=connectors,
         )
 
+    def _provider_source_status(
+        self,
+        active_provider: str,
+        provider_key: str,
+        source: dict[str, str] | None,
+    ) -> str:
+        if source is not None and active_provider == provider_key:
+            status = source.get("status", "")
+            if status in {"online", "fallback", "missing-package", "planned", "error"}:
+                return status
+        return "online" if active_provider == provider_key else "fallback"
+
+    def _provider_source_message(
+        self,
+        active_provider: str,
+        provider_key: str,
+        source: dict[str, str] | None,
+        label: str,
+    ) -> str:
+        if source is not None and active_provider == provider_key:
+            return f"适配器报告：{source.get('role', '未返回状态详情')}"
+        if active_provider != provider_key:
+            return f"{label}可用；当前未作为主数据源。"
+        return f"{label}当前作为主数据源；失败时保留 Mock 回退。"
+
+    def _provider_source_next_action(
+        self,
+        active_provider: str,
+        provider_key: str,
+        source: dict[str, str] | None,
+    ) -> str:
+        if source is not None and active_provider == provider_key and source.get("status") == "fallback":
+            return "查看适配器返回的错误信息，确认网络、代理和接口可用性。"
+        if active_provider != provider_key:
+            return f"设置 STOCK_DOCTOR_DATA_PROVIDER={provider_key} 后重启后端进行真实数据试运行。"
+        return "继续观察缓存命中、字段覆盖率和接口延迟，确认诊断和回测口径稳定。"
+
     def _source_by_name(self, provider: MarketDataProvider | None) -> dict[str, dict[str, str]]:
         if provider is None:
             return {}
@@ -107,6 +258,8 @@ class DataConnectorHealthService:
             status = source.get("status", "")
             if status in {"online", "fallback", "missing-package", "planned", "error"}:
                 return status
+        if active_provider == "eastmoney":
+            return "fallback"
         if not installed:
             return "missing-package"
         return "online" if active_provider == "akshare" else "fallback"
@@ -119,6 +272,8 @@ class DataConnectorHealthService:
     ) -> str:
         if source is not None and active_provider == "akshare":
             return f"适配器报告：{source.get('role', '未返回状态详情')}"
+        if active_provider == "eastmoney":
+            return "akshare 已安装时仍可作为备用聚合适配器；当前主数据源为东方财富直连。"
         if not installed:
             return "当前环境未安装 akshare，系统继续使用 Mock 数据。"
         if active_provider != "akshare":
@@ -133,6 +288,8 @@ class DataConnectorHealthService:
     ) -> str:
         if source is not None and active_provider == "akshare" and source.get("status") == "fallback":
             return "查看 AKShare 适配器返回的错误信息，确认网络、字段名和接口可用性。"
+        if active_provider == "eastmoney":
+            return "如需回到 AKShare 聚合链路，可设置 STOCK_DOCTOR_DATA_PROVIDER=akshare 后重启后端。"
         if not installed:
             return "在后端环境执行 pip install akshare 后，再设置 STOCK_DOCTOR_DATA_PROVIDER=akshare。"
         if active_provider != "akshare":

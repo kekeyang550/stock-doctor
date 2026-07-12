@@ -1,4 +1,5 @@
 import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
+import { humanizeConnectorMessage } from '../../lib/sourceLabels'
 import type {
   AlertItem,
   ChecklistItem,
@@ -185,7 +186,7 @@ export function DiagnosisWorkspace({
           {dataSources.map((source) => (
             <div key={source.name} className="source-row">
               <strong>{source.name}</strong>
-              <span>{source.role}</span>
+              <span>{humanizeConnectorMessage(source.role)}</span>
               <em>{source.status}</em>
             </div>
           ))}

@@ -50,6 +50,33 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 
 The default market data provider is the built-in mock provider. The app includes a connector health panel for staged real-data rollout.
 
+To trial live quote and historical K-line data:
+
+```powershell
+cd backend
+$env:STOCK_DOCTOR_DATA_PROVIDER = "eastmoney"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
+```
+
+The EastMoney adapter fetches A-share quotes, index rows, daily K-line history, quote-detail valuation fields, and best-effort fund-flow rows directly. It keeps mock data as a fallback and marks currently conservative fields such as growth or unavailable capital-flow details in the data trust panel.
+When EastMoney throttles or disconnects, the adapter automatically falls back to Tencent quote/K-line endpoints for the current watchlist symbols.
+Tencent quote detail is also used as a valuation fallback for PE, PB, and turnover when EastMoney quote-detail endpoints disconnect.
+Sina money-flow rows are used as a secondary capital-flow fallback when the EastMoney fund-flow endpoint is temporarily unavailable, and the data trust panel marks this with `sina-capital-flow`.
+The stock search API can also resolve a direct six-digit A-share code through the live quote fallback path, so users can type a code such as `600036`, add it to the watchlist, and run diagnosis even when it is not already in the default candidate pool.
+If a local TongHuaShun stock-name table is available, the search API also uses it as a code/name index. This allows name queries such as `招商银行` to resolve to `600036` before fetching the live quote:
+
+```powershell
+$env:STOCK_DOCTOR_THS_STOCKNAME_PATHS = "D:\同花顺软件\同花顺\stockname\stockname_16_0.txt;D:\同花顺软件\同花顺\stockname\stockname_32_0.txt"
+```
+
+If a local TongDaXin `vipdoc` directory is available, it is used as a local daily K-line reference and fallback source:
+
+```powershell
+$env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "E:\new_tdx64\vipdoc"
+```
+
+The data trust panel reports TongDaXin availability, latest local trading day, and the latest cross-check against the active historical K-line source.
+
 To trial AKShare after installing the package:
 
 ```powershell
@@ -59,7 +86,7 @@ $env:STOCK_DOCTOR_DATA_PROVIDER = "akshare"
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```
 
-The AKShare adapter keeps the mock provider as a fallback while real A-share fields are normalized.
+The AKShare adapter remains available as an optional aggregation path and keeps the mock provider as a fallback while real A-share fields are normalized.
 
 The workspace also includes a manual refresh job panel. Refresh jobs record provider, scope, status, duration, and covered stock counts so the same history can later back scheduled real-data updates.
 
@@ -71,6 +98,7 @@ Optional runtime knobs for real-data trials:
 $env:STOCK_DOCTOR_DATA_REQUEST_TIMEOUT_SECONDS = "8"
 $env:STOCK_DOCTOR_DATA_CACHE_TTL_SECONDS = "300"
 $env:STOCK_DOCTOR_DATA_FRESHNESS_STALE_AFTER_MINUTES = "30"
+$env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "E:\new_tdx64\vipdoc"
 ```
 
 These values are returned by `/api/v1/system/data-connectors` and displayed in the data trust panel so the current real-data operating assumptions are visible before diagnosis or backtest decisions.
