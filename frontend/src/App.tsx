@@ -62,6 +62,7 @@ import {
   fetchPortfolioRisk,
   fetchScreener,
   fetchStrategyBacktest,
+  fetchStrategyBacktestActions,
   fetchStrategyBacktestComparison,
   fetchStrategyBacktestHistory,
   fetchStrategyBacktestPresetComparison,
@@ -120,6 +121,7 @@ import type {
   StockSearchResult,
   StockSummary,
   StrategyBacktestComparison,
+  StrategyBacktestActionPlan,
   StrategyBacktestHistoryComparison,
   StrategyBacktestPresetComparison,
   StrategyBacktestReport,
@@ -199,6 +201,7 @@ export default function App() {
   const [strategyBacktestComparison, setStrategyBacktestComparison] = useState<StrategyBacktestComparison | null>(null)
   const [strategyBacktestHistory, setStrategyBacktestHistory] = useState<StrategyBacktestHistoryComparison | null>(null)
   const [strategyBacktestPresetComparison, setStrategyBacktestPresetComparison] = useState<StrategyBacktestPresetComparison | null>(null)
+  const [strategyBacktestActions, setStrategyBacktestActions] = useState<StrategyBacktestActionPlan | null>(null)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [watchlistSummary, setWatchlistSummary] = useState<WatchlistSummary | null>(null)
   const [reviewActionOverview, setReviewActionOverview] = useState<ReviewActionOverview | null>(null)
@@ -240,6 +243,7 @@ export default function App() {
   const [strategyBacktestComparisonError, setStrategyBacktestComparisonError] = useState<string | null>(null)
   const [strategyBacktestHistoryError, setStrategyBacktestHistoryError] = useState<string | null>(null)
   const [strategyBacktestPresetComparisonError, setStrategyBacktestPresetComparisonError] = useState<string | null>(null)
+  const [strategyBacktestActionsError, setStrategyBacktestActionsError] = useState<string | null>(null)
   const [refreshingScope, setRefreshingScope] = useState<'all' | 'watchlist' | null>(null)
   const [updatingWatchlist, setUpdatingWatchlist] = useState(false)
   const [savingReport, setSavingReport] = useState(false)
@@ -354,9 +358,18 @@ export default function App() {
     setStrategyBacktestComparisonError(null)
     setStrategyBacktestHistoryError(null)
     setStrategyBacktestPresetComparisonError(null)
+    setStrategyBacktestActionsError(null)
     try {
       const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
       setStrategyBacktest(report)
+      try {
+        const actions = await fetchStrategyBacktestActions(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
+        setStrategyBacktestActions(actions)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '回测动作加载失败'
+        setStrategyBacktestActionsError(message)
+        setStrategyBacktestActions(null)
+      }
       try {
         const history = await fetchStrategyBacktestHistory(screenerPreset, horizon, 8)
         setStrategyBacktestHistory(history)
@@ -388,6 +401,7 @@ export default function App() {
       setStrategyBacktestComparison(null)
       setStrategyBacktestHistory(null)
       setStrategyBacktestPresetComparison(null)
+      setStrategyBacktestActions(null)
       setError(message)
     }
   }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, horizon, screenerPreset])
@@ -1073,6 +1087,7 @@ export default function App() {
           comparison={strategyBacktestComparison}
           history={strategyBacktestHistory}
           presetComparison={strategyBacktestPresetComparison}
+          actions={strategyBacktestActions}
           currentPreset={screenerPreset}
           holdingDays={backtestHoldingDays}
           feeBps={backtestFeeBps}
@@ -1086,6 +1101,7 @@ export default function App() {
           comparisonError={strategyBacktestComparisonError}
           historyError={strategyBacktestHistoryError}
           presetComparisonError={strategyBacktestPresetComparisonError}
+          actionsError={strategyBacktestActionsError}
           onRetry={loadStrategyBacktest}
         />
         <ResearchNotesPanel

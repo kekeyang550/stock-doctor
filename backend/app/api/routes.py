@@ -35,6 +35,7 @@ from app.schemas.diagnosis import (
     ReportRequest,
     ScreenCandidate,
     StrategyBacktestComparison,
+    StrategyBacktestActionPlan,
     StrategyBacktestHistoryComparison,
     StrategyBacktestPresetComparison,
     StrategyBacktestReport,
@@ -77,6 +78,7 @@ from app.services.portfolio_risk import PortfolioRiskService
 from app.services.risk_exposure import RiskExposureService
 from app.services.screener import ScreenerService
 from app.services.strategy_backtest import StrategyBacktestService
+from app.services.strategy_backtest_actions import StrategyBacktestActionService
 from app.services.strategy_backtest_history import StrategyBacktestHistoryService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
 from app.services.timeline import TimelineService
@@ -109,6 +111,7 @@ strategy_backtest_service = StrategyBacktestService(
     market_data_provider=data_provider,
 )
 strategy_backtest_history_service = StrategyBacktestHistoryService()
+strategy_backtest_action_service = StrategyBacktestActionService()
 price_alert_service = PriceAlertService()
 data_connector_health_service = DataConnectorHealthService()
 refresh_job_service = DataRefreshJobService()
@@ -729,6 +732,62 @@ async def strategy_backtest_history(
         horizon=horizon,
         state_store=create_state_store(),
         limit=limit,
+    )
+
+
+@router.get("/backtests/strategy/actions", response_model=StrategyBacktestActionPlan)
+async def strategy_backtest_actions(
+    preset: str = Query(default="breakout-volume"),
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    holding_days: int = Query(default=5, ge=1, le=20),
+    limit: int = Query(default=8, ge=1, le=30),
+    fee_bps: float = Query(default=5, ge=0, le=100),
+    slippage_bps: float = Query(default=10, ge=0, le=100),
+) -> StrategyBacktestActionPlan:
+    if preset not in SCREENER_PRESETS:
+        raise HTTPException(status_code=404, detail="Screener preset not found")
+    snapshots = _all_snapshots()
+    diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    report = strategy_backtest_service.run(
+        preset=preset,
+        horizon=horizon,
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+    )
+    period_comparison = strategy_backtest_service.compare_periods(
+        preset=preset,
+        horizon=horizon,
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+    )
+    preset_comparison = strategy_backtest_service.compare_presets(
+        presets=["strong", "value", "capital-risk"],
+        horizon=horizon,
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+    )
+    history = strategy_backtest_history_service.compare(
+        preset=preset,
+        horizon=horizon,
+        state_store=create_state_store(),
+        limit=8,
+    )
+    return strategy_backtest_action_service.build_plan(
+        report=report,
+        period_comparison=period_comparison,
+        preset_comparison=preset_comparison,
+        history=history,
     )
 
 

@@ -851,6 +851,27 @@ class StrategyBacktestHistoryComparison(BaseModel):
     summary: str
 
 
+class StrategyBacktestAction(BaseModel):
+    id: str
+    priority: str = Field(pattern="^(high|medium|low)$")
+    category: str
+    title: str
+    detail: str
+    trigger: str
+    metric: str
+
+
+class StrategyBacktestActionPlan(BaseModel):
+    preset: str
+    horizon: str = Field(pattern="^(intraday|swing|position)$")
+    generated_at: str
+    action_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    actions: list[StrategyBacktestAction]
+
+
 class TrendPoint(BaseModel):
     date: str
     close: float

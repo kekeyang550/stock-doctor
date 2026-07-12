@@ -831,6 +831,75 @@
   font-size: 12px;
 }
 
+.backtest-action-card {
+  border: 1px solid #dce7da;
+  border-radius: 8px;
+  background: #fbfdf9;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.backtest-action-list {
+  display: grid;
+  gap: 8px;
+}
+
+.backtest-action {
+  border: 1px solid #d8e4d6;
+  border-left: 4px solid #7d8d82;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 6px;
+  padding: 10px 11px;
+}
+
+.backtest-action.high {
+  border-left-color: #d33f2f;
+}
+
+.backtest-action.medium {
+  border-left-color: #c48b19;
+}
+
+.backtest-action div {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.backtest-action span,
+.backtest-action small {
+  color: #62736a;
+  font-size: 12px;
+}
+
+.backtest-action em {
+  color: #6a4430;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.backtest-action strong {
+  color: #17241d;
+  font-size: 14px;
+}
+
+.backtest-action p {
+  color: #36483d;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.backtest-action b {
+  color: #1f3a2b;
+  font-size: 12px;
+}
+
 .backtest-period-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1055,4 +1124,3 @@
   font-style: normal;
   color: #6a7a70;
 }
-

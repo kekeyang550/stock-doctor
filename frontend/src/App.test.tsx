@@ -862,6 +862,36 @@ const strategyBacktestHistory = {
   ],
 }
 
+const strategyBacktestActions = {
+  preset: 'strong',
+  horizon: 'swing',
+  generated_at: '2026-07-12T03:20:00Z',
+  action_count: 2,
+  high_count: 0,
+  medium_count: 1,
+  low_count: 1,
+  actions: [
+    {
+      id: 'backtest-period-mismatch',
+      priority: 'medium',
+      category: '周期选择',
+      title: '切换推荐持有周期复测',
+      detail: '周期横向对比给出不同持有天数，建议切换后重新查看交易样本。',
+      trigger: '推荐 10 日，因为收益回撤比 1.86。',
+      metric: '当前 5 日 / 推荐 10 日',
+    },
+    {
+      id: 'backtest-positive-followup',
+      priority: 'low',
+      category: '策略确认',
+      title: '沉淀正向策略样本',
+      detail: '当前收益和回撤结构相对健康，可以保存报告作为后续对比基线。',
+      trigger: '平均收益 1.23%，收益回撤比 0.59。',
+      metric: '平均收益 1.23%',
+    },
+  ],
+}
+
 const watchlistSummary = {
   as_of: '2026-07-10',
   stock_count: 3,
@@ -1047,6 +1077,9 @@ describe('App', () => {
       }
       if (url.includes('/backtests/strategy/history')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestHistory) })
+      }
+      if (url.includes('/backtests/strategy/actions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestActions) })
       }
       if (url.includes('/backtests/strategy')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktest) })
@@ -1512,6 +1545,9 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('平均收益变化')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('稳定评分变化')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('最近回测')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('回测复盘动作')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('切换推荐持有周期复测')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('当前 5 日 / 推荐 10 日')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('2')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('50.0%').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('+1.23%').length).toBeGreaterThan(0)
@@ -1600,7 +1636,7 @@ describe('App', () => {
     const defaultFetch = vi.mocked(fetch).getMockImplementation()!
     vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
       const target = String(url)
-      if (target.includes('/backtests/strategy') && target.includes('holding_days=10')) {
+      if (target.includes('/backtests/strategy?') && target.includes('holding_days=10')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(tenDayBacktest) } as Response)
       }
       return defaultFetch(url, options)

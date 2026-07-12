@@ -38,6 +38,7 @@ import type {
   StockSearchResult,
   StockSummary,
   StrategyBacktestComparison,
+  StrategyBacktestActionPlan,
   StrategyBacktestHistoryComparison,
   StrategyBacktestPresetComparison,
   StrategyBacktestReport,
@@ -666,6 +667,7 @@ export function StrategyBacktestPanel({
   comparison,
   history,
   presetComparison,
+  actions,
   currentPreset,
   holdingDays,
   feeBps,
@@ -679,12 +681,14 @@ export function StrategyBacktestPanel({
   comparisonError,
   historyError,
   presetComparisonError,
+  actionsError,
   onRetry,
 }: {
   report: StrategyBacktestReport | null
   comparison: StrategyBacktestComparison | null
   history: StrategyBacktestHistoryComparison | null
   presetComparison: StrategyBacktestPresetComparison | null
+  actions: StrategyBacktestActionPlan | null
   currentPreset: string
   holdingDays: number
   feeBps: number
@@ -698,6 +702,7 @@ export function StrategyBacktestPanel({
   comparisonError: string | null
   historyError: string | null
   presetComparisonError: string | null
+  actionsError: string | null
   onRetry: () => void
 }) {
   const equityCurve = Array.isArray(report?.equity_curve) ? report.equity_curve : []
@@ -951,6 +956,7 @@ export function StrategyBacktestPanel({
               </div>
             </div>
           ) : null}
+          <BacktestActionPlan plan={actions} error={actionsError} />
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
           <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />
           <p className="backtest-summary">{report.summary}</p>
@@ -999,6 +1005,53 @@ function formatBps(value: number) {
 
 function formatPlainPercent(value: number) {
   return `${value.toFixed(2)}%`
+}
+
+function BacktestActionPlan({ plan, error }: { plan: StrategyBacktestActionPlan | null; error: string | null }) {
+  const actions = Array.isArray(plan?.actions) ? plan.actions : []
+  if (error) {
+    return (
+      <div className="panel-state error-state compact-state">
+        <strong>回测动作加载失败</strong>
+        <span>{error}</span>
+      </div>
+    )
+  }
+  if (!plan) {
+    return <p className="empty-text">正在生成回测复盘动作...</p>
+  }
+  if (actions.length === 0) {
+    return (
+      <div className="backtest-action-card">
+        <div className="backtest-comparison-head">
+          <strong>回测复盘动作</strong>
+          <span>当前回测未触发额外复核动作。</span>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="backtest-action-card">
+      <div className="backtest-comparison-head">
+        <strong>回测复盘动作</strong>
+        <span>高 {plan.high_count} · 观察 {plan.medium_count} · 低 {plan.low_count}</span>
+      </div>
+      <div className="backtest-action-list">
+        {actions.slice(0, 5).map((action) => (
+          <article key={action.id} className={`backtest-action ${action.priority}`}>
+            <div>
+              <span>{action.category}</span>
+              <em>{priorityLabel(action.priority)}</em>
+            </div>
+            <strong>{action.title}</strong>
+            <p>{action.detail}</p>
+            <small>{action.trigger}</small>
+            <b>{action.metric}</b>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function clampNumber(value: string, min: number, max: number, fallback: number) {

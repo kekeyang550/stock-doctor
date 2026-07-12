@@ -3,6 +3,7 @@ import pytest
 from app.services.diagnosis import DiagnosisEngine
 from app.services.market_data import MockMarketDataProvider
 from app.services.strategy_backtest import StrategyBacktestService
+from app.services.strategy_backtest_actions import StrategyBacktestActionService
 from app.services.strategy_backtest_history import StrategyBacktestHistoryService
 from app.services.storage import JsonStateStore
 from app.schemas.diagnosis import HistoricalPriceBar
@@ -256,3 +257,51 @@ def test_strategy_backtest_history_service_records_and_compares(tmp_path):
         2,
     )
     assert "最近" in comparison.summary
+
+
+def test_strategy_backtest_actions_turn_metrics_into_followups(tmp_path):
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+    backtest_service = StrategyBacktestService()
+    report = backtest_service.run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=1,
+    )
+    period_comparison = backtest_service.compare_periods(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        periods=[3, 5, 10],
+        limit=1,
+    )
+    preset_comparison = backtest_service.compare_presets(
+        presets=["strong", "value", "capital-risk"],
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=1,
+    )
+    history = StrategyBacktestHistoryService().compare(
+        preset="breakout-volume",
+        horizon="swing",
+        state_store=JsonStateStore(tmp_path / "state.json"),
+    )
+
+    plan = StrategyBacktestActionService().build_plan(
+        report=report,
+        period_comparison=period_comparison,
+        preset_comparison=preset_comparison,
+        history=history,
+    )
+
+    assert plan.actions
+    assert plan.action_count == len(plan.actions)
+    assert plan.high_count + plan.medium_count + plan.low_count == len(plan.actions)
+    assert any(action.category in {"样本数量", "样本可信度", "历史对比"} for action in plan.actions)

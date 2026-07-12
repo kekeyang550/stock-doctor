@@ -518,6 +518,17 @@ def test_strategy_backtest_endpoint_returns_sample_report():
     assert payload["trades"][0]["gross_return_pct"] > payload["trades"][0]["return_pct"]
 
 
+def test_strategy_backtest_actions_endpoint_returns_followup_plan():
+    response = client.get("/api/v1/backtests/strategy/actions?preset=breakout-volume&limit=2")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preset"] == "breakout-volume"
+    assert payload["action_count"] == len(payload["actions"])
+    assert payload["high_count"] + payload["medium_count"] + payload["low_count"] == len(payload["actions"])
+    assert {"priority", "category", "title", "detail", "trigger", "metric"}.issubset(payload["actions"][0].keys())
+
+
 def test_strategy_backtest_history_records_recent_runs():
     first_response = client.get("/api/v1/backtests/strategy?preset=breakout-volume&horizon=swing&holding_days=5")
     second_response = client.get("/api/v1/backtests/strategy?preset=breakout-volume&horizon=swing&holding_days=10")

@@ -592,6 +592,27 @@ export type StrategyBacktestHistoryComparison = {
   summary: string
 }
 
+export type StrategyBacktestAction = {
+  id: string
+  priority: 'high' | 'medium' | 'low'
+  category: string
+  title: string
+  detail: string
+  trigger: string
+  metric: string
+}
+
+export type StrategyBacktestActionPlan = {
+  preset: string
+  horizon: 'intraday' | 'swing' | 'position'
+  generated_at: string
+  action_count: number
+  high_count: number
+  medium_count: number
+  low_count: number
+  actions: StrategyBacktestAction[]
+}
+
 export type AlertItem = {
   id: string
   symbol: string
