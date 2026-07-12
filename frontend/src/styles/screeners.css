@@ -63,6 +63,10 @@
   color: #8d5e0f;
 }
 
+.action-center-status-filter {
+  margin-top: 10px;
+}
+
 .action-center-sections {
   display: grid;
   gap: 8px;

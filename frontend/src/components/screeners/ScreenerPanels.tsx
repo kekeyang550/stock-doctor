@@ -178,6 +178,7 @@ export function ActionCenterPanel({
   backtestPlan: StrategyBacktestActionPlan | null
   onSelect: (symbol: string) => void
 }) {
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'watching' | 'done'>('all')
   const totals = {
     high: (reviewOverview?.high_count ?? 0) + (hotspotPlan?.high_count ?? 0) + (backtestPlan?.high_count ?? 0),
     medium: (reviewOverview?.medium_count ?? 0) + (hotspotPlan?.medium_count ?? 0) + (backtestPlan?.medium_count ?? 0),
@@ -188,6 +189,17 @@ export function ActionCenterPanel({
   }
   const ready = reviewOverview && hotspotPlan && backtestPlan
   const actionTotal = totals.pending + totals.watching + totals.done
+  const filteredHotspotActions = ready
+    ? hotspotPlan.actions.filter((item) => statusFilter === 'all' || item.status === statusFilter)
+    : []
+  const filteredBacktestActions = ready
+    ? backtestPlan.actions.filter((item) => statusFilter === 'all' || item.status === statusFilter)
+    : []
+  const reviewSectionCount = ready
+    ? statusFilter === 'all'
+      ? reviewOverview.pending_count + reviewOverview.watching_count + reviewOverview.done_count
+      : actionCenterStatusCount(reviewOverview, statusFilter)
+    : 0
 
   return (
     <section className="panel action-center-panel">
@@ -210,9 +222,28 @@ export function ActionCenterPanel({
             <span className="medium">中 {totals.medium}</span>
             <span className="low">低 {totals.low}</span>
           </div>
+          <div className="mini-segments action-center-status-filter" aria-label="行动中心状态筛选">
+            {([
+              ['all', '全部'],
+              ['pending', '待处理'],
+              ['watching', '观察中'],
+              ['done', '已完成'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={statusFilter === value ? 'selected' : ''}
+                onClick={() => setStatusFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="action-center-sections">
-            <ActionCenterSection title="自选股复盘" count={reviewOverview.pending_count + reviewOverview.watching_count + reviewOverview.done_count}>
-              {reviewOverview.summaries.length ? (
+            <ActionCenterSection title="自选股复盘" count={reviewSectionCount}>
+              {statusFilter !== 'all' ? (
+                <p className="empty-text">自选股复盘是股票级汇总，请进入个股查看状态明细。</p>
+              ) : reviewOverview.summaries.length ? (
                 reviewOverview.summaries.slice(0, 3).map((item) => (
                   <button type="button" key={item.symbol} className={`action-center-row ${item.top_priority}`} onClick={() => onSelect(item.symbol)}>
                     <span>
@@ -226,9 +257,9 @@ export function ActionCenterPanel({
                 <p className="empty-text">暂无自选股复盘动作</p>
               )}
             </ActionCenterSection>
-            <ActionCenterSection title="热点跟踪" count={hotspotPlan.pending_count + hotspotPlan.watching_count + hotspotPlan.done_count}>
-              {hotspotPlan.actions.length ? (
-                hotspotPlan.actions.slice(0, 3).map((item) => (
+            <ActionCenterSection title="热点跟踪" count={statusFilter === 'all' ? hotspotPlan.pending_count + hotspotPlan.watching_count + hotspotPlan.done_count : filteredHotspotActions.length}>
+              {filteredHotspotActions.length ? (
+                filteredHotspotActions.slice(0, 3).map((item) => (
                   <button type="button" key={item.id} className={`action-center-row ${item.priority}`} onClick={() => onSelect(item.symbol)}>
                     <span>
                       <strong>{item.name}</strong>
@@ -238,12 +269,12 @@ export function ActionCenterPanel({
                   </button>
                 ))
               ) : (
-                <p className="empty-text">暂无热点跟踪动作</p>
+                <p className="empty-text">{statusFilter === 'all' ? '暂无热点跟踪动作' : '当前筛选下暂无热点跟踪动作'}</p>
               )}
             </ActionCenterSection>
-            <ActionCenterSection title="回测复盘" count={backtestPlan.pending_count + backtestPlan.watching_count + backtestPlan.done_count}>
-              {backtestPlan.actions.length ? (
-                backtestPlan.actions.slice(0, 3).map((item) => (
+            <ActionCenterSection title="回测复盘" count={statusFilter === 'all' ? backtestPlan.pending_count + backtestPlan.watching_count + backtestPlan.done_count : filteredBacktestActions.length}>
+              {filteredBacktestActions.length ? (
+                filteredBacktestActions.slice(0, 3).map((item) => (
                   <article key={item.id} className={`action-center-row passive ${item.priority}`}>
                     <span>
                       <strong>{item.category}</strong>
@@ -253,7 +284,7 @@ export function ActionCenterPanel({
                   </article>
                 ))
               ) : (
-                <p className="empty-text">暂无回测复盘动作</p>
+                <p className="empty-text">{statusFilter === 'all' ? '暂无回测复盘动作' : '当前筛选下暂无回测复盘动作'}</p>
               )}
             </ActionCenterSection>
           </div>
@@ -263,6 +294,16 @@ export function ActionCenterPanel({
       )}
     </section>
   )
+}
+
+
+function actionCenterStatusCount(
+  overview: ReviewActionOverview,
+  status: 'pending' | 'watching' | 'done',
+) {
+  if (status === 'watching') return overview.watching_count
+  if (status === 'done') return overview.done_count
+  return overview.pending_count
 }
 
 

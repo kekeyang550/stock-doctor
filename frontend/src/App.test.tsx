@@ -1288,6 +1288,12 @@ describe('App', () => {
     expect(within(actionCenterPanel).getByText('自选股复盘')).toBeInTheDocument()
     expect(within(actionCenterPanel).getByText('热点跟踪')).toBeInTheDocument()
     expect(within(actionCenterPanel).getByText('回测复盘')).toBeInTheDocument()
+    expect(within(actionCenterPanel).getByRole('button', { name: '全部' })).toBeInTheDocument()
+    fireEvent.click(within(actionCenterPanel).getByRole('button', { name: '已完成' }))
+    expect(within(actionCenterPanel).getByText('自选股复盘是股票级汇总，请进入个股查看状态明细。')).toBeInTheDocument()
+    expect(within(actionCenterPanel).getByText('当前筛选下暂无热点跟踪动作')).toBeInTheDocument()
+    expect(within(actionCenterPanel).getByText('当前筛选下暂无回测复盘动作')).toBeInTheDocument()
+    fireEvent.click(within(actionCenterPanel).getByRole('button', { name: '全部' }))
     expect(within(actionCenterPanel).getByText('盘中复核 比亚迪 热点承接')).toBeInTheDocument()
     expect(within(actionCenterPanel).getByText('切换推荐持有周期复测')).toBeInTheDocument()
     const actionOverviewPanel = screen.getByRole('heading', { name: '行动总览' }).closest('section')!
