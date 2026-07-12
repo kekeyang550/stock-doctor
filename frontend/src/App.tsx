@@ -81,6 +81,7 @@ import {
   runRefreshJob,
   updateHotspotReviewActionStatus,
   updateReviewActionStatus,
+  updateStrategyBacktestActionStatus,
 } from './lib/api'
 import type {
   AlertItem,
@@ -121,6 +122,7 @@ import type {
   StockSearchResult,
   StockSummary,
   StrategyBacktestComparison,
+  StrategyBacktestAction,
   StrategyBacktestActionPlan,
   StrategyBacktestHistoryComparison,
   StrategyBacktestPresetComparison,
@@ -250,6 +252,7 @@ export default function App() {
   const [exportingReportPackage, setExportingReportPackage] = useState(false)
   const [updatingReviewActionId, setUpdatingReviewActionId] = useState<string | null>(null)
   const [updatingHotspotActionId, setUpdatingHotspotActionId] = useState<string | null>(null)
+  const [updatingBacktestActionId, setUpdatingBacktestActionId] = useState<string | null>(null)
   const [addingSearchWatchlistSymbol, setAddingSearchWatchlistSymbol] = useState<string | null>(null)
   const [savingNote, setSavingNote] = useState(false)
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
@@ -787,6 +790,28 @@ export default function App() {
     }
   }, [horizon, hotspotMode])
 
+  const setBacktestActionStatus = useCallback(async (actionId: string, status: StrategyBacktestAction['status']) => {
+    setError(null)
+    setUpdatingBacktestActionId(actionId)
+    try {
+      const nextPlan = await updateStrategyBacktestActionStatus(
+        screenerPreset,
+        horizon,
+        actionId,
+        status,
+        backtestHoldingDays,
+        backtestFeeBps,
+        backtestSlippageBps,
+        backtestLimit,
+      )
+      setStrategyBacktestActions(nextPlan)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '回测动作状态更新失败')
+    } finally {
+      setUpdatingBacktestActionId(null)
+    }
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, horizon, screenerPreset])
+
   const exportStorage = useCallback(async () => {
     setError(null)
     setStorageError(null)
@@ -1103,6 +1128,8 @@ export default function App() {
           historyError={strategyBacktestHistoryError}
           presetComparisonError={strategyBacktestPresetComparisonError}
           actionsError={strategyBacktestActionsError}
+          updatingActionId={updatingBacktestActionId}
+          onActionStatus={setBacktestActionStatus}
           onRetry={loadStrategyBacktest}
         />
         <ResearchNotesPanel

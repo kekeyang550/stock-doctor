@@ -600,6 +600,7 @@ export type StrategyBacktestAction = {
   detail: string
   trigger: string
   metric: string
+  status: 'pending' | 'watching' | 'done'
 }
 
 export type StrategyBacktestActionPlan = {
@@ -610,6 +611,9 @@ export type StrategyBacktestActionPlan = {
   high_count: number
   medium_count: number
   low_count: number
+  pending_count: number
+  watching_count: number
+  done_count: number
   actions: StrategyBacktestAction[]
 }
 

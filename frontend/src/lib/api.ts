@@ -366,6 +366,30 @@ export function fetchStrategyBacktestActions(
   )
 }
 
+export async function updateStrategyBacktestActionStatus(
+  preset: string,
+  horizon: string,
+  actionId: string,
+  status: StrategyBacktestActionPlan['actions'][number]['status'],
+  holdingDays = 5,
+  feeBps = 5,
+  slippageBps = 10,
+  limit = 8,
+): Promise<StrategyBacktestActionPlan> {
+  const response = await fetch(
+    `/api/v1/backtests/strategy/actions/${actionId}?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    },
+  )
+  if (!response.ok) {
+    throw new Error(`回测动作状态更新失败：${response.status}`)
+  }
+  return response.json() as Promise<StrategyBacktestActionPlan>
+}
+
 export function fetchAlerts(horizon: string, scope = 'watchlist'): Promise<AlertItem[]> {
   return getJson<AlertItem[]>(`/api/v1/alerts?horizon=${horizon}&scope=${scope}&limit=12`)
 }

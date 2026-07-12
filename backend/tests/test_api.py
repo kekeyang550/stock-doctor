@@ -526,7 +526,28 @@ def test_strategy_backtest_actions_endpoint_returns_followup_plan():
     assert payload["preset"] == "breakout-volume"
     assert payload["action_count"] == len(payload["actions"])
     assert payload["high_count"] + payload["medium_count"] + payload["low_count"] == len(payload["actions"])
-    assert {"priority", "category", "title", "detail", "trigger", "metric"}.issubset(payload["actions"][0].keys())
+    assert payload["pending_count"] + payload["watching_count"] + payload["done_count"] == len(payload["actions"])
+    assert {"priority", "category", "title", "detail", "trigger", "metric", "status"}.issubset(payload["actions"][0].keys())
+
+
+def test_strategy_backtest_action_status_can_be_updated():
+    query = "preset=breakout-volume&horizon=swing&holding_days=3&limit=2&fee_bps=7&slippage_bps=9"
+    initial_response = client.get(f"/api/v1/backtests/strategy/actions?{query}")
+    action_id = initial_response.json()["actions"][0]["id"]
+
+    update_response = client.patch(
+        f"/api/v1/backtests/strategy/actions/{action_id}?{query}",
+        json={"status": "done"},
+    )
+    refresh_response = client.get(f"/api/v1/backtests/strategy/actions?{query}")
+
+    assert initial_response.status_code == 200
+    assert update_response.status_code == 200
+    updated = next(item for item in update_response.json()["actions"] if item["id"] == action_id)
+    refreshed = next(item for item in refresh_response.json()["actions"] if item["id"] == action_id)
+    assert updated["status"] == "done"
+    assert refreshed["status"] == "done"
+    assert refresh_response.json()["done_count"] >= 1
 
 
 def test_strategy_backtest_history_records_recent_runs():

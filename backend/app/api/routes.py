@@ -746,6 +746,85 @@ async def strategy_backtest_actions(
 ) -> StrategyBacktestActionPlan:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
+    return _build_strategy_backtest_action_plan(
+        preset=preset,
+        horizon=horizon,
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+    )
+
+
+@router.patch("/backtests/strategy/actions/{action_id}", response_model=StrategyBacktestActionPlan)
+async def update_strategy_backtest_action_status(
+    action_id: str,
+    request: ReviewActionStatusUpdate,
+    preset: str = Query(default="breakout-volume"),
+    horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
+    holding_days: int = Query(default=5, ge=1, le=20),
+    limit: int = Query(default=8, ge=1, le=30),
+    fee_bps: float = Query(default=5, ge=0, le=100),
+    slippage_bps: float = Query(default=10, ge=0, le=100),
+) -> StrategyBacktestActionPlan:
+    if preset not in SCREENER_PRESETS:
+        raise HTTPException(status_code=404, detail="Screener preset not found")
+    plan = _build_strategy_backtest_action_plan(
+        preset=preset,
+        horizon=horizon,
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+    )
+    if action_id not in {action.id for action in plan.actions}:
+        raise HTTPException(status_code=404, detail="Strategy backtest action not found")
+    store = create_state_store()
+    key = strategy_backtest_action_service.status_key(
+        preset=preset,
+        horizon=horizon,
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+        action_id=action_id,
+    )
+    statuses = [record for record in store.load_review_action_statuses() if record.get("key") != key]
+    statuses.insert(
+        0,
+        {
+            "key": key,
+            "scope": "strategy_backtest",
+            "preset": preset,
+            "horizon": horizon,
+            "holding_days": holding_days,
+            "limit": limit,
+            "fee_bps": fee_bps,
+            "slippage_bps": slippage_bps,
+            "action_id": action_id,
+            "status": request.status,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    store.save_review_action_statuses(statuses[:500])
+    return _build_strategy_backtest_action_plan(
+        preset=preset,
+        horizon=horizon,
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+    )
+
+
+def _build_strategy_backtest_action_plan(
+    preset: str,
+    horizon: str,
+    holding_days: int,
+    limit: int,
+    fee_bps: float,
+    slippage_bps: float,
+) -> StrategyBacktestActionPlan:
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
     report = strategy_backtest_service.run(
@@ -783,11 +862,19 @@ async def strategy_backtest_actions(
         state_store=create_state_store(),
         limit=8,
     )
-    return strategy_backtest_action_service.build_plan(
+    plan = strategy_backtest_action_service.build_plan(
         report=report,
         period_comparison=period_comparison,
         preset_comparison=preset_comparison,
         history=history,
+    )
+    return strategy_backtest_action_service.apply_statuses(
+        plan=plan,
+        statuses=create_state_store().load_review_action_statuses(),
+        holding_days=holding_days,
+        limit=limit,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
     )
 
 

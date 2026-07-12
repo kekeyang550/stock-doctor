@@ -682,6 +682,8 @@ export function StrategyBacktestPanel({
   historyError,
   presetComparisonError,
   actionsError,
+  updatingActionId,
+  onActionStatus,
   onRetry,
 }: {
   report: StrategyBacktestReport | null
@@ -703,6 +705,8 @@ export function StrategyBacktestPanel({
   historyError: string | null
   presetComparisonError: string | null
   actionsError: string | null
+  updatingActionId: string | null
+  onActionStatus: (actionId: string, status: StrategyBacktestActionPlan['actions'][number]['status']) => void
   onRetry: () => void
 }) {
   const equityCurve = Array.isArray(report?.equity_curve) ? report.equity_curve : []
@@ -956,7 +960,12 @@ export function StrategyBacktestPanel({
               </div>
             </div>
           ) : null}
-          <BacktestActionPlan plan={actions} error={actionsError} />
+          <BacktestActionPlan
+            plan={actions}
+            error={actionsError}
+            updatingActionId={updatingActionId}
+            onStatusChange={onActionStatus}
+          />
           <BacktestPeriodComparison comparison={comparison} error={comparisonError} />
           <BacktestPresetComparison comparison={presetComparison} error={presetComparisonError} currentPreset={currentPreset} />
           <p className="backtest-summary">{report.summary}</p>
@@ -1007,7 +1016,17 @@ function formatPlainPercent(value: number) {
   return `${value.toFixed(2)}%`
 }
 
-function BacktestActionPlan({ plan, error }: { plan: StrategyBacktestActionPlan | null; error: string | null }) {
+function BacktestActionPlan({
+  plan,
+  error,
+  updatingActionId,
+  onStatusChange,
+}: {
+  plan: StrategyBacktestActionPlan | null
+  error: string | null
+  updatingActionId: string | null
+  onStatusChange: (actionId: string, status: StrategyBacktestActionPlan['actions'][number]['status']) => void
+}) {
   const actions = Array.isArray(plan?.actions) ? plan.actions : []
   if (error) {
     return (
@@ -1034,24 +1053,48 @@ function BacktestActionPlan({ plan, error }: { plan: StrategyBacktestActionPlan 
     <div className="backtest-action-card">
       <div className="backtest-comparison-head">
         <strong>回测复盘动作</strong>
-        <span>高 {plan.high_count} · 观察 {plan.medium_count} · 低 {plan.low_count}</span>
+        <span>
+          高 {plan.high_count} · 中 {plan.medium_count} · 低 {plan.low_count} · 已完成 {plan.done_count ?? 0}
+        </span>
       </div>
       <div className="backtest-action-list">
-        {actions.slice(0, 5).map((action) => (
-          <article key={action.id} className={`backtest-action ${action.priority}`}>
-            <div>
-              <span>{action.category}</span>
-              <em>{priorityLabel(action.priority)}</em>
-            </div>
-            <strong>{action.title}</strong>
-            <p>{action.detail}</p>
-            <small>{action.trigger}</small>
-            <b>{action.metric}</b>
-          </article>
-        ))}
+        {actions.slice(0, 5).map((action) => {
+          const updating = action.id === updatingActionId
+          return (
+            <article key={action.id} className={`backtest-action ${action.priority} ${action.status}`}>
+              <div>
+                <span>{action.category}</span>
+                <em>{updating ? '更新中' : `${priorityLabel(action.priority)} · ${backtestActionStatusLabel(action.status)}`}</em>
+              </div>
+              <strong>{action.title}</strong>
+              <p>{action.detail}</p>
+              <small>{action.trigger}</small>
+              <b>{action.metric}</b>
+              <div className="backtest-action-controls">
+                {(['pending', 'watching', 'done'] as StrategyBacktestActionPlan['actions'][number]['status'][]).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    className={action.status === status ? 'selected' : ''}
+                    disabled={updating}
+                    onClick={() => onStatusChange(action.id, status)}
+                  >
+                    {backtestActionStatusLabel(status)}
+                  </button>
+                ))}
+              </div>
+            </article>
+          )
+        })}
       </div>
     </div>
   )
+}
+
+function backtestActionStatusLabel(status: StrategyBacktestActionPlan['actions'][number]['status']) {
+  if (status === 'done') return '已完成'
+  if (status === 'watching') return '观察中'
+  return '待处理'
 }
 
 function clampNumber(value: string, min: number, max: number, fallback: number) {

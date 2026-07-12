@@ -859,6 +859,7 @@ class StrategyBacktestAction(BaseModel):
     detail: str
     trigger: str
     metric: str
+    status: str = Field(default="pending", pattern="^(pending|watching|done)$")
 
 
 class StrategyBacktestActionPlan(BaseModel):
@@ -869,6 +870,9 @@ class StrategyBacktestActionPlan(BaseModel):
     high_count: int
     medium_count: int
     low_count: int
+    pending_count: int
+    watching_count: int
+    done_count: int
     actions: list[StrategyBacktestAction]
 
 

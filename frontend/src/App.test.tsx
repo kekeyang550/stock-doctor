@@ -870,6 +870,9 @@ const strategyBacktestActions = {
   high_count: 0,
   medium_count: 1,
   low_count: 1,
+  pending_count: 2,
+  watching_count: 0,
+  done_count: 0,
   actions: [
     {
       id: 'backtest-period-mismatch',
@@ -879,6 +882,7 @@ const strategyBacktestActions = {
       detail: '周期横向对比给出不同持有天数，建议切换后重新查看交易样本。',
       trigger: '推荐 10 日，因为收益回撤比 1.86。',
       metric: '当前 5 日 / 推荐 10 日',
+      status: 'pending',
     },
     {
       id: 'backtest-positive-followup',
@@ -888,6 +892,7 @@ const strategyBacktestActions = {
       detail: '当前收益和回撤结构相对健康，可以保存报告作为后续对比基线。',
       trigger: '平均收益 1.23%，收益回撤比 0.59。',
       metric: '平均收益 1.23%',
+      status: 'pending',
     },
   ],
 }
@@ -1044,7 +1049,7 @@ const peers = {
 describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear()
-    vi.stubGlobal('fetch', vi.fn((url: string) => {
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
       if (url.includes('/stocks/search')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(stockSearchResults) })
       }
@@ -1079,6 +1084,20 @@ describe('App', () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestHistory) })
       }
       if (url.includes('/backtests/strategy/actions')) {
+        if (init?.method === 'PATCH') {
+          const nextActions = strategyBacktestActions.actions.map((action) =>
+            url.includes(action.id) ? { ...action, status: 'done' } : action,
+          )
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              ...strategyBacktestActions,
+              pending_count: 1,
+              done_count: 1,
+              actions: nextActions,
+            }),
+          })
+        }
         return Promise.resolve({ ok: true, json: () => Promise.resolve(strategyBacktestActions) })
       }
       if (url.includes('/backtests/strategy')) {
@@ -1575,6 +1594,30 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('净收益 +3.40%')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('毛收益 +3.40% · 成本 0.30% · 历史K线')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('综合高分')).toBeInTheDocument()
+  })
+
+  it('updates a strategy backtest action status', async () => {
+    render(<App />)
+
+    const backtestPanel = await waitFor(() => {
+      const panel = document.querySelector('.strategy-backtest-panel') as HTMLElement | null
+      expect(panel).not.toBeNull()
+      expect(panel).toHaveTextContent('回测复盘动作')
+      return panel as HTMLElement
+    })
+    const action = within(backtestPanel).getByText('切换推荐持有周期复测').closest('article')!
+
+    fireEvent.click(within(action).getByRole('button', { name: '已完成' }))
+
+    await waitFor(() => {
+      const patchCall = vi.mocked(fetch).mock.calls.find((call) =>
+        String(call[0]).includes('/backtests/strategy/actions/backtest-period-mismatch') &&
+        call[1]?.method === 'PATCH',
+      )
+      expect(patchCall).toBeTruthy()
+      expect(action).toHaveTextContent('已完成')
+      expect(backtestPanel).toHaveTextContent('已完成 1')
+    })
   })
 
   it('shows strategy backtest period comparison with the recommended holding period', async () => {

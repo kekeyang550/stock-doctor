@@ -863,6 +863,10 @@
   border-left-color: #c48b19;
 }
 
+.backtest-action.done {
+  background: #f6faf5;
+}
+
 .backtest-action div {
   align-items: center;
   display: flex;
@@ -898,6 +902,36 @@
 .backtest-action b {
   color: #1f3a2b;
   font-size: 12px;
+}
+
+.backtest-action .backtest-action-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+.backtest-action .backtest-action-controls button {
+  background: #f5f8f2;
+  border: 1px solid #d9e5d2;
+  border-radius: 6px;
+  color: #3d5146;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 30px;
+  padding: 4px 8px;
+}
+
+.backtest-action .backtest-action-controls button.selected {
+  background: #244332;
+  border-color: #244332;
+  color: #ffffff;
+}
+
+.backtest-action .backtest-action-controls button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .backtest-period-grid {

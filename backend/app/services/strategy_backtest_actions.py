@@ -35,7 +35,58 @@ class StrategyBacktestActionService:
             high_count=len([item for item in deduped if item.priority == "high"]),
             medium_count=len([item for item in deduped if item.priority == "medium"]),
             low_count=len([item for item in deduped if item.priority == "low"]),
+            pending_count=len([item for item in deduped if item.status == "pending"]),
+            watching_count=len([item for item in deduped if item.status == "watching"]),
+            done_count=len([item for item in deduped if item.status == "done"]),
             actions=deduped,
+        )
+
+    def apply_statuses(
+        self,
+        plan: StrategyBacktestActionPlan,
+        statuses: list[dict],
+        holding_days: int,
+        limit: int,
+        fee_bps: float,
+        slippage_bps: float,
+    ) -> StrategyBacktestActionPlan:
+        status_by_key = {
+            str(record.get("key")): str(record.get("status"))
+            for record in statuses
+            if record.get("status") in {"pending", "watching", "done"}
+        }
+        for action in plan.actions:
+            status_value = status_by_key.get(
+                self.status_key(
+                    preset=plan.preset,
+                    horizon=plan.horizon,
+                    holding_days=holding_days,
+                    limit=limit,
+                    fee_bps=fee_bps,
+                    slippage_bps=slippage_bps,
+                    action_id=action.id,
+                )
+            )
+            if status_value is not None:
+                action.status = status_value
+        plan.pending_count = len([item for item in plan.actions if item.status == "pending"])
+        plan.watching_count = len([item for item in plan.actions if item.status == "watching"])
+        plan.done_count = len([item for item in plan.actions if item.status == "done"])
+        return plan
+
+    def status_key(
+        self,
+        preset: str,
+        horizon: str,
+        holding_days: int,
+        limit: int,
+        fee_bps: float,
+        slippage_bps: float,
+        action_id: str,
+    ) -> str:
+        return (
+            f"BACKTEST:{preset}:{horizon}:hold={holding_days}:limit={limit}:"
+            f"fee={fee_bps:g}:slippage={slippage_bps:g}:{action_id}"
         )
 
     def _quality_actions(self, report: StrategyBacktestReport) -> list[StrategyBacktestAction]:
