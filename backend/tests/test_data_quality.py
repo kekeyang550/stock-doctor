@@ -1,10 +1,12 @@
+from datetime import date
+
 from app.schemas.diagnosis import CapitalSnapshot, RiskSnapshot, StockSnapshot, TechnicalSnapshot
 from app.services.data_quality import DataQualityService
 from app.services.market_data import MockMarketDataProvider
 
 
 def test_data_quality_report_passes_for_complete_mock_snapshot():
-    snapshot = MockMarketDataProvider().get_snapshot("600519")
+    snapshot = MockMarketDataProvider().get_snapshot("600519").model_copy(update={"as_of": date.today().isoformat()})
 
     report = DataQualityService().build_report(snapshot)
 
