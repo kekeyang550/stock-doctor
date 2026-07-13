@@ -15,10 +15,19 @@ from app.config import settings
 class FakeTushareModule:
     def __init__(self):
         self.client = FakeTushareClient()
+        self.pro_bar_calls = []
 
     def pro_api(self, token: str):
         self.client.token = token
         return self.client
+
+    def pro_bar(self, ts_code: str, adj: str, freq: str):
+        self.pro_bar_calls.append({"ts_code": ts_code, "adj": adj, "freq": freq})
+        return [
+            {"trade_date": "20260712", "close": "19.8", "vol": "1000"},
+            {"trade_date": "20260710", "close": "18.5", "vol": "900"},
+            {"trade_date": "20260711", "close": "19.1", "vol": "950"},
+        ]
 
 
 class FakeTushareClient:
@@ -100,6 +109,23 @@ def test_tushare_provider_enriches_fundamental_snapshot(monkeypatch):
     tushare = next(source for source in sources if source["name"] == "Tushare Pro")
     assert tushare["status"] == "online"
     assert "财务基础指标" in tushare["role"]
+
+
+def test_tushare_provider_returns_adjusted_price_history(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "test-token")
+    module = FakeTushareModule()
+    provider = TushareMarketDataProvider(ts_module=module)
+
+    bars = provider.get_price_history("600519", days=2)
+    sources = provider.get_data_sources()
+
+    assert module.pro_bar_calls == [{"ts_code": "600519.SH", "adj": "qfq", "freq": "D"}]
+    assert [bar.date for bar in bars] == ["2026-07-11", "2026-07-12"]
+    assert [bar.close for bar in bars] == [19.1, 19.8]
+    assert [bar.volume for bar in bars] == [950, 1000]
+    tushare = next(source for source in sources if source["name"] == "Tushare Pro")
+    assert tushare["status"] == "online"
+    assert "前复权日线" in tushare["role"]
 
 
 class FakeAkshare:

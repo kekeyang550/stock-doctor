@@ -18,6 +18,7 @@ class TushareMarketDataProvider:
         self._ts_module = ts_module
         self._fallback = MockMarketDataProvider(state_store=state_store)
         self._last_finance_enriched = False
+        self._last_history_enriched = False
 
     def list_stocks(self) -> list[StockSummary]:
         return self._fallback.list_stocks()
@@ -26,7 +27,13 @@ class TushareMarketDataProvider:
         return self._fallback.get_market_overview()
 
     def get_data_sources(self) -> list[dict[str, str]]:
-        status = "online" if self._last_finance_enriched else "planned" if self._is_ready() else "fallback"
+        status = (
+            "online"
+            if self._last_finance_enriched or self._last_history_enriched
+            else "planned"
+            if self._is_ready()
+            else "fallback"
+        )
         return [
             {
                 "name": "Tushare Pro",
@@ -71,7 +78,13 @@ class TushareMarketDataProvider:
         )
 
     def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
-        return self._fallback.get_price_history(symbol, days=days)
+        if not self._is_ready():
+            return self._fallback.get_price_history(symbol, days=days)
+        bars = self._history_from_tushare(symbol, days=days)
+        if not bars:
+            return self._fallback.get_price_history(symbol, days=days)
+        self._last_history_enriched = True
+        return bars
 
     def warm_cache(self, scope: str = "all") -> int:
         return self._fallback.warm_cache(scope)
@@ -88,10 +101,14 @@ class TushareMarketDataProvider:
     def _source_role(self) -> str:
         package_available = self._package_available()
         token_configured = bool(settings.tushare_token.strip())
+        if self._last_finance_enriched and self._last_history_enriched:
+            return "财务基础指标和前复权日线已从 Tushare Pro 增强。"
         if self._last_finance_enriched:
-            return "财务基础指标已从 Tushare Pro 增强；行情仍由回退源承载。"
+            return "财务基础指标已从 Tushare Pro 增强；前复权日线可在回测中尝试读取。"
+        if self._last_history_enriched:
+            return "前复权日线已从 Tushare Pro 增强；财务基础指标会在诊断中尝试读取。"
         if package_available and token_configured:
-            return "包和 Token 已就绪；财务基础指标可尝试增强，复权日线字段待归一化接入。"
+            return "包和 Token 已就绪；财务基础指标和前复权日线可尝试增强。"
         if token_configured:
             return "Token 已配置，但当前环境未安装 tushare 包；继续使用 Mock 回退。"
         if package_available:
@@ -154,6 +171,41 @@ class TushareMarketDataProvider:
             industry_pe_percentile=self._valuation_percentile(pe_ttm),
         )
 
+    def _history_from_tushare(self, symbol: str, days: int) -> list[HistoricalPriceBar]:
+        module = self._ts_module
+        if module is None:
+            try:
+                import tushare as module  # type: ignore
+            except Exception:
+                return []
+        pro_bar = getattr(module, "pro_bar", None)
+        if pro_bar is None:
+            return []
+        try:
+            rows = self._rows(
+                pro_bar(
+                    ts_code=self._ts_code(symbol),
+                    adj="qfq",
+                    freq="D",
+                )
+            )
+        except Exception:
+            return []
+        bars: list[HistoricalPriceBar] = []
+        for row in rows:
+            close = self._first_float(row, "close", default=0)
+            date_value = str(row.get("trade_date") or row.get("date") or "").strip()
+            if close <= 0 or not date_value:
+                continue
+            bars.append(
+                HistoricalPriceBar(
+                    date=self._format_trade_date(date_value),
+                    close=close,
+                    volume=self._first_float(row, "vol", "volume", default=0),
+                )
+            )
+        return sorted(bars, key=lambda bar: bar.date)[-max(1, days):]
+
     def _rows(self, payload: object) -> list[dict]:
         if payload is None:
             return []
@@ -192,6 +244,11 @@ class TushareMarketDataProvider:
         if pe_ttm <= 50:
             return 76
         return 88
+
+    def _format_trade_date(self, value: str) -> str:
+        if len(value) == 8 and value.isdigit():
+            return f"{value[:4]}-{value[4:6]}-{value[6:]}"
+        return value
 
     def _ts_code(self, symbol: str) -> str:
         normalized = symbol.strip().upper()

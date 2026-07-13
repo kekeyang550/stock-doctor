@@ -327,7 +327,7 @@ class DataConnectorHealthService:
             return "Token 已配置，但当前环境未安装 tushare 包。"
         if not token_configured:
             return "tushare 包已安装，等待 STOCK_DOCTOR_TUSHARE_TOKEN 后再启用财务增强。"
-        return "tushare 包和 Token 已就绪，下一步可接入财务字段归一化。"
+        return "tushare 包和 Token 已就绪，可尝试财务字段和前复权日线增强。"
 
     def _tushare_next_action(
         self,
@@ -338,10 +338,10 @@ class DataConnectorHealthService:
         if source is not None and active_provider == "tushare" and source.get("status") == "fallback":
             return "当前 Tushare 已安全回退到 Mock；补齐包、Token 和字段归一化后再承载诊断。"
         if source is not None and active_provider == "tushare":
-            return "继续实现 Tushare 财务字段、基础资料和复权日线归一化。"
+            return "继续扩展 Tushare 基础资料和更多财报字段归一化。"
         token_configured = bool(settings.tushare_token.strip())
         if not installed:
             return "在后端环境执行 pip install tushare，并配置 STOCK_DOCTOR_TUSHARE_TOKEN。"
         if not token_configured:
-            return "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再接入财务/复权日线字段。"
-        return "实现 Tushare 财务字段、基础资料和复权日线归一化后，再开放 provider 切换。"
+            return "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再验证财务和前复权日线增强。"
+        return "继续实现 Tushare 基础资料和更多财报字段归一化后，再扩大 provider 切换范围。"
