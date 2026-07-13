@@ -77,3 +77,21 @@ def test_data_quality_report_warns_for_conservative_real_data_fields():
     assert "通达信本地 K 线" in source_check.detail
     assert "成长字段" in source_check.detail
     assert "北向资金" in source_check.detail
+
+
+def test_data_quality_report_labels_tushare_financial_sources():
+    base = MockMarketDataProvider().get_snapshot("600519")
+    snapshot = base.model_copy(
+        update={
+            "as_of": date.today().isoformat(),
+            "data_sources": ["tushare-daily-basic", "tushare-fina-indicator"],
+            "conservative_fields": [],
+        }
+    )
+
+    report = DataQualityService().build_report(snapshot)
+    source_check = next(check for check in report.checks if check.key == "source_coverage")
+
+    assert source_check.status == "pass"
+    assert "Tushare 日行情基础指标" in source_check.detail
+    assert "Tushare 财务指标" in source_check.detail

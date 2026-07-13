@@ -1,7 +1,7 @@
 from importlib.util import find_spec
 
 from app.config import settings
-from app.schemas.diagnosis import HistoricalPriceBar, MarketOverview, StockSnapshot, StockSummary
+from app.schemas.diagnosis import FundamentalSnapshot, HistoricalPriceBar, MarketOverview, StockSnapshot, StockSummary
 from app.services.market_data import MockMarketDataProvider
 from app.services.storage import StateStore
 
@@ -17,6 +17,7 @@ class TushareMarketDataProvider:
     def __init__(self, ts_module: object | None = None, state_store: StateStore | None = None) -> None:
         self._ts_module = ts_module
         self._fallback = MockMarketDataProvider(state_store=state_store)
+        self._last_finance_enriched = False
 
     def list_stocks(self) -> list[StockSummary]:
         return self._fallback.list_stocks()
@@ -25,7 +26,7 @@ class TushareMarketDataProvider:
         return self._fallback.get_market_overview()
 
     def get_data_sources(self) -> list[dict[str, str]]:
-        status = "planned" if self._is_ready() else "fallback"
+        status = "online" if self._last_finance_enriched else "planned" if self._is_ready() else "fallback"
         return [
             {
                 "name": "Tushare Pro",
@@ -48,7 +49,26 @@ class TushareMarketDataProvider:
         return self._fallback.replace_watchlist(symbols)
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
-        return self._fallback.get_snapshot(symbol)
+        snapshot = self._fallback.get_snapshot(symbol)
+        if snapshot is None or not self._is_ready():
+            return snapshot
+        fundamental = self._fundamental_from_tushare(symbol)
+        if fundamental is None:
+            return snapshot
+        self._last_finance_enriched = True
+        sources = sorted(set(snapshot.data_sources) | {"tushare-daily-basic", "tushare-fina-indicator"})
+        conservative_fields = [
+            item
+            for item in snapshot.conservative_fields
+            if item not in {"fundamental", "fundamental-seed", "growth"}
+        ]
+        return snapshot.model_copy(
+            update={
+                "fundamental": fundamental,
+                "data_sources": sources,
+                "conservative_fields": conservative_fields,
+            }
+        )
 
     def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
         return self._fallback.get_price_history(symbol, days=days)
@@ -68,10 +88,112 @@ class TushareMarketDataProvider:
     def _source_role(self) -> str:
         package_available = self._package_available()
         token_configured = bool(settings.tushare_token.strip())
+        if self._last_finance_enriched:
+            return "财务基础指标已从 Tushare Pro 增强；行情仍由回退源承载。"
         if package_available and token_configured:
-            return "包和 Token 已就绪；财务、基础资料和复权日线字段待归一化接入。"
+            return "包和 Token 已就绪；财务基础指标可尝试增强，复权日线字段待归一化接入。"
         if token_configured:
             return "Token 已配置，但当前环境未安装 tushare 包；继续使用 Mock 回退。"
         if package_available:
             return "tushare 包已安装，等待 STOCK_DOCTOR_TUSHARE_TOKEN；继续使用 Mock 回退。"
         return "tushare 包和 Token 均未配置；继续使用 Mock 回退。"
+
+    def _client(self):
+        module = self._ts_module
+        if module is None:
+            try:
+                import tushare as module  # type: ignore
+            except Exception:
+                return None
+        pro_api = getattr(module, "pro_api", None)
+        if pro_api is None:
+            return None
+        try:
+            return pro_api(settings.tushare_token.strip())
+        except Exception:
+            return None
+
+    def _fundamental_from_tushare(self, symbol: str) -> FundamentalSnapshot | None:
+        client = self._client()
+        if client is None:
+            return None
+        ts_code = self._ts_code(symbol)
+        try:
+            daily_rows = self._rows(
+                client.daily_basic(
+                    ts_code=ts_code,
+                    fields="ts_code,trade_date,pe_ttm,pb,turnover_rate",
+                )
+            )
+        except Exception:
+            daily_rows = []
+        try:
+            fina_rows = self._rows(
+                client.fina_indicator(
+                    ts_code=ts_code,
+                    fields="ts_code,end_date,roe_dt,roe,q_roe,revenue_yoy,netprofit_yoy",
+                )
+            )
+        except Exception:
+            fina_rows = []
+        daily = daily_rows[0] if daily_rows else {}
+        fina = fina_rows[0] if fina_rows else {}
+        pe_ttm = self._first_float(daily, "pe_ttm", "pe", default=0)
+        pb = self._first_float(daily, "pb", default=0)
+        roe = self._first_float(fina, "roe_dt", "roe", "q_roe", default=0)
+        revenue_growth = self._first_float(fina, "revenue_yoy", "or_yoy", default=0)
+        profit_growth = self._first_float(fina, "netprofit_yoy", "profit_yoy", default=0)
+        if pe_ttm <= 0 and pb <= 0 and roe == 0 and revenue_growth == 0 and profit_growth == 0:
+            return None
+        return FundamentalSnapshot(
+            pe_ttm=pe_ttm,
+            pb=pb,
+            roe=max(-100, min(100, roe)),
+            revenue_growth=revenue_growth,
+            profit_growth=profit_growth,
+            industry_pe_percentile=self._valuation_percentile(pe_ttm),
+        )
+
+    def _rows(self, payload: object) -> list[dict]:
+        if payload is None:
+            return []
+        if isinstance(payload, list):
+            return [item for item in payload if isinstance(item, dict)]
+        to_dict = getattr(payload, "to_dict", None)
+        if to_dict is not None:
+            try:
+                records = to_dict("records")
+                if isinstance(records, list):
+                    return [item for item in records if isinstance(item, dict)]
+            except Exception:
+                return []
+        return []
+
+    def _first_float(self, row: dict, *keys: str, default: float = 0) -> float:
+        for key in keys:
+            value = row.get(key)
+            if value is None or value == "":
+                continue
+            try:
+                return round(float(value), 2)
+            except (TypeError, ValueError):
+                continue
+        return default
+
+    def _valuation_percentile(self, pe_ttm: float) -> float:
+        if pe_ttm <= 0:
+            return 50
+        if pe_ttm <= 10:
+            return 25
+        if pe_ttm <= 20:
+            return 40
+        if pe_ttm <= 35:
+            return 58
+        if pe_ttm <= 50:
+            return 76
+        return 88
+
+    def _ts_code(self, symbol: str) -> str:
+        normalized = symbol.strip().upper()
+        suffix = "SH" if normalized.startswith("6") else "SZ"
+        return f"{normalized}.{suffix}"

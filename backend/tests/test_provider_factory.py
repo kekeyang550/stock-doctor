@@ -12,6 +12,42 @@ from app.services.tushare_provider import TushareMarketDataProvider
 from app.config import settings
 
 
+class FakeTushareModule:
+    def __init__(self):
+        self.client = FakeTushareClient()
+
+    def pro_api(self, token: str):
+        self.client.token = token
+        return self.client
+
+
+class FakeTushareClient:
+    def __init__(self):
+        self.token = ""
+
+    def daily_basic(self, ts_code: str, fields: str):
+        return [
+            {
+                "ts_code": ts_code,
+                "trade_date": "20260710",
+                "pe_ttm": "18.4",
+                "pb": "2.3",
+                "turnover_rate": "0.8",
+            }
+        ]
+
+    def fina_indicator(self, ts_code: str, fields: str):
+        return [
+            {
+                "ts_code": ts_code,
+                "end_date": "20260331",
+                "roe_dt": "16.2",
+                "revenue_yoy": "11.5",
+                "netprofit_yoy": "13.7",
+            }
+        ]
+
+
 def test_akshare_provider_falls_back_without_package():
     provider = AkshareMarketDataProvider()
 
@@ -42,6 +78,28 @@ def test_provider_factory_can_create_tushare_fallback_provider(monkeypatch):
 
     assert isinstance(provider, TushareMarketDataProvider)
     assert provider.get_snapshot("600519") is not None
+
+
+def test_tushare_provider_enriches_fundamental_snapshot(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "test-token")
+    module = FakeTushareModule()
+    provider = TushareMarketDataProvider(ts_module=module)
+
+    snapshot = provider.get_snapshot("600519")
+    sources = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert module.client.token == "test-token"
+    assert snapshot.fundamental.pe_ttm == 18.4
+    assert snapshot.fundamental.pb == 2.3
+    assert snapshot.fundamental.roe == 16.2
+    assert snapshot.fundamental.revenue_growth == 11.5
+    assert snapshot.fundamental.profit_growth == 13.7
+    assert "tushare-daily-basic" in snapshot.data_sources
+    assert "tushare-fina-indicator" in snapshot.data_sources
+    tushare = next(source for source in sources if source["name"] == "Tushare Pro")
+    assert tushare["status"] == "online"
+    assert "财务基础指标" in tushare["role"]
 
 
 class FakeAkshare:

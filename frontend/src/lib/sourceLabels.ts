@@ -7,6 +7,8 @@ const sourceTokenLabels: Record<string, string> = {
   'tencent-index': '腾讯指数兜底',
   'tencent-kline': '腾讯 K 线兜底',
   'tdx-kline': '通达信本地 K 线',
+  'tushare-daily-basic': 'Tushare 日行情基础指标',
+  'tushare-fina-indicator': 'Tushare 财务指标',
   'capital-flow': '资金流',
 }
 
