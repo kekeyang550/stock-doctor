@@ -1923,8 +1923,8 @@ function parsePortfolioTradesText(text: string): Record<string, { shares: string
     }
     const symbol = portfolioImportValue(parts, header?.symbol ?? 0).toUpperCase()
     const side = portfolioImportValue(parts, header?.side ?? 1)
-    const shares = Number(portfolioImportValue(parts, header?.shares ?? 2))
-    const price = Number(portfolioImportValue(parts, header?.price ?? 3))
+    const shares = portfolioImportNumber(portfolioImportValue(parts, header?.shares ?? 2))
+    const price = portfolioImportNumber(portfolioImportValue(parts, header?.price ?? 3))
     if (!symbol || symbol.length > 12 || !Number.isFinite(shares) || shares <= 0 || !Number.isFinite(price) || price <= 0) {
       return
     }
@@ -1959,7 +1959,34 @@ function parsePortfolioImportRows(text: string) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => line.split(/[\t,;，；]+/).map((part) => part.trim()).filter(Boolean))
+    .map(parsePortfolioImportLine)
+}
+
+function parsePortfolioImportLine(line: string) {
+  const parts: string[] = []
+  let current = ''
+  let quoted = false
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index]
+    const next = line[index + 1]
+    if (char === '"' && quoted && next === '"') {
+      current += '"'
+      index += 1
+      continue
+    }
+    if (char === '"') {
+      quoted = !quoted
+      continue
+    }
+    if (!quoted && /[\t,;，；]/.test(char)) {
+      parts.push(current.trim())
+      current = ''
+      continue
+    }
+    current += char
+  }
+  parts.push(current.trim())
+  return parts
 }
 
 function portfolioImportHeader(parts: string[] | undefined) {
@@ -2002,6 +2029,10 @@ function portfolioImportValue(parts: string[], index: number) {
   return index >= 0 && index < parts.length ? parts[index] : ''
 }
 
+function portfolioImportNumber(value: string) {
+  return Number(value.replace(/[,\s￥¥]/g, ''))
+}
+
 function isBuyTradeSide(value: string) {
   return /^(buy|b|买|买入|证券买入|买入成交|担保品买入|融资买入)$/i.test(value)
 }
@@ -2027,11 +2058,11 @@ function normalizePortfolioInputNumber(value: unknown, min: number, max: number)
   if (!text) {
     return ''
   }
-  const parsed = Number(text)
+  const parsed = portfolioImportNumber(text)
   if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
     return ''
   }
-  return text
+  return String(parsed)
 }
 
 function normalizeBacktestParameters(parameters: Partial<BacktestParameters>): BacktestParameters {
