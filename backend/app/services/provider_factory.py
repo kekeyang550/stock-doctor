@@ -3,6 +3,7 @@ from app.services.akshare_provider import AkshareMarketDataProvider
 from app.services.eastmoney_provider import EastmoneyMarketDataProvider
 from app.services.market_data import MockMarketDataProvider
 from app.services.providers import MarketDataProvider
+from app.services.tushare_provider import TushareMarketDataProvider
 
 
 def create_market_data_provider() -> MarketDataProvider:
@@ -10,4 +11,6 @@ def create_market_data_provider() -> MarketDataProvider:
         return EastmoneyMarketDataProvider()
     if settings.data_provider == "akshare":
         return AkshareMarketDataProvider()
+    if settings.data_provider == "tushare":
+        return TushareMarketDataProvider()
     return MockMarketDataProvider()

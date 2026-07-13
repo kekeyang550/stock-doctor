@@ -242,7 +242,7 @@ async def system_runtime_config() -> DataRuntimeSettings:
     ]
     return DataRuntimeSettings(
         active_provider=settings.data_provider,
-        provider_options=["mock", "eastmoney", "akshare"],
+        provider_options=["mock", "eastmoney", "akshare", "tushare"],
         request_timeout_seconds=settings.data_request_timeout_seconds,
         cache_ttl_seconds=settings.data_cache_ttl_seconds,
         freshness_stale_after_minutes=settings.data_freshness_stale_after_minutes,

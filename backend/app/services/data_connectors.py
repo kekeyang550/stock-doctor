@@ -24,6 +24,7 @@ class DataConnectorHealthService:
         tdx_source = source_by_name.get("通达信本地日线")
         local_stock_directory_source = source_by_name.get("同花顺本地股票名表")
         akshare_source = source_by_name.get("AKShare")
+        tushare_source = source_by_name.get("Tushare Pro")
 
         connectors = [
             DataConnectorStatus(
@@ -163,16 +164,16 @@ class DataConnectorHealthService:
             ),
             DataConnectorStatus(
                 name="Tushare Pro",
-                status=self._tushare_status(tushare_installed),
-                active=False,
+                status=self._tushare_status(tushare_installed, active_provider, tushare_source),
+                active=active_provider == "tushare",
                 role="财务、基础资料、复权日线和公告事件增强",
                 package="tushare",
                 package_installed=tushare_installed,
                 configured_provider=active_provider,
                 latency_ms=None,
                 last_checked_at=checked_at,
-                message=self._tushare_message(tushare_installed),
-                next_action=self._tushare_next_action(tushare_installed),
+                message=self._tushare_message(tushare_installed, active_provider, tushare_source),
+                next_action=self._tushare_next_action(tushare_installed, active_provider, tushare_source),
             ),
         ]
         return DataConnectorHealth(
@@ -297,12 +298,28 @@ class DataConnectorHealthService:
             return "设置 STOCK_DOCTOR_DATA_PROVIDER=akshare 后重启后端进行真实数据试运行。"
         return "继续补齐股票列表、行情快照和板块资金流字段映射。"
 
-    def _tushare_status(self, installed: bool) -> str:
+    def _tushare_status(
+        self,
+        installed: bool,
+        active_provider: str,
+        source: dict[str, str] | None,
+    ) -> str:
+        if source is not None and active_provider == "tushare":
+            status = source.get("status", "")
+            if status in {"online", "fallback", "missing-package", "planned", "error"}:
+                return status
         if not installed:
             return "missing-package"
         return "planned"
 
-    def _tushare_message(self, installed: bool) -> str:
+    def _tushare_message(
+        self,
+        installed: bool,
+        active_provider: str,
+        source: dict[str, str] | None,
+    ) -> str:
+        if source is not None and active_provider == "tushare":
+            return f"适配器报告：{source.get('role', '未返回状态详情')}"
         token_configured = bool(settings.tushare_token.strip())
         if not installed and not token_configured:
             return "tushare 包和 Token 均未配置；当前仍使用已接入数据源。"
@@ -312,7 +329,16 @@ class DataConnectorHealthService:
             return "tushare 包已安装，等待 STOCK_DOCTOR_TUSHARE_TOKEN 后再启用财务增强。"
         return "tushare 包和 Token 已就绪，下一步可接入财务字段归一化。"
 
-    def _tushare_next_action(self, installed: bool) -> str:
+    def _tushare_next_action(
+        self,
+        installed: bool,
+        active_provider: str,
+        source: dict[str, str] | None,
+    ) -> str:
+        if source is not None and active_provider == "tushare" and source.get("status") == "fallback":
+            return "当前 Tushare 已安全回退到 Mock；补齐包、Token 和字段归一化后再承载诊断。"
+        if source is not None and active_provider == "tushare":
+            return "继续实现 Tushare 财务字段、基础资料和复权日线归一化。"
         token_configured = bool(settings.tushare_token.strip())
         if not installed:
             return "在后端环境执行 pip install tushare，并配置 STOCK_DOCTOR_TUSHARE_TOKEN。"

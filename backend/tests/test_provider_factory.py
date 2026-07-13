@@ -5,8 +5,11 @@ from app.services.akshare_provider import AkshareMarketDataProvider
 from app.services.eastmoney_provider import EastmoneyMarketDataProvider
 from app.services.local_stock_directory import LocalStockDirectoryProvider
 from app.services.market_data import MockMarketDataProvider
+from app.services.provider_factory import create_market_data_provider
 from app.services.storage import JsonStateStore
 from app.services.tdx_local_provider import TdxLocalHistoryProvider
+from app.services.tushare_provider import TushareMarketDataProvider
+from app.config import settings
 
 
 def test_akshare_provider_falls_back_without_package():
@@ -17,6 +20,28 @@ def test_akshare_provider_falls_back_without_package():
 
     assert len(stocks) > 0
     assert any(source["name"] == "AKShare" for source in sources)
+
+
+def test_tushare_provider_safely_falls_back_without_token(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "")
+    provider = TushareMarketDataProvider(ts_module=object())
+
+    stocks = provider.list_stocks()
+    sources = provider.get_data_sources()
+
+    assert len(stocks) > 0
+    tushare = next(source for source in sources if source["name"] == "Tushare Pro")
+    assert tushare["status"] == "fallback"
+    assert "等待 STOCK_DOCTOR_TUSHARE_TOKEN" in tushare["role"]
+
+
+def test_provider_factory_can_create_tushare_fallback_provider(monkeypatch):
+    monkeypatch.setattr(settings, "data_provider", "tushare")
+
+    provider = create_market_data_provider()
+
+    assert isinstance(provider, TushareMarketDataProvider)
+    assert provider.get_snapshot("600519") is not None
 
 
 class FakeAkshare:

@@ -195,7 +195,7 @@ const connectorHealth = {
 
 const runtimeSettings = {
   active_provider: 'mock',
-  provider_options: ['mock', 'eastmoney', 'akshare'],
+  provider_options: ['mock', 'eastmoney', 'akshare', 'tushare'],
   request_timeout_seconds: 8,
   cache_ttl_seconds: 300,
   freshness_stale_after_minutes: 30,

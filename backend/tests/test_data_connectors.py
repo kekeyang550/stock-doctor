@@ -12,7 +12,7 @@ client = TestClient(create_app())
 def test_data_connector_health_reports_mock_and_planned_sources():
     health = DataConnectorHealthService().build_health()
 
-    assert health.active_provider in {"mock", "akshare", "eastmoney"}
+    assert health.active_provider in {"mock", "akshare", "eastmoney", "tushare"}
     assert health.fallback_provider == "mock"
     assert health.cache_status is None
     assert health.runtime_config.request_timeout_seconds == settings.data_request_timeout_seconds
@@ -106,6 +106,18 @@ class EastmoneyProvider:
         ]
 
 
+class TushareFallbackProvider:
+    def get_data_sources(self):
+        return [
+            {
+                "name": "Tushare Pro",
+                "status": "fallback",
+                "role": "tushare 包已安装，等待 STOCK_DOCTOR_TUSHARE_TOKEN；继续使用 Mock 回退。",
+            },
+            {"name": "Mock A股样例库", "status": "fallback", "role": "稳定回退"},
+        ]
+
+
 def test_data_connector_health_uses_provider_source_status(monkeypatch):
     monkeypatch.setattr(settings, "data_provider", "akshare")
 
@@ -174,6 +186,19 @@ def test_data_connector_health_reports_tushare_readiness(monkeypatch):
     assert "归一化" in tushare.next_action
 
 
+def test_data_connector_health_marks_tushare_as_active_fallback(monkeypatch):
+    monkeypatch.setattr(settings, "data_provider", "tushare")
+
+    health = DataConnectorHealthService().build_health(provider=TushareFallbackProvider())
+    tushare = next(connector for connector in health.connectors if connector.name == "Tushare Pro")
+
+    assert health.active_provider == "tushare"
+    assert tushare.active is True
+    assert tushare.status == "fallback"
+    assert "Mock 回退" in tushare.message
+    assert "安全回退" in tushare.next_action
+
+
 def test_data_connector_health_endpoint():
     response = client.get("/api/v1/system/data-connectors")
 
@@ -196,8 +221,9 @@ def test_runtime_config_endpoint_exposes_provider_and_local_paths():
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["active_provider"] in {"mock", "eastmoney", "akshare"}
+    assert payload["active_provider"] in {"mock", "eastmoney", "akshare", "tushare"}
     assert "eastmoney" in payload["provider_options"]
+    assert "tushare" in payload["provider_options"]
     assert payload["request_timeout_seconds"] == settings.data_request_timeout_seconds
     assert payload["cache_ttl_seconds"] == settings.data_cache_ttl_seconds
     assert payload["freshness_stale_after_minutes"] == settings.data_freshness_stale_after_minutes
