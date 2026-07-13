@@ -1497,6 +1497,12 @@ function buildResearchReportHtml(payload: Record<string, any>) {
     body { margin: 0; font-family: Arial, "Microsoft YaHei", sans-serif; color: #25352d; background: #f6f8f4; }
     main { max-width: 980px; margin: 0 auto; padding: 32px 20px; }
     header, section { background: #fff; border: 1px solid #dfe8dc; border-radius: 8px; padding: 18px; margin-bottom: 14px; }
+    .report-cover { min-height: 360px; display: flex; flex-direction: column; justify-content: space-between; background: #fdfefb; border-color: #cbdcc6; }
+    .cover-meta { display: flex; flex-wrap: wrap; gap: 8px; color: #68786f; }
+    .cover-meta span { border: 1px solid #dfe8dc; border-radius: 999px; padding: 5px 9px; background: #f6faf3; }
+    .cover-title h1 { font-size: 42px; line-height: 1.1; margin-bottom: 10px; }
+    .cover-title small { display: block; color: #68786f; font-size: 18px; margin-top: 8px; }
+    .cover-summary { border-left: 4px solid #6a8f5f; padding-left: 14px; color: #425348; }
     h1, h2, p { margin-top: 0; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
     .metric, .row { border: 1px solid #e5ece2; border-radius: 8px; padding: 10px; background: #fbfdf9; }
@@ -1504,14 +1510,31 @@ function buildResearchReportHtml(payload: Record<string, any>) {
     .metric strong { font-size: 24px; }
     ul { padding-left: 18px; }
     code { background: #edf4e9; padding: 2px 5px; border-radius: 5px; }
+    @media print {
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      header, section { break-inside: avoid; border-radius: 0; box-shadow: none; }
+      .report-cover { min-height: 92vh; break-after: page; }
+    }
   </style>
 </head>
 <body>
   <main>
-    <header>
-      <p>Stock Doctor · ${escapeHtml(payload.version)} · ${escapeHtml(payload.exported_at)}</p>
-      <h1>${escapeHtml(diagnosis.name ?? "")} <small>${escapeHtml(payload.symbol)}</small></h1>
-      <p>${escapeHtml(diagnosis.rating ?? "")} · ${escapeHtml(diagnosis.verdict ?? "")}</p>
+    <header class="report-cover">
+      <div class="cover-meta">
+        <span>Stock Doctor</span>
+        <span>${escapeHtml(payload.version)}</span>
+        <span>${escapeHtml(payload.exported_at)}</span>
+        <span>${escapeHtml(payload.horizon ?? "-")}</span>
+      </div>
+      <div class="cover-title">
+        <h1>${escapeHtml(diagnosis.name ?? "")}<small>${escapeHtml(payload.symbol)}</small></h1>
+        <p>${escapeHtml(diagnosis.rating ?? "")} · ${escapeHtml(diagnosis.verdict ?? "")}</p>
+      </div>
+      <div class="cover-summary">
+        <strong>报告结论</strong>
+        <p>${escapeHtml(conclusion)}</p>
+      </div>
     </header>
 
     <section>
