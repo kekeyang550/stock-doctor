@@ -1835,6 +1835,30 @@ describe('App', () => {
     })
   })
 
+  it('imports portfolio trades and derives open lot cost basis', async () => {
+    render(<App />)
+
+    const input = await screen.findByLabelText('导入交易流水文件')
+    const file = new File([
+      'symbol,side,shares,price\n',
+      '600519,buy,10,1000\n',
+      '600519,buy,10,1200\n',
+      '600519,sell,5,1300\n',
+    ], 'trades.csv', { type: 'text/csv' })
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('持仓数量 贵州茅台')).toHaveValue(15)
+      expect(screen.getByLabelText('成本价 贵州茅台')).toHaveValue(1100)
+    })
+    await waitFor(() => {
+      const portfolioCalls = vi.mocked(fetch).mock.calls
+        .map((call) => decodeURIComponent(String(call[0])))
+        .filter((url) => url.includes('/risk/portfolio'))
+      expect(portfolioCalls.some((url) => url.includes('holdings=600519:15:1100'))).toBe(true)
+    })
+  })
+
   it('shows strategy backtest summary with sample trades and drawdown', async () => {
     render(<App />)
 

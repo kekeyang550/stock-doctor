@@ -466,6 +466,7 @@ export function RiskExposurePanel({
   onPositionWeightChange,
   onPositionLotChange,
   onPositionLotsImport,
+  onPositionTradesImport,
   onPortfolioValueChange,
   onSelect,
 }: {
@@ -477,6 +478,7 @@ export function RiskExposurePanel({
   onPositionWeightChange: (symbol: string, value: string) => void
   onPositionLotChange: (symbol: string, field: 'shares' | 'cost_price', value: string) => void
   onPositionLotsImport: (file: File) => void
+  onPositionTradesImport: (file: File) => void
   onPortfolioValueChange: (value: string) => void
   onSelect: (symbol: string) => void
 }) {
@@ -560,20 +562,36 @@ export function RiskExposurePanel({
                 <strong>模拟仓位</strong>
                 <small>{report.weight_mode === 'custom' ? '自定义权重' : '等权模拟'} · 总权重 {report.total_position_weight.toFixed(1)}%</small>
               </span>
-              <label className="file-action portfolio-import-action">
-                <Upload size={15} />
-                <span>导入持仓</span>
-                <input
-                  aria-label="导入持仓文件"
-                  type="file"
-                  accept=".csv,.txt,text/csv,text/plain"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0]
-                    if (file) onPositionLotsImport(file)
-                    event.currentTarget.value = ''
-                  }}
-                />
-              </label>
+              <span className="portfolio-import-actions">
+                <label className="file-action portfolio-import-action">
+                  <Upload size={15} />
+                  <span>导入持仓</span>
+                  <input
+                    aria-label="导入持仓文件"
+                    type="file"
+                    accept=".csv,.txt,text/csv,text/plain"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (file) onPositionLotsImport(file)
+                      event.currentTarget.value = ''
+                    }}
+                  />
+                </label>
+                <label className="file-action portfolio-import-action">
+                  <Upload size={15} />
+                  <span>导入流水</span>
+                  <input
+                    aria-label="导入交易流水文件"
+                    type="file"
+                    accept=".csv,.txt,text/csv,text/plain"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (file) onPositionTradesImport(file)
+                      event.currentTarget.value = ''
+                    }}
+                  />
+                </label>
+              </span>
             </div>
             <label className="portfolio-value-input">
               <span>组合市值</span>

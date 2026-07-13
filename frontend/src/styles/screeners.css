@@ -1292,6 +1292,13 @@
   min-height: 32px;
 }
 
+.portfolio-import-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .portfolio-value-input {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr) 24px;

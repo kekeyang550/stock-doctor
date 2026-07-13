@@ -471,6 +471,18 @@ export default function App() {
     }
   }, [])
 
+  const importPortfolioTradesFile = useCallback(async (file: File) => {
+    try {
+      const text = await readTextFile(file)
+      const lots = parsePortfolioTradesText(text)
+      if (Object.keys(lots).length > 0) {
+        setPortfolioLots((current) => ({ ...current, ...lots }))
+      }
+    } catch {
+      setError('交易流水导入失败，请检查 CSV/TXT 文件格式。')
+    }
+  }, [])
+
   useEffect(() => {
     writeStoredPortfolioInputs({ weights: portfolioWeights, lots: portfolioLots, portfolio_value: portfolioValue })
   }, [portfolioLots, portfolioWeights, portfolioValue])
@@ -1079,6 +1091,7 @@ export default function App() {
           onPositionWeightChange={setPortfolioWeight}
           onPositionLotChange={setPortfolioLot}
           onPositionLotsImport={importPortfolioLotsFile}
+          onPositionTradesImport={importPortfolioTradesFile}
           onPortfolioValueChange={setPortfolioValue}
           onSelect={setSelectedSymbol}
         />
@@ -1876,6 +1889,58 @@ function parsePortfolioLotsText(text: string): Record<string, { shares: string; 
     }
   })
   return lots
+}
+
+function parsePortfolioTradesText(text: string): Record<string, { shares: string; cost_price: string }> {
+  const positions: Record<string, { shares: number; cost_amount: number }> = {}
+  text.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim()
+    if (!trimmed || /^symbol|^代码|^证券代码/i.test(trimmed)) {
+      return
+    }
+    const parts = trimmed.split(/[\t,;，；]+/).map((part) => part.trim()).filter(Boolean)
+    if (parts.length < 4) {
+      return
+    }
+    const symbol = parts[0].toUpperCase()
+    const side = parts[1]
+    const shares = Number(parts[2])
+    const price = Number(parts[3])
+    if (!symbol || symbol.length > 12 || !Number.isFinite(shares) || shares <= 0 || !Number.isFinite(price) || price <= 0) {
+      return
+    }
+    const current = positions[symbol] ?? { shares: 0, cost_amount: 0 }
+    if (isSellTradeSide(side)) {
+      const closedShares = Math.min(current.shares, shares)
+      const averageCost = current.shares > 0 ? current.cost_amount / current.shares : 0
+      current.shares = Math.max(0, current.shares - closedShares)
+      current.cost_amount = Math.max(0, current.cost_amount - averageCost * closedShares)
+    } else if (isBuyTradeSide(side)) {
+      current.shares += shares
+      current.cost_amount += shares * price
+    }
+    positions[symbol] = current
+  })
+
+  const lots: Record<string, { shares: string; cost_price: string }> = {}
+  Object.entries(positions).forEach(([symbol, position]) => {
+    if (position.shares <= 0) {
+      return
+    }
+    lots[symbol] = {
+      shares: String(Number(position.shares.toFixed(4))),
+      cost_price: String(Number((position.cost_amount / position.shares).toFixed(4))),
+    }
+  })
+  return lots
+}
+
+function isBuyTradeSide(value: string) {
+  return /^(buy|b|买|买入|证券买入)$/i.test(value)
+}
+
+function isSellTradeSide(value: string) {
+  return /^(sell|s|卖|卖出|证券卖出)$/i.test(value)
 }
 
 function readTextFile(file: File): Promise<string> {
