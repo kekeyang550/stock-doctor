@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.main import create_app
 
 
@@ -243,9 +244,12 @@ def test_system_readiness_endpoint_returns_operational_checks():
     assert 0 <= payload["score"] <= 100
     assert payload["summary"]
     checks = {item["key"]: item for item in payload["checks"]}
-    assert {"storage", "connector", "freshness", "refresh_jobs"}.issubset(checks.keys())
+    assert {"storage", "connector", "runtime_config", "freshness", "refresh_jobs"}.issubset(checks.keys())
     assert checks["storage"]["status"] == "pass"
     assert checks["connector"]["next_action"]
+    assert "provider=" in checks["runtime_config"]["detail"]
+    if settings.tushare_token:
+        assert settings.tushare_token not in checks["runtime_config"]["detail"]
 
 
 def test_system_export_endpoint_returns_state_snapshot():

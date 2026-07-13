@@ -239,6 +239,10 @@ async def system_data_connectors() -> DataConnectorHealth:
 
 @router.get("/system/runtime-config", response_model=DataRuntimeSettings)
 async def system_runtime_config() -> DataRuntimeSettings:
+    return _runtime_settings()
+
+
+def _runtime_settings() -> DataRuntimeSettings:
     ths_paths = [path.strip() for path in settings.ths_stockname_paths.split(";") if path.strip()]
     path_settings = [
         RuntimePathSetting(
@@ -1256,6 +1260,7 @@ def _build_system_readiness(
 ) -> SystemReadiness:
     active_connector = next((connector for connector in health.connectors if connector.active), None)
     failed_jobs = [job for job in jobs if job.status == "failed"]
+    runtime = _runtime_settings()
     checks = [
         SystemReadinessCheck(
             key="storage",
@@ -1270,6 +1275,13 @@ def _build_system_readiness(
             status=_connector_readiness_status(active_connector),
             detail=_connector_readiness_detail(active_connector, health),
             next_action=_connector_readiness_action(active_connector, health),
+        ),
+        SystemReadinessCheck(
+            key="runtime_config",
+            label="运行配置",
+            status=_runtime_readiness_status(runtime),
+            detail=_runtime_readiness_detail(runtime),
+            next_action=_runtime_readiness_action(runtime),
         ),
         SystemReadinessCheck(
             key="freshness",
@@ -1292,6 +1304,39 @@ def _build_system_readiness(
     score = max(0, 100 - failures * 30 - warnings * 12)
     summary = _system_readiness_summary(status, score, failures, warnings)
     return SystemReadiness(status=status, score=score, summary=summary, checks=checks)
+
+
+def _runtime_readiness_status(runtime: DataRuntimeSettings) -> str:
+    missing_required = [item for item in runtime.paths if item.configured and item.exists is False]
+    if missing_required:
+        return "warn"
+    if runtime.active_provider == "tushare":
+        token = next((item for item in runtime.secrets if item.key == "tushare_token"), None)
+        if token is None or not token.configured:
+            return "warn"
+    return "pass"
+
+
+def _runtime_readiness_detail(runtime: DataRuntimeSettings) -> str:
+    paths = [
+        f"{item.label}{'已找到' if item.exists else '未找到' if item.exists is False else '未配置'}"
+        for item in runtime.paths
+    ]
+    token = next((item for item in runtime.secrets if item.key == "tushare_token"), None)
+    token_text = "Tushare Token 已配置" if token is not None and token.configured else "Tushare Token 未配置"
+    return f"当前 provider={runtime.active_provider}；{'; '.join(paths)}；{token_text}。"
+
+
+def _runtime_readiness_action(runtime: DataRuntimeSettings) -> str:
+    missing_paths = [item for item in runtime.paths if item.configured and item.exists is False]
+    if missing_paths:
+        labels = "、".join(item.label for item in missing_paths)
+        return f"确认 {labels} 路径是否存在，或更新对应环境变量后重启后端。"
+    if runtime.active_provider == "tushare":
+        token = next((item for item in runtime.secrets if item.key == "tushare_token"), None)
+        if token is None or not token.configured:
+            return "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再验证 Tushare 财务和复权日线。"
+    return "运行配置可用；修改环境变量后需要重启后端生效。"
 
 
 def _connector_readiness_status(active_connector) -> str:

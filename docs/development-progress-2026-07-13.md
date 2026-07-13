@@ -65,6 +65,7 @@
    - 新增 `/api/v1/system/runtime-config` 只读接口，返回当前 provider、请求超时、缓存 TTL、数据新鲜度阈值和本地路径配置状态。
    - 前端系统区新增“运行配置”面板，可直接看到通达信 `vipdoc`、同花顺股票名表是否已配置且存在。
    - 面板明确提示修改运行参数需要调整后端环境变量并重启服务。
+   - 系统就绪度已纳入运行配置检查，会提示当前 provider、本地路径存在性和 Tushare Token 配置状态，不返回 token 明文。
    - 新增 Tushare Pro Token 配置状态展示，只返回是否配置，不返回 token 明文；连接器健康会提示缺包、缺 token 或已具备接入前置条件。
    - `STOCK_DOCTOR_DATA_PROVIDER=tushare` 已可安全启动；在财务字段归一化完成前会委托 Mock 回退，并在连接器健康中标明。
    - Tushare provider 第一阶段已支持在包/token 可用时归一化 PE/PB/ROE/营收增速/利润增速，并把来源写入数据质量报告；失败路径继续安全回退。
