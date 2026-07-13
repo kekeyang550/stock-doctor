@@ -1378,7 +1378,7 @@ export function StrategyBacktestPanel({
                   <span key={item.id}>
                     <small>{formatShortDate(item.created_at)} · {item.holding_days} 日 · {backtestPriceSourceLabel(item.price_source)}</small>
                     <b>
-                      平均 {formatSignedPercent(item.average_return_pct)} · 回撤 {formatSignedPercent(item.max_drawdown_pct)} · 稳定 {item.stability_score} · 可信 {item.sample_confidence_score}
+                      平均 {formatSignedPercent(item.average_return_pct)} · 回撤 {formatSignedPercent(item.max_drawdown_pct)} · 稳定 {item.stability_score} · 可信 {item.sample_confidence_score} · {backtestHistoryParameterLabel(item)}
                     </b>
                   </span>
                 ))}
@@ -1435,6 +1435,15 @@ function backtestExitReasonLabel(reason: StrategyBacktestReport['trades'][number
   if (reason === 'ma20-break') return '跌破 MA20'
   if (reason === 'volume-fade') return '缩量退出'
   return '持有到期'
+}
+
+function backtestHistoryParameterLabel(item: StrategyBacktestHistoryComparison['items'][number]) {
+  const exits: string[] = []
+  if (item.take_profit_pct > 0) exits.push(`止盈 ${item.take_profit_pct}%`)
+  if (item.stop_loss_pct > 0) exits.push(`止损 ${item.stop_loss_pct}%`)
+  if (item.exit_on_ma20_break) exits.push('MA20')
+  if (item.exit_volume_ratio > 0) exits.push(`量比 ${Number(item.exit_volume_ratio.toFixed(2))}`)
+  return exits.length ? exits.join(' / ') : '固定持有'
 }
 
 function formatBacktestHistoryCount(value: number) {

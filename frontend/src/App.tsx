@@ -1388,7 +1388,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push('')
   lines.push('### 历史对比')
   lines.push(markdownText(strategyBacktestHistory.summary ?? '暂无回测历史对比'))
-  markdownList(lines, backtestHistoryItems.slice(0, 6), (item) => `${item.holding_days} 日 ${strategyBacktestPriceSourceLabel(item.price_source)} - 平均收益 ${formatReportSignedPercent(item.average_return_pct ?? 0)}, 最大回撤 ${formatReportSignedPercent(item.max_drawdown_pct ?? 0)}, 稳定 ${item.stability_score}, 可信 ${item.sample_confidence_score}`)
+  markdownList(lines, backtestHistoryItems.slice(0, 6), (item) => `${item.holding_days} 日 ${strategyBacktestPriceSourceLabel(item.price_source)} - ${strategyBacktestParameterLabel(item)} - 平均收益 ${formatReportSignedPercent(item.average_return_pct ?? 0)}, 最大回撤 ${formatReportSignedPercent(item.max_drawdown_pct ?? 0)}, 稳定 ${item.stability_score}, 可信 ${item.sample_confidence_score}`)
   lines.push('')
   lines.push('### 回测复盘动作')
   lines.push(`- 状态统计: 待处理 ${markdownText(strategyBacktestActions.pending_count ?? 0)} / 观察中 ${markdownText(strategyBacktestActions.watching_count ?? 0)} / 已完成 ${markdownText(strategyBacktestActions.done_count ?? 0)}`)
@@ -1709,7 +1709,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>可信度变化</span><strong>${escapeHtml(formatReportSignedNumber(strategyBacktestHistory.sample_confidence_delta ?? 0))} 分</strong></div>
       </div>
       <h4>最近回测</h4>
-      ${backtestHistoryItems.slice(0, 6).map((item: any) => `<div class="row"><strong>${escapeHtml(item.holding_days)} 日 · ${escapeHtml(strategyBacktestPriceSourceLabel(item.price_source))}</strong><small>${escapeHtml(item.created_at ?? "-")} · 平均收益 ${escapeHtml(formatReportSignedPercent(item.average_return_pct ?? 0))} · 最大回撤 ${escapeHtml(formatReportSignedPercent(item.max_drawdown_pct ?? 0))} · 稳定 ${escapeHtml(item.stability_score ?? 0)} · 可信 ${escapeHtml(item.sample_confidence_score ?? 0)}</small></div>`).join("") || "<p>暂无最近回测</p>"}
+      ${backtestHistoryItems.slice(0, 6).map((item: any) => `<div class="row"><strong>${escapeHtml(item.holding_days)} 日 · ${escapeHtml(strategyBacktestPriceSourceLabel(item.price_source))}</strong><small>${escapeHtml(item.created_at ?? "-")} · ${escapeHtml(strategyBacktestParameterLabel(item))} · 平均收益 ${escapeHtml(formatReportSignedPercent(item.average_return_pct ?? 0))} · 最大回撤 ${escapeHtml(formatReportSignedPercent(item.max_drawdown_pct ?? 0))} · 稳定 ${escapeHtml(item.stability_score ?? 0)} · 可信 ${escapeHtml(item.sample_confidence_score ?? 0)}</small></div>`).join("") || "<p>暂无最近回测</p>"}
       <h3>回测复盘动作</h3>
       <div class="grid">
         <div class="metric"><span>高优先级</span><strong>${escapeHtml(strategyBacktestActions.high_count ?? 0)}</strong></div>
@@ -1823,6 +1823,18 @@ function strategyBacktestExitReasonLabel(reason: unknown) {
   if (reason === 'ma20-break') return '跌破 MA20'
   if (reason === 'volume-fade') return '缩量退出'
   return '持有到期'
+}
+
+function strategyBacktestParameterLabel(item: Record<string, unknown>) {
+  const exits: string[] = []
+  const takeProfitPct = Number(item.take_profit_pct ?? 0)
+  const stopLossPct = Number(item.stop_loss_pct ?? 0)
+  const exitVolumeRatio = Number(item.exit_volume_ratio ?? 0)
+  if (Number.isFinite(takeProfitPct) && takeProfitPct > 0) exits.push(`止盈 ${takeProfitPct}%`)
+  if (Number.isFinite(stopLossPct) && stopLossPct > 0) exits.push(`止损 ${stopLossPct}%`)
+  if (item.exit_on_ma20_break === true) exits.push('MA20')
+  if (Number.isFinite(exitVolumeRatio) && exitVolumeRatio > 0) exits.push(`量比 ${Number(exitVolumeRatio.toFixed(2))}`)
+  return exits.length ? exits.join(' / ') : '固定持有'
 }
 
 function reviewActionPriorityLabel(priority: unknown) {
