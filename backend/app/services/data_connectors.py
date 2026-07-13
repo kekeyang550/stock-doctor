@@ -15,6 +15,7 @@ class DataConnectorHealthService:
     def build_health(self, provider: MarketDataProvider | None = None) -> DataConnectorHealth:
         checked_at = datetime.now(timezone.utc).isoformat()
         akshare_installed = find_spec("akshare") is not None
+        tushare_installed = find_spec("tushare") is not None
         active_provider = settings.data_provider
         source_by_name = self._source_by_name(provider)
         eastmoney_source = source_by_name.get("东方财富")
@@ -162,16 +163,16 @@ class DataConnectorHealthService:
             ),
             DataConnectorStatus(
                 name="Tushare Pro",
-                status="planned",
+                status=self._tushare_status(tushare_installed),
                 active=False,
                 role="财务、基础资料、复权日线和公告事件增强",
                 package="tushare",
-                package_installed=find_spec("tushare") is not None,
+                package_installed=tushare_installed,
                 configured_provider=active_provider,
                 latency_ms=None,
                 last_checked_at=checked_at,
-                message="接口边界已规划，尚未启用。",
-                next_action="增加 Token 配置、限流和字段归一化后接入。",
+                message=self._tushare_message(tushare_installed),
+                next_action=self._tushare_next_action(tushare_installed),
             ),
         ]
         return DataConnectorHealth(
@@ -295,3 +296,26 @@ class DataConnectorHealthService:
         if active_provider != "akshare":
             return "设置 STOCK_DOCTOR_DATA_PROVIDER=akshare 后重启后端进行真实数据试运行。"
         return "继续补齐股票列表、行情快照和板块资金流字段映射。"
+
+    def _tushare_status(self, installed: bool) -> str:
+        if not installed:
+            return "missing-package"
+        return "planned"
+
+    def _tushare_message(self, installed: bool) -> str:
+        token_configured = bool(settings.tushare_token.strip())
+        if not installed and not token_configured:
+            return "tushare 包和 Token 均未配置；当前仍使用已接入数据源。"
+        if not installed:
+            return "Token 已配置，但当前环境未安装 tushare 包。"
+        if not token_configured:
+            return "tushare 包已安装，等待 STOCK_DOCTOR_TUSHARE_TOKEN 后再启用财务增强。"
+        return "tushare 包和 Token 已就绪，下一步可接入财务字段归一化。"
+
+    def _tushare_next_action(self, installed: bool) -> str:
+        token_configured = bool(settings.tushare_token.strip())
+        if not installed:
+            return "在后端环境执行 pip install tushare，并配置 STOCK_DOCTOR_TUSHARE_TOKEN。"
+        if not token_configured:
+            return "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再接入财务/复权日线字段。"
+        return "实现 Tushare 财务字段、基础资料和复权日线归一化后，再开放 provider 切换。"

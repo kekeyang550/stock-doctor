@@ -46,6 +46,7 @@
    - 新增 `/api/v1/system/runtime-config` 只读接口，返回当前 provider、请求超时、缓存 TTL、数据新鲜度阈值和本地路径配置状态。
    - 前端系统区新增“运行配置”面板，可直接看到通达信 `vipdoc`、同花顺股票名表是否已配置且存在。
    - 面板明确提示修改运行参数需要调整后端环境变量并重启服务。
+   - 新增 Tushare Pro Token 配置状态展示，只返回是否配置，不返回 token 明文；连接器健康会提示缺包、缺 token 或已具备接入前置条件。
 
 ## 本机验证结果
 
@@ -65,6 +66,7 @@ STOCK_DOCTOR_DATA_CACHE_TTL_SECONDS=300
 STOCK_DOCTOR_DATA_FRESHNESS_STALE_AFTER_MINUTES=30
 STOCK_DOCTOR_TDX_VIPDOC_PATH=E:\new_tdx64\vipdoc
 STOCK_DOCTOR_THS_STOCKNAME_PATHS=D:\同花顺软件\同花顺\stockname\stockname_16_0.txt;D:\同花顺软件\同花顺\stockname\stockname_32_0.txt
+STOCK_DOCTOR_TUSHARE_TOKEN=<如需 Tushare 财务增强，填入 token>
 ```
 
 后端启动：
@@ -86,8 +88,8 @@ npm run dev -- --host 127.0.0.1 --port 30080
 ## 明天继续开发建议
 
 1. 财务数据第二阶段
-   - 接入更稳定的财报/估值字段来源，减少 `growth` 等字段保守估算。
-   - 可以优先评估 Tushare Pro，需要 token 后再启用。
+   - 已完成 Tushare Pro 包/token 准备度展示；下一步在 token 可用后接入财务、基础资料和复权日线字段归一化。
+   - 继续减少 `growth` 等字段保守估算。
 
 2. 真实数据质量评分
    - 把来源覆盖率、更新时间、fallback 次数、缓存命中率纳入股票级质量评分。

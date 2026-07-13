@@ -14,6 +14,7 @@ class Settings(BaseSettings):
         "D:\\同花顺软件\\同花顺\\stockname\\stockname_16_0.txt;"
         "D:\\同花顺软件\\同花顺\\stockname\\stockname_32_0.txt"
     )
+    tushare_token: str = ""
 
 
 settings = Settings()

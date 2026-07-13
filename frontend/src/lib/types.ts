@@ -70,6 +70,13 @@ export type RuntimePathSetting = {
   exists: boolean | null
 }
 
+export type RuntimeSecretSetting = {
+  key: string
+  label: string
+  env_var: string
+  configured: boolean
+}
+
 export type DataRuntimeSettings = {
   active_provider: string
   provider_options: string[]
@@ -77,6 +84,7 @@ export type DataRuntimeSettings = {
   cache_ttl_seconds: number
   freshness_stale_after_minutes: number
   paths: RuntimePathSetting[]
+  secrets: RuntimeSecretSetting[]
   restart_required: boolean
 }
 

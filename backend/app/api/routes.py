@@ -59,6 +59,7 @@ from app.schemas.diagnosis import (
     WatchlistSummary,
     IndustryExposure,
     RuntimePathSetting,
+    RuntimeSecretSetting,
 )
 from app.services.alerts import AlertEngine
 from app.services.concept_heat import ConceptHeatService
@@ -246,6 +247,14 @@ async def system_runtime_config() -> DataRuntimeSettings:
         cache_ttl_seconds=settings.data_cache_ttl_seconds,
         freshness_stale_after_minutes=settings.data_freshness_stale_after_minutes,
         paths=path_settings,
+        secrets=[
+            RuntimeSecretSetting(
+                key="tushare_token",
+                label="Tushare Pro Token",
+                env_var="STOCK_DOCTOR_TUSHARE_TOKEN",
+                configured=bool(settings.tushare_token.strip()),
+            ),
+        ],
     )
 
 

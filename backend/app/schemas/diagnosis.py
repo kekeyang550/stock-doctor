@@ -113,6 +113,13 @@ class RuntimePathSetting(BaseModel):
     exists: bool | None = None
 
 
+class RuntimeSecretSetting(BaseModel):
+    key: str
+    label: str
+    env_var: str
+    configured: bool
+
+
 class DataRuntimeSettings(BaseModel):
     active_provider: str
     provider_options: list[str]
@@ -120,6 +127,7 @@ class DataRuntimeSettings(BaseModel):
     cache_ttl_seconds: int
     freshness_stale_after_minutes: int
     paths: list[RuntimePathSetting]
+    secrets: list[RuntimeSecretSetting] = Field(default_factory=list)
     restart_required: bool = True
 
 

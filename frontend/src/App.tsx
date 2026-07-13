@@ -1186,6 +1186,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const freshness = dataTrust.freshness ?? {}
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
+  const runtimeSecrets = Array.isArray(runtimeConfig.secrets) ? runtimeConfig.secrets : []
   const dataQualityChecks = Array.isArray(dataQuality.checks) ? dataQuality.checks : []
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
   const industryExposures = Array.isArray(portfolioRisk.industry_exposures) ? portfolioRisk.industry_exposures : []
@@ -1290,6 +1291,13 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
     (item) => `${item.label} - ${reportRuntimePathStatusLabel(item.exists)} - ${item.env_var} - ${item.value || '未配置'}`,
   )
   lines.push('')
+  lines.push('### 密钥配置')
+  markdownList(
+    lines,
+    runtimeSecrets,
+    (item) => `${item.label} - ${item.configured ? '已配置' : '未配置'} - ${item.env_var}`,
+  )
+  lines.push('')
   lines.push('### 连接器明细')
   markdownList(
     lines,
@@ -1347,6 +1355,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const freshness = dataTrust.freshness ?? {}
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
+  const runtimeSecrets = Array.isArray(runtimeConfig.secrets) ? runtimeConfig.secrets : []
   const dataQualityChecks = Array.isArray(dataQuality.checks) ? dataQuality.checks : []
   const weightInputs = payload.portfolio_weight_inputs ?? {}
   const scoreTrend = Array.isArray(diagnosisChange.score_trend) ? diagnosisChange.score_trend : []
@@ -1565,6 +1574,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>可选数据源</span><strong>${escapeHtml(Array.isArray(runtimeConfig.provider_options) ? runtimeConfig.provider_options.join(" / ") : "-")}</strong></div>
       </div>
       ${runtimePaths.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(reportRuntimePathStatusLabel(item.exists))}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(item.value || "未配置")}</small></div>`).join("") || "<p>暂无本地路径配置</p>"}
+      <h3>密钥配置</h3>
+      ${runtimeSecrets.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(item.configured ? "已配置" : "未配置")}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(item.configured ? "已通过环境变量配置" : "未配置，相关增强能力暂不可用")}</small></div>`).join("") || "<p>暂无密钥配置</p>"}
       <h3>连接器明细</h3>
       ${connectors.slice(0, 10).map((connector: any) => `<div class="row"><strong>${escapeHtml(connector.name)}${connector.active ? " · 当前启用" : ""}</strong><small>${escapeHtml(reportConnectorStatusLabel(connector.status))} · ${escapeHtml(humanizeConnectorMessage(connector.message ?? connector.role ?? ""))} · 下一步：${escapeHtml(humanizeConnectorMessage(connector.next_action ?? "-"))}</small></div>`).join("") || "<p>暂无连接器明细</p>"}
       <h3>缓存桶</h3>

@@ -54,6 +54,7 @@ import { formatReportTime } from '../../lib/formatters'
 export function SystemRuntimeConfigPanel({ settings }: { settings: DataRuntimeSettings | null }) {
   const providerOptions = settings?.provider_options?.length ? settings.provider_options.join(' / ') : '未返回'
   const paths = settings?.paths ?? []
+  const secrets = settings?.secrets ?? []
 
   return (
     <section className="panel runtime-config-panel">
@@ -80,6 +81,18 @@ export function SystemRuntimeConfigPanel({ settings }: { settings: DataRuntimeSe
                   <em>{runtimePathStatusLabel(item.exists)}</em>
                 </div>
                 <p>{item.value || '未配置'}</p>
+                <small>{item.env_var}</small>
+              </article>
+            ))}
+          </div>
+          <div className="runtime-path-list">
+            {secrets.map((item) => (
+              <article key={item.key} className={`runtime-path ${item.configured ? 'online' : 'fallback'}`}>
+                <div>
+                  <strong>{item.label}</strong>
+                  <em>{item.configured ? '已配置' : '未配置'}</em>
+                </div>
+                <p>{item.configured ? '已通过环境变量配置' : '未配置，相关增强能力暂不可用'}</p>
                 <small>{item.env_var}</small>
               </article>
             ))}

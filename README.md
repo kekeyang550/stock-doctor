@@ -88,11 +88,20 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 
 The AKShare adapter remains available as an optional aggregation path and keeps the mock provider as a fallback while real A-share fields are normalized.
 
+Tushare Pro is tracked as a planned financial-data enhancement. The app can already report whether the package/token prerequisites are ready without exposing the token value:
+
+```powershell
+$env:STOCK_DOCTOR_TUSHARE_TOKEN = "<your-token>"
+```
+
+Install `tushare` in the backend environment when you are ready to connect the finance/basic-info normalization layer. Until that provider is implemented, keep `STOCK_DOCTOR_DATA_PROVIDER` on `eastmoney`, `akshare`, or `mock`.
+
 The workspace also includes a manual refresh job panel. Refresh jobs record provider, scope, status, duration, and covered stock counts so the same history can later back scheduled real-data updates.
 
 The connector panel also shows data freshness: latest successful refresh time, refresh age, covered stock count, coverage rate, and the recommended next action.
 
 The system area includes a runtime configuration panel backed by `/api/v1/system/runtime-config`. It shows the active provider, provider options, request timeout, cache TTL, freshness threshold, and local TongDaXin/TongHuaShun path availability. These settings are read-only in the UI; update environment variables and restart the backend to change them.
+The same panel shows whether optional secret-backed integrations such as Tushare Pro have their environment variables configured, but it never returns secret values.
 
 Optional runtime knobs for real-data trials:
 

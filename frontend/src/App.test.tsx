@@ -217,6 +217,14 @@ const runtimeSettings = {
       exists: true,
     },
   ],
+  secrets: [
+    {
+      key: 'tushare_token',
+      label: 'Tushare Pro Token',
+      env_var: 'STOCK_DOCTOR_TUSHARE_TOKEN',
+      configured: false,
+    },
+  ],
   restart_required: true,
 }
 
@@ -1319,6 +1327,8 @@ describe('App', () => {
     expect(within(runtimePanel).getByText('通达信 vipdoc')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('STOCK_DOCTOR_TDX_VIPDOC_PATH')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('同花顺股票名表')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('Tushare Pro Token')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('STOCK_DOCTOR_TUSHARE_TOKEN')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('修改这些配置需要更新后端环境变量并重启服务后生效。')).toBeInTheDocument()
     const readinessPanel = screen.getByRole('heading', { name: '系统就绪度' }).closest('section')!
     expect(within(readinessPanel).getByText('88')).toBeInTheDocument()
@@ -2293,6 +2303,12 @@ describe('App', () => {
     expect(exported.data_trust.connector_health.active_provider).toBe('mock')
     expect(exported.data_trust.runtime_config.active_provider).toBe('mock')
     expect(exported.data_trust.runtime_config.paths.map((item: { key: string }) => item.key)).toContain('tdx_vipdoc')
+    expect(exported.data_trust.runtime_config.secrets[0]).toEqual({
+      key: 'tushare_token',
+      label: 'Tushare Pro Token',
+      env_var: 'STOCK_DOCTOR_TUSHARE_TOKEN',
+      configured: false,
+    })
     expect(exported.data_trust.freshness.status).toBe('fresh')
     expect(anchor.download).toBe(`stock-doctor-report-600519-${new Date().toISOString().slice(0, 10)}.json`)
     expect(click).toHaveBeenCalled()
@@ -2420,6 +2436,9 @@ describe('App', () => {
     expect(html).toContain('过期阈值')
     expect(html).toContain('通达信 vipdoc · 未找到')
     expect(html).toContain('STOCK_DOCTOR_TDX_VIPDOC_PATH')
+    expect(html).toContain('密钥配置')
+    expect(html).toContain('Tushare Pro Token · 未配置')
+    expect(html).toContain('STOCK_DOCTOR_TUSHARE_TOKEN')
     expect(html).toContain('连接器明细')
     expect(html).toContain('东方财富')
     expect(html).toContain('东方财富估值详情')
@@ -2497,6 +2516,8 @@ describe('App', () => {
     expect(markdown).toContain('来源覆盖 - 需核验')
     expect(markdown).toContain('### 运行配置')
     expect(markdown).toContain('通达信 vipdoc - 未找到 - STOCK_DOCTOR_TDX_VIPDOC_PATH')
+    expect(markdown).toContain('### 密钥配置')
+    expect(markdown).toContain('Tushare Pro Token - 未配置 - STOCK_DOCTOR_TUSHARE_TOKEN')
     expect(markdown).toContain('### 连接器明细')
     expect(markdown).toContain('东方财富估值详情')
     expect(markdown).toContain('新浪资金流兜底')
