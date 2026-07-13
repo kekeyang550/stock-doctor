@@ -1489,6 +1489,24 @@ describe('App', () => {
     expect(screen.queryByText('正在生成诊断...')).not.toBeInTheDocument()
   })
 
+  it('keeps the workspace usable when runtime config is unavailable', async () => {
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/system/runtime-config')) {
+        return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('AI 诊断摘要')).toBeInTheDocument())
+    const runtimePanel = screen.getByRole('heading', { name: '运行配置' }).closest('section')!
+    expect(within(runtimePanel).getByText('加载中')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('正在读取运行配置...')).toBeInTheDocument()
+  })
+
   it('shows panel-level errors when candidate APIs fail', async () => {
     const defaultFetch = vi.mocked(fetch).getMockImplementation()!
     vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {

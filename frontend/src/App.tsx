@@ -289,7 +289,7 @@ export default function App() {
       fetchMarketOverview(),
       fetchDataSources(),
       fetchDataConnectorHealth(),
-      fetchDataRuntimeSettings(),
+      fetchDataRuntimeSettings().catch(() => null),
       fetchDataFreshness(),
       fetchRefreshJobs(),
       fetchStorageStatus(),
