@@ -1967,8 +1967,8 @@ function portfolioImportHeader(parts: string[] | undefined) {
     return null
   }
   const symbol = portfolioImportColumnIndex(parts, ['symbol', '证券代码', '股票代码', '代码'])
-  const shares = portfolioImportColumnIndex(parts, ['shares', '持仓数量', '数量', '股份余额', '当前持仓'])
-  const costPrice = portfolioImportColumnIndex(parts, ['cost_price', 'costprice', '成本价', '成本价格', '持仓成本价', '买入均价'])
+  const shares = portfolioImportColumnIndex(parts, ['shares', '持仓数量', '数量', '股份余额', '当前持仓', '证券余额', '股票余额', '可用数量', '可用余额'])
+  const costPrice = portfolioImportColumnIndex(parts, ['cost_price', 'costprice', '成本价', '成本价格', '持仓成本价', '买入均价', '摊薄成本价', '参考成本价', '成本价元'])
   if (symbol < 0 || shares < 0) {
     return null
   }
@@ -1980,9 +1980,9 @@ function portfolioTradeImportHeader(parts: string[] | undefined) {
     return null
   }
   const symbol = portfolioImportColumnIndex(parts, ['symbol', '证券代码', '股票代码', '代码'])
-  const side = portfolioImportColumnIndex(parts, ['side', '方向', '买卖', '买卖方向', '操作', '业务名称'])
-  const shares = portfolioImportColumnIndex(parts, ['shares', '成交数量', '数量', '发生数量'])
-  const price = portfolioImportColumnIndex(parts, ['price', '成交价格', '成交价', '价格', '成交均价'])
+  const side = portfolioImportColumnIndex(parts, ['side', '方向', '买卖', '买卖方向', '买卖标志', '操作', '业务名称', '业务类型'])
+  const shares = portfolioImportColumnIndex(parts, ['shares', '成交数量', '数量', '发生数量', '成交股数', '成交股份'])
+  const price = portfolioImportColumnIndex(parts, ['price', '成交价格', '成交价', '价格', '成交均价', '成交均价元', '成交价格元'])
   if (symbol < 0 || side < 0 || shares < 0 || price < 0) {
     return null
   }
@@ -2003,11 +2003,11 @@ function portfolioImportValue(parts: string[], index: number) {
 }
 
 function isBuyTradeSide(value: string) {
-  return /^(buy|b|买|买入|证券买入)$/i.test(value)
+  return /^(buy|b|买|买入|证券买入|买入成交|担保品买入|融资买入)$/i.test(value)
 }
 
 function isSellTradeSide(value: string) {
-  return /^(sell|s|卖|卖出|证券卖出)$/i.test(value)
+  return /^(sell|s|卖|卖出|证券卖出|卖出成交|担保品卖出|融资卖出|融券卖出)$/i.test(value)
 }
 
 function readTextFile(file: File): Promise<string> {
