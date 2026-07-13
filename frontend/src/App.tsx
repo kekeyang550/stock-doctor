@@ -1275,12 +1275,20 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const cacheBuckets = Array.isArray(cacheStatus.buckets) ? cacheStatus.buckets : []
   const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
   const lines: string[] = []
+  const conclusion = reportConclusionText(payload)
+  const riskDisclosure = reportRiskDisclosure(payload)
 
   lines.push(`# ${markdownText(diagnosis.name ?? payload.symbol)} 研究报告`)
   lines.push('')
   lines.push(`- 代码: ${markdownText(payload.symbol)}`)
   lines.push(`- 周期: ${markdownText(payload.horizon)}`)
   lines.push(`- 导出时间: ${markdownText(payload.exported_at)}`)
+  lines.push('')
+
+  lines.push('## 结论页')
+  lines.push('')
+  lines.push(`- 核心结论: ${markdownText(conclusion)}`)
+  lines.push(`- 风险提示: ${markdownText(riskDisclosure)}`)
   lines.push('')
 
   lines.push('## 诊断摘要')
@@ -1402,6 +1410,11 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   markdownList(lines, reviewActionItems.slice(0, 8), (item) => `${item.title} - ${item.priority} - ${item.status} - ${item.detail}`)
   lines.push('')
 
+  lines.push('## 固定风险提示')
+  lines.push('')
+  lines.push(markdownText(riskDisclosure))
+  lines.push('')
+
   return `${lines.join('\n').trim()}\n`
 }
 
@@ -1472,6 +1485,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const cacheBuckets = Array.isArray(cacheStatus.buckets) ? cacheStatus.buckets : []
   const activeCacheEntries = cacheBuckets.reduce((total: number, bucket: any) => total + Number(bucket.active_entries ?? 0), 0)
   const totalCacheEntries = cacheBuckets.reduce((total: number, bucket: any) => total + Number(bucket.entries ?? 0), 0)
+  const conclusion = reportConclusionText(payload)
+  const riskDisclosure = reportRiskDisclosure(payload)
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -1498,6 +1513,19 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <h1>${escapeHtml(diagnosis.name ?? "")} <small>${escapeHtml(payload.symbol)}</small></h1>
       <p>${escapeHtml(diagnosis.rating ?? "")} · ${escapeHtml(diagnosis.verdict ?? "")}</p>
     </header>
+
+    <section>
+      <h2>结论页</h2>
+      <div class="grid">
+        <div class="metric"><span>评级</span><strong>${escapeHtml(diagnosis.rating ?? "-")}</strong></div>
+        <div class="metric"><span>综合分</span><strong>${escapeHtml(score.total ?? "-")}</strong></div>
+        <div class="metric"><span>数据质量</span><strong>${escapeHtml(dataQuality.score ?? "-")}</strong></div>
+        <div class="metric"><span>组合风险</span><strong>${escapeHtml(portfolioRisk.risk_label ?? "-")}</strong></div>
+      </div>
+      <h3>核心结论</h3>
+      <p>${escapeHtml(conclusion)}</p>
+      <p><strong>风险提示：</strong>${escapeHtml(riskDisclosure)}</p>
+    </section>
 
     <section>
       <h2>诊断摘要</h2>
@@ -1688,9 +1716,32 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <p>${escapeHtml(reviewActions.name ?? diagnosis.name ?? "")} · ${escapeHtml(reviewActions.horizon ?? payload.horizon ?? "")} · ${escapeHtml(reviewActions.generated_at ?? "")}</p>
       ${reviewActionItems.map((item: any) => `<div class="row"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(reviewActionPriorityLabel(item.priority))} · ${escapeHtml(reviewActionStatusLabel(item.status))} · ${escapeHtml(item.category)} · ${escapeHtml(item.detail)} · 来源 ${escapeHtml(item.source)}</small></div>`).join("") || "<p>暂无复盘行动</p>"}
     </section>
+
+    <section>
+      <h2>固定风险提示</h2>
+      <p>${escapeHtml(riskDisclosure)}</p>
+    </section>
   </main>
 </body>
 </html>`
+}
+
+function reportConclusionText(payload: Record<string, any>) {
+  const diagnosis = payload.diagnosis ?? {}
+  const score = diagnosis.score ?? {}
+  const portfolioRisk = payload.portfolio_risk ?? {}
+  const dataQuality = payload.data_quality ?? {}
+  const rating = diagnosis.rating ?? '暂无评级'
+  const total = score.total ?? '-'
+  const riskLabel = portfolioRisk.risk_label ?? '暂无组合风险'
+  const qualityScore = dataQuality.score ?? '-'
+  return `${rating}，综合分 ${total}；组合风险为${riskLabel}，数据质量 ${qualityScore} 分。请结合仓位、止损和数据可信度复核后再执行。`
+}
+
+function reportRiskDisclosure(payload: Record<string, any>) {
+  const dataQuality = payload.data_quality ?? {}
+  const qualityStatus = reportQualityStatusLabel(dataQuality.status)
+  return `本报告由本地数据、公开行情和用户输入生成，仅用于研究复盘，不构成任何投资建议或收益承诺。若数据质量为${qualityStatus}、存在 fallback、缓存过期、字段缺失或持仓输入不完整，应先复核原始数据和券商账户记录。`
 }
 
 function escapeHtml(value: unknown) {
