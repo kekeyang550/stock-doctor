@@ -536,6 +536,13 @@ const systemReadiness = {
       next_action: '研发阶段可继续使用 Mock；接近实盘前切换到 AKShare 或 Tushare。',
     },
     {
+      key: 'runtime_config',
+      label: '运行配置',
+      status: 'pass',
+      detail: '当前 provider=mock；通达信 vipdoc 未配置；同花顺股票名表未配置；Tushare Token 未配置。',
+      next_action: '运行配置可用；修改环境变量后需要重启后端生效。',
+    },
+    {
       key: 'freshness',
       label: '数据新鲜度',
       status: 'pass',
@@ -1394,6 +1401,8 @@ describe('App', () => {
     const readinessPanel = screen.getByRole('heading', { name: '系统就绪度' }).closest('section')!
     expect(within(readinessPanel).getByText('88')).toBeInTheDocument()
     expect(within(readinessPanel).getByText('状态存储')).toBeInTheDocument()
+    expect(within(readinessPanel).getByText('运行配置')).toBeInTheDocument()
+    expect(within(readinessPanel).getByText(/provider=mock/)).toBeInTheDocument()
     expect(within(readinessPanel).getByText('刷新任务')).toBeInTheDocument()
     const qualityOverviewPanel = screen.getByRole('heading', { name: '数据质量总览' }).closest('section')!
     expect(within(qualityOverviewPanel).getByText('平均质量')).toBeInTheDocument()
