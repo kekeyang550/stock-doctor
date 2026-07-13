@@ -3160,6 +3160,7 @@ describe('App', () => {
       notes,
       price_alerts: priceAlerts,
       review_action_statuses: [],
+      strategy_backtests: [{ id: 'bt1', symbol: '600519', holding_days: 10 }],
     }
     const preview = {
       mode: 'merge',
@@ -3195,6 +3196,8 @@ describe('App', () => {
     })
 
     const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    const previewBodies: unknown[] = []
+    const importBodies: unknown[] = []
     vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
       const target = String(url)
       if (target.includes('/system/export')) {
@@ -3204,12 +3207,14 @@ describe('App', () => {
         } as Response))
       }
       if (target.includes('/system/import/preview') && options?.method === 'POST') {
+        previewBodies.push(JSON.parse(String(options.body)))
         return previewRequest.then(() => ({
           ok: true,
           json: () => Promise.resolve(preview),
         } as Response))
       }
       if (target.includes('/system/import') && options?.method === 'POST') {
+        importBodies.push(JSON.parse(String(options.body)))
         return importRequest.then(() => ({
           ok: true,
           json: () => Promise.resolve(importResult),
@@ -3242,6 +3247,7 @@ describe('App', () => {
     resolvePreview()
 
     await waitFor(() => expect(within(storagePanel).getByText('backup.json')).toBeInTheDocument())
+    expect(previewBodies[0]).toMatchObject({ strategy_backtests: [{ id: 'bt1', symbol: '600519', holding_days: 10 }] })
     const importButton = within(storagePanel).getByRole('button', { name: '导入' })
     fireEvent.click(importButton)
 
@@ -3251,6 +3257,7 @@ describe('App', () => {
     resolveImport()
 
     await waitFor(() => expect(within(storagePanel).queryByText('backup.json')).not.toBeInTheDocument())
+    expect(importBodies[0]).toMatchObject({ strategy_backtests: [{ id: 'bt1', symbol: '600519', holding_days: 10 }] })
   })
 
   it('shows local failure feedback when note save fails and keeps the draft', async () => {

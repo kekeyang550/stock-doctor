@@ -2167,6 +2167,7 @@ function buildStorageImportPayload(value: unknown): StorageImportPayload {
     notes: Array.isArray(record.notes) ? record.notes : [],
     price_alerts: Array.isArray(record.price_alerts) ? record.price_alerts : [],
     review_action_statuses: Array.isArray(record.review_action_statuses) ? record.review_action_statuses : [],
+    strategy_backtests: Array.isArray(record.strategy_backtests) ? record.strategy_backtests : [],
   }
 }
 
