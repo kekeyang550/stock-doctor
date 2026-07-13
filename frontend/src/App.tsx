@@ -1880,18 +1880,18 @@ function normalizePortfolioInputs(inputs: Partial<PortfolioInputs>): PortfolioIn
 
 function parsePortfolioLotsText(text: string): Record<string, { shares: string; cost_price: string }> {
   const lots: Record<string, { shares: string; cost_price: string }> = {}
-  text.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim()
-    if (!trimmed || /^symbol|^代码|^证券代码/i.test(trimmed)) {
+  const rows = parsePortfolioImportRows(text)
+  const header = portfolioImportHeader(rows[0])
+  rows.forEach((parts, index) => {
+    if (header && index === 0) {
       return
     }
-    const parts = trimmed.split(/[\t,;，；]+/).map((part) => part.trim()).filter(Boolean)
     if (parts.length < 2) {
       return
     }
-    const symbol = parts[0].toUpperCase()
-    const shares = normalizePortfolioInputNumber(parts[1], 0, 1_000_000_000)
-    const costPrice = normalizePortfolioInputNumber(parts[2], 0, 1_000_000)
+    const symbol = portfolioImportValue(parts, header?.symbol ?? 0).toUpperCase()
+    const shares = normalizePortfolioInputNumber(portfolioImportValue(parts, header?.shares ?? 1), 0, 1_000_000_000)
+    const costPrice = normalizePortfolioInputNumber(portfolioImportValue(parts, header?.costPrice ?? 2), 0, 1_000_000)
     if (symbol && symbol.length <= 12 && shares !== '') {
       lots[symbol] = { shares, cost_price: costPrice }
     }
@@ -1901,19 +1901,19 @@ function parsePortfolioLotsText(text: string): Record<string, { shares: string; 
 
 function parsePortfolioTradesText(text: string): Record<string, { shares: string; cost_price: string }> {
   const positions: Record<string, { shares: number; cost_amount: number }> = {}
-  text.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim()
-    if (!trimmed || /^symbol|^代码|^证券代码/i.test(trimmed)) {
+  const rows = parsePortfolioImportRows(text)
+  const header = portfolioTradeImportHeader(rows[0])
+  rows.forEach((parts, index) => {
+    if (header && index === 0) {
       return
     }
-    const parts = trimmed.split(/[\t,;，；]+/).map((part) => part.trim()).filter(Boolean)
     if (parts.length < 4) {
       return
     }
-    const symbol = parts[0].toUpperCase()
-    const side = parts[1]
-    const shares = Number(parts[2])
-    const price = Number(parts[3])
+    const symbol = portfolioImportValue(parts, header?.symbol ?? 0).toUpperCase()
+    const side = portfolioImportValue(parts, header?.side ?? 1)
+    const shares = Number(portfolioImportValue(parts, header?.shares ?? 2))
+    const price = Number(portfolioImportValue(parts, header?.price ?? 3))
     if (!symbol || symbol.length > 12 || !Number.isFinite(shares) || shares <= 0 || !Number.isFinite(price) || price <= 0) {
       return
     }
@@ -1941,6 +1941,54 @@ function parsePortfolioTradesText(text: string): Record<string, { shares: string
     }
   })
   return lots
+}
+
+function parsePortfolioImportRows(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.split(/[\t,;，；]+/).map((part) => part.trim()).filter(Boolean))
+}
+
+function portfolioImportHeader(parts: string[] | undefined) {
+  if (!parts?.length) {
+    return null
+  }
+  const symbol = portfolioImportColumnIndex(parts, ['symbol', '证券代码', '股票代码', '代码'])
+  const shares = portfolioImportColumnIndex(parts, ['shares', '持仓数量', '数量', '股份余额', '当前持仓'])
+  const costPrice = portfolioImportColumnIndex(parts, ['cost_price', 'costprice', '成本价', '成本价格', '持仓成本价', '买入均价'])
+  if (symbol < 0 || shares < 0) {
+    return null
+  }
+  return { symbol, shares, costPrice }
+}
+
+function portfolioTradeImportHeader(parts: string[] | undefined) {
+  if (!parts?.length) {
+    return null
+  }
+  const symbol = portfolioImportColumnIndex(parts, ['symbol', '证券代码', '股票代码', '代码'])
+  const side = portfolioImportColumnIndex(parts, ['side', '方向', '买卖', '买卖方向', '操作', '业务名称'])
+  const shares = portfolioImportColumnIndex(parts, ['shares', '成交数量', '数量', '发生数量'])
+  const price = portfolioImportColumnIndex(parts, ['price', '成交价格', '成交价', '价格', '成交均价'])
+  if (symbol < 0 || side < 0 || shares < 0 || price < 0) {
+    return null
+  }
+  return { symbol, side, shares, price }
+}
+
+function portfolioImportColumnIndex(parts: string[], candidates: string[]) {
+  const normalizedCandidates = candidates.map(normalizePortfolioImportHeader)
+  return parts.findIndex((part) => normalizedCandidates.includes(normalizePortfolioImportHeader(part)))
+}
+
+function normalizePortfolioImportHeader(value: string) {
+  return value.trim().toLowerCase().replace(/[\s_（）()]/g, '')
+}
+
+function portfolioImportValue(parts: string[], index: number) {
+  return index >= 0 && index < parts.length ? parts[index] : ''
 }
 
 function isBuyTradeSide(value: string) {

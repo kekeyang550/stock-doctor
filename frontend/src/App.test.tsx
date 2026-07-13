@@ -1836,6 +1836,27 @@ describe('App', () => {
     })
   })
 
+  it('imports portfolio lots with chinese broker headers', async () => {
+    render(<App />)
+
+    const input = await screen.findByLabelText('导入持仓文件')
+    const file = new File(['证券代码,证券名称,持仓数量,成本价\n600519,贵州茅台,18,1008.5\n'], 'broker-positions.csv', {
+      type: 'text/csv',
+    })
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('持仓数量 贵州茅台')).toHaveValue(18)
+      expect(screen.getByLabelText('成本价 贵州茅台')).toHaveValue(1008.5)
+    })
+    await waitFor(() => {
+      const portfolioCalls = vi.mocked(fetch).mock.calls
+        .map((call) => decodeURIComponent(String(call[0])))
+        .filter((url) => url.includes('/risk/portfolio'))
+      expect(portfolioCalls.some((url) => url.includes('holdings=600519:18:1008.5'))).toBe(true)
+    })
+  })
+
   it('imports portfolio trades and derives open lot cost basis', async () => {
     render(<App />)
 
@@ -1858,6 +1879,29 @@ describe('App', () => {
         .map((call) => decodeURIComponent(String(call[0])))
         .filter((url) => url.includes('/risk/portfolio'))
       expect(portfolioCalls.some((url) => url.includes('holdings=600519:15:1100'))).toBe(true)
+    })
+  })
+
+  it('imports chinese broker trade records and derives open lots', async () => {
+    render(<App />)
+
+    const input = await screen.findByLabelText('导入交易流水文件')
+    const file = new File([
+      '成交日期,证券代码,证券名称,买卖方向,成交数量,成交价格\n',
+      '20260710,600519,贵州茅台,买入,20,1000\n',
+      '20260711,600519,贵州茅台,卖出,8,1300\n',
+    ], 'broker-trades.csv', { type: 'text/csv' })
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('持仓数量 贵州茅台')).toHaveValue(12)
+      expect(screen.getByLabelText('成本价 贵州茅台')).toHaveValue(1000)
+    })
+    await waitFor(() => {
+      const portfolioCalls = vi.mocked(fetch).mock.calls
+        .map((call) => decodeURIComponent(String(call[0])))
+        .filter((url) => url.includes('/risk/portfolio'))
+      expect(portfolioCalls.some((url) => url.includes('holdings=600519:12:1000'))).toBe(true)
     })
   })
 
