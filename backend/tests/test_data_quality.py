@@ -1,6 +1,16 @@
 from datetime import date
 
-from app.schemas.diagnosis import CapitalSnapshot, RiskSnapshot, StockSnapshot, TechnicalSnapshot
+from app.schemas.diagnosis import (
+    CapitalSnapshot,
+    DataConnectorHealth,
+    DataConnectorRuntimeConfig,
+    DataConnectorStatus,
+    ProviderCacheBucketStatus,
+    ProviderCacheStatus,
+    RiskSnapshot,
+    StockSnapshot,
+    TechnicalSnapshot,
+)
 from app.services.data_quality import DataQualityService
 from app.services.market_data import MockMarketDataProvider
 
@@ -95,3 +105,98 @@ def test_data_quality_report_labels_tushare_financial_sources():
     assert source_check.status == "pass"
     assert "Tushare 日行情基础指标" in source_check.detail
     assert "Tushare 财务指标" in source_check.detail
+
+
+def test_data_quality_report_warns_for_runtime_fallback_and_cache():
+    snapshot = MockMarketDataProvider().get_snapshot("600519").model_copy(update={"as_of": date.today().isoformat()})
+    health = DataConnectorHealth(
+        active_provider="eastmoney",
+        fallback_provider="mock",
+        runtime_config=DataConnectorRuntimeConfig(
+            request_timeout_seconds=8,
+            cache_ttl_seconds=300,
+            freshness_stale_after_minutes=30,
+        ),
+        cache_status=ProviderCacheStatus(
+            ttl_seconds=300,
+            generated_at="2026-07-13T00:00:00Z",
+            buckets=[
+                ProviderCacheBucketStatus(
+                    key="history",
+                    label="历史行情",
+                    entries=2,
+                    active_entries=0,
+                    expired_entries=2,
+                    nearest_expires_in_seconds=0,
+                    hit_count=1,
+                    miss_count=4,
+                    hit_rate_pct=20,
+                    status="expired",
+                )
+            ],
+        ),
+        connectors=[
+            DataConnectorStatus(
+                name="东方财富",
+                status="online",
+                active=True,
+                role="主源",
+                package="requests",
+                package_installed=True,
+                configured_provider="eastmoney",
+                latency_ms=None,
+                last_checked_at="2026-07-13T00:00:00Z",
+                message="在线",
+                next_action="继续观察",
+            ),
+            DataConnectorStatus(
+                name="腾讯行情",
+                status="fallback",
+                active=False,
+                role="备用",
+                package="requests",
+                package_installed=True,
+                configured_provider="eastmoney",
+                latency_ms=None,
+                last_checked_at="2026-07-13T00:00:00Z",
+                message="备用",
+                next_action="继续观察",
+            ),
+            DataConnectorStatus(
+                name="新浪资金流",
+                status="fallback",
+                active=False,
+                role="备用",
+                package="requests",
+                package_installed=True,
+                configured_provider="eastmoney",
+                latency_ms=None,
+                last_checked_at="2026-07-13T00:00:00Z",
+                message="备用",
+                next_action="继续观察",
+            ),
+            DataConnectorStatus(
+                name="通达信本地日线",
+                status="fallback",
+                active=False,
+                role="本地",
+                package=None,
+                package_installed=True,
+                configured_provider="eastmoney",
+                latency_ms=None,
+                last_checked_at="2026-07-13T00:00:00Z",
+                message="备用",
+                next_action="继续观察",
+            ),
+        ],
+    )
+
+    report = DataQualityService().build_report(snapshot, connector_health=health)
+    runtime_check = next(check for check in report.checks if check.key == "runtime_environment")
+
+    assert report.status == "warn"
+    assert report.score == 90
+    assert runtime_check.status == "warn"
+    assert "fallback" in runtime_check.detail
+    assert "历史行情" in runtime_check.detail
+    assert "缓存平均命中率 20.0%" in runtime_check.detail

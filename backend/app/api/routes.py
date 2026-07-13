@@ -157,9 +157,10 @@ async def search_stocks(
             ]
     candidates = sorted(candidates, key=lambda stock: (stock.symbol not in watchlist_symbols, stock.symbol))
     results = []
+    connector_health = data_connector_health_service.build_health(provider=data_provider)
     for stock in candidates[:limit]:
         snapshot = data_provider.get_snapshot(stock.symbol)
-        quality = data_quality_service.build_report(snapshot) if snapshot is not None else None
+        quality = data_quality_service.build_report(snapshot, connector_health=connector_health) if snapshot is not None else None
         results.append(
             StockSearchResult(
                 **stock.model_dump(),
@@ -189,10 +190,11 @@ async def data_quality_overview(
 ) -> DataQualityOverview:
     stocks = data_provider.get_watchlist() if scope == "watchlist" else data_provider.list_stocks()
     reports = []
+    connector_health = data_connector_health_service.build_health(provider=data_provider)
     for stock in stocks:
         snapshot = data_provider.get_snapshot(stock.symbol)
         if snapshot is not None:
-            reports.append(data_quality_service.build_report(snapshot))
+            reports.append(data_quality_service.build_report(snapshot, connector_health=connector_health))
     reports = sorted(reports, key=lambda report: (report.score, report.symbol))
     return DataQualityOverview(
         scope=scope,
@@ -211,7 +213,8 @@ async def data_quality(symbol: str) -> DataQualityReport:
     snapshot = data_provider.get_snapshot(symbol)
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
-    return data_quality_service.build_report(snapshot)
+    connector_health = data_connector_health_service.build_health(provider=data_provider)
+    return data_quality_service.build_report(snapshot, connector_health=connector_health)
 
 
 @router.get("/system/data-connectors", response_model=DataConnectorHealth)

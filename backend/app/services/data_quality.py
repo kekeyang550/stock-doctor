@@ -1,6 +1,6 @@
 from datetime import date
 
-from app.schemas.diagnosis import DataQualityCheck, DataQualityReport, StockSnapshot
+from app.schemas.diagnosis import DataConnectorHealth, DataQualityCheck, DataQualityReport, StockSnapshot
 
 SOURCE_LABELS = {
     "capital-flow": "资金流",
@@ -31,7 +31,11 @@ CONSERVATIVE_FIELD_LABELS = {
 
 
 class DataQualityService:
-    def build_report(self, snapshot: StockSnapshot) -> DataQualityReport:
+    def build_report(
+        self,
+        snapshot: StockSnapshot,
+        connector_health: DataConnectorHealth | None = None,
+    ) -> DataQualityReport:
         checks = [
             self._market_check(snapshot),
             self._source_coverage_check(snapshot),
@@ -41,6 +45,8 @@ class DataQualityService:
             self._risk_check(snapshot),
             self._as_of_check(snapshot),
         ]
+        if connector_health is not None:
+            checks.append(self._runtime_check(connector_health))
         issue_count = len([check for check in checks if check.status != "pass"])
         failures = len([check for check in checks if check.status == "fail"])
         warnings = len([check for check in checks if check.status == "warn"])
@@ -204,6 +210,53 @@ class DataQualityService:
             status=status,
             detail=detail,
             impact="影响诊断报告和价位提醒的有效期判断。",
+        )
+
+    def _runtime_check(self, connector_health: DataConnectorHealth) -> DataQualityCheck:
+        active_connector = next((item for item in connector_health.connectors if item.active), None)
+        fallback_count = len([item for item in connector_health.connectors if item.status == "fallback"])
+        error_count = len([item for item in connector_health.connectors if item.status in {"error", "missing-package"}])
+        cache_status = connector_health.cache_status
+        stale_buckets = []
+        hit_rates = []
+        if cache_status is not None:
+            stale_buckets = [bucket.label for bucket in cache_status.buckets if bucket.status in {"expired", "partial"}]
+            hit_rates = [
+                bucket.hit_rate_pct
+                for bucket in cache_status.buckets
+                if bucket.hit_count + bucket.miss_count > 0
+            ]
+        average_hit_rate = round(sum(hit_rates) / len(hit_rates), 1) if hit_rates else None
+
+        problems = []
+        if active_connector is not None and active_connector.status in {"fallback", "error", "missing-package"}:
+            problems.append(f"主连接器 {active_connector.name} 状态为 {active_connector.status}")
+        if fallback_count >= 3:
+            problems.append(f"{fallback_count} 个连接器处于 fallback")
+        if error_count:
+            problems.append(f"{error_count} 个连接器缺包或异常")
+        if stale_buckets:
+            problems.append(f"缓存桶需刷新：{'、'.join(stale_buckets[:3])}")
+        if average_hit_rate is not None and average_hit_rate < 50:
+            problems.append(f"缓存平均命中率 {average_hit_rate}%")
+
+        if not problems:
+            hit_text = f"，缓存平均命中率 {average_hit_rate}%" if average_hit_rate is not None else ""
+            return DataQualityCheck(
+                key="runtime_environment",
+                label="运行环境",
+                status="pass",
+                detail=f"连接器状态稳定{hit_text}。",
+                impact="影响真实数据获取稳定性、缓存复用和 fallback 风险判断。",
+            )
+
+        status = "fail" if error_count or (active_connector is not None and active_connector.status == "error") else "warn"
+        return DataQualityCheck(
+            key="runtime_environment",
+            label="运行环境",
+            status=status,
+            detail="；".join(problems) + "。",
+            impact="影响真实数据获取稳定性、缓存复用和 fallback 风险判断。",
         )
 
     def _check(

@@ -196,6 +196,7 @@ def test_data_quality_endpoint_returns_field_checks():
         "capital",
         "risk",
         "as_of",
+        "runtime_environment",
     }
 
 
