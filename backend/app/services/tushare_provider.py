@@ -20,6 +20,7 @@ class TushareMarketDataProvider:
         self._last_basic_enriched = False
         self._last_finance_enriched = False
         self._last_history_enriched = False
+        self._last_error: str | None = None
 
     def list_stocks(self) -> list[StockSummary]:
         return self._fallback.list_stocks()
@@ -32,6 +33,8 @@ class TushareMarketDataProvider:
         status = (
             "online"
             if enriched
+            else "fallback"
+            if self._last_error
             else "planned"
             if self._is_ready()
             else "fallback"
@@ -118,6 +121,8 @@ class TushareMarketDataProvider:
             enriched_parts.append("前复权日线")
         if enriched_parts:
             return f"{'、'.join(enriched_parts)}已从 Tushare Pro 增强。"
+        if self._last_error:
+            return f"Tushare 连通性校验失败：{self._last_error}；继续使用 Mock 回退。"
         if package_available and token_configured:
             return "包和 Token 已就绪；基础资料、财务基础指标和前复权日线可尝试增强。"
         if token_configured:
@@ -132,13 +137,16 @@ class TushareMarketDataProvider:
             try:
                 import tushare as module  # type: ignore
             except Exception:
+                self._last_error = "tushare 包导入失败"
                 return None
         pro_api = getattr(module, "pro_api", None)
         if pro_api is None:
+            self._last_error = "tushare.pro_api 不可用"
             return None
         try:
             return pro_api(settings.tushare_token.strip())
         except Exception:
+            self._last_error = "pro_api 初始化失败"
             return None
 
     def _fundamental_from_tushare(self, symbol: str) -> FundamentalSnapshot | None:
@@ -155,6 +163,7 @@ class TushareMarketDataProvider:
             )
         except Exception:
             daily_rows = []
+            self._last_error = "daily_basic 调用失败"
         try:
             fina_rows = self._rows(
                 client.fina_indicator(
@@ -167,6 +176,7 @@ class TushareMarketDataProvider:
             )
         except Exception:
             fina_rows = []
+            self._last_error = "fina_indicator 调用失败"
         daily = daily_rows[0] if daily_rows else {}
         fina = fina_rows[0] if fina_rows else {}
         pe_ttm = self._first_float(daily, "pe_ttm", "pe", default=0)
@@ -178,7 +188,9 @@ class TushareMarketDataProvider:
         gross_margin = self._first_optional_float(fina, "grossprofit_margin", "gross_margin")
         debt_to_assets = self._first_optional_float(fina, "debt_to_assets")
         if pe_ttm <= 0 and pb <= 0 and roe == 0 and revenue_growth == 0 and profit_growth == 0:
+            self._last_error = self._last_error or "财务指标返回空数据"
             return None
+        self._last_error = None
         return FundamentalSnapshot(
             pe_ttm=pe_ttm,
             pb=pb,
@@ -204,8 +216,10 @@ class TushareMarketDataProvider:
                 )
             )
         except Exception:
+            self._last_error = "stock_basic 调用失败"
             return None
         if not rows:
+            self._last_error = self._last_error or "基础资料返回空数据"
             return None
         row = rows[0]
         update = {}
@@ -236,6 +250,7 @@ class TushareMarketDataProvider:
                 )
             )
         except Exception:
+            self._last_error = "pro_bar 前复权日线调用失败"
             return []
         bars: list[HistoricalPriceBar] = []
         for row in rows:
@@ -250,6 +265,10 @@ class TushareMarketDataProvider:
                     volume=self._first_float(row, "vol", "volume", default=0),
                 )
             )
+        if not bars:
+            self._last_error = self._last_error or "前复权日线返回空数据"
+            return []
+        self._last_error = None
         return sorted(bars, key=lambda bar: bar.date)[-max(1, days):]
 
     def _rows(self, payload: object) -> list[dict]:

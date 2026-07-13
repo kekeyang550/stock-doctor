@@ -71,6 +71,32 @@ class FakeTushareClient:
         ]
 
 
+class FailingTushareModule:
+    def __init__(self):
+        self.client = FailingTushareClient()
+
+    def pro_api(self, token: str):
+        self.client.token = token
+        return self.client
+
+    def pro_bar(self, ts_code: str, adj: str, freq: str):
+        raise RuntimeError("pro_bar unavailable")
+
+
+class FailingTushareClient:
+    def __init__(self):
+        self.token = ""
+
+    def daily_basic(self, ts_code: str, fields: str):
+        raise RuntimeError("daily_basic unavailable")
+
+    def fina_indicator(self, ts_code: str, fields: str):
+        raise RuntimeError("fina_indicator unavailable")
+
+    def stock_basic(self, ts_code: str, fields: str):
+        raise RuntimeError("stock_basic unavailable")
+
+
 def test_akshare_provider_falls_back_without_package():
     provider = AkshareMarketDataProvider()
 
@@ -148,6 +174,26 @@ def test_tushare_provider_returns_adjusted_price_history(monkeypatch):
     tushare = next(source for source in sources if source["name"] == "Tushare Pro")
     assert tushare["status"] == "online"
     assert "前复权日线" in tushare["role"]
+
+
+def test_tushare_provider_reports_api_failures_without_breaking_fallback(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "test-token")
+    provider = TushareMarketDataProvider(ts_module=FailingTushareModule())
+
+    snapshot = provider.get_snapshot("600519")
+    sources = provider.get_data_sources()
+    bars = provider.get_price_history("600519", days=2)
+    sources_after_history = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert snapshot.name != ""
+    tushare = next(source for source in sources if source["name"] == "Tushare Pro")
+    assert tushare["status"] == "fallback"
+    assert "stock_basic 调用失败" in tushare["role"]
+    assert len(bars) == 2
+    tushare_after_history = next(source for source in sources_after_history if source["name"] == "Tushare Pro")
+    assert tushare_after_history["status"] == "fallback"
+    assert "pro_bar 前复权日线调用失败" in tushare_after_history["role"]
 
 
 class FakeAkshare:
