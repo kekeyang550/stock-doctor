@@ -1247,13 +1247,17 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   markdownList(lines, positions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${item.industry} - ${item.weight_pct}% - ${item.market_value ?? 0} 元`)
   lines.push('')
   lines.push('### 行业暴露')
-  markdownList(lines, industryExposures.slice(0, 8), (item) => `${item.industry}: 权重 ${item.weight_pct}%, ${item.stock_count} 只, 风险压力 ${item.risk_score}`)
+  markdownList(
+    lines,
+    industryExposures.slice(0, 8),
+    (item) => `${item.industry}: 权重 ${item.weight_pct}%, ${item.stock_count} 只, ${item.concentration_label ?? '集中度正常'}, 上限 ${item.suggested_max_weight_pct ?? 0}%, 超额 ${item.excess_weight_pct ?? 0}%, 风险压力 ${item.risk_score}`,
+  )
   lines.push('')
   lines.push('### 风险贡献')
   markdownList(lines, riskContributions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - 权重 ${item.weight_pct}%, 风险分 ${item.risk_score}, 贡献 ${item.contribution_score}`)
   lines.push('')
   lines.push('### 再平衡建议')
-  markdownList(lines, rebalanceActions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${reportRebalanceActionLabel(item.action)} - 当前 ${item.current_weight_pct}% / 建议 ${item.suggested_weight_pct}% / 调整 ${item.adjustment_pct}%`)
+  markdownList(lines, rebalanceActions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${reportRebalanceActionLabel(item.action)} - 当前 ${item.current_weight_pct}% / 建议 ${item.suggested_weight_pct}% / 调整 ${item.delta_pct}%`)
   lines.push('')
 
   lines.push('## 策略回测')
@@ -1472,7 +1476,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <h3>模拟仓位</h3>
       ${positions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.market_value ?? 0)} 元</small></div>`).join("") || "<p>暂无模拟仓位</p>"}
       <h3>行业暴露</h3>
-      ${industryExposures.map((item: any) => `<div class="row"><strong>${escapeHtml(item.industry)}</strong><small>权重 ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.stock_count)} 只 · 风险压力 ${escapeHtml(item.risk_score)}</small></div>`).join("") || "<p>暂无行业暴露</p>"}
+      ${industryExposures.map((item: any) => `<div class="row"><strong>${escapeHtml(item.industry)}</strong><small>权重 ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.stock_count)} 只 · ${escapeHtml(item.concentration_label ?? "集中度正常")} · 上限 ${escapeHtml(item.suggested_max_weight_pct ?? 0)}% · 超额 ${escapeHtml(item.excess_weight_pct ?? 0)}% · 超额金额 ${escapeHtml(item.excess_market_value ?? 0)} 元 · 风险压力 ${escapeHtml(item.risk_score)}</small></div>`).join("") || "<p>暂无行业暴露</p>"}
       <h3>风险贡献</h3>
       ${riskContributions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · 权重 ${escapeHtml(item.weight_pct)}% · 风险分 ${escapeHtml(item.risk_score)} · 贡献 ${escapeHtml(item.contribution_score)}</small></div>`).join("") || "<p>暂无风险贡献</p>"}
       <h3>再平衡建议</h3>

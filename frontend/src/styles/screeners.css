@@ -467,7 +467,35 @@
   border-radius: 8px;
   background: #fffaf1;
   color: #5f4b25;
+  display: grid;
+  gap: 4px;
   padding: 8px 10px;
+}
+
+.portfolio-suggestions span small {
+  color: #7a6334;
+}
+
+.concentration-pill {
+  justify-self: start;
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 3px 7px;
+}
+
+.concentration-pill.normal {
+  background: #e8efe3;
+  color: #31553f;
+}
+
+.concentration-pill.watch {
+  background: #fff4d5;
+  color: #7a5a2e;
+}
+
+.concentration-pill.high {
+  background: #fff0ed;
+  color: #7a3d3d;
 }
 
 .exposure-list {

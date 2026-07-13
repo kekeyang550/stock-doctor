@@ -703,6 +703,11 @@ export type PortfolioIndustryExposure = {
   stock_count: number
   weight_pct: number
   risk_score: number
+  concentration_level: 'normal' | 'watch' | 'high'
+  concentration_label: string
+  suggested_max_weight_pct: number
+  excess_weight_pct: number
+  excess_market_value: number
 }
 
 export type PortfolioRiskContribution = {

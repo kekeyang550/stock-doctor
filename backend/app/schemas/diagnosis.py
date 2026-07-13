@@ -659,6 +659,11 @@ class PortfolioIndustryExposure(BaseModel):
     stock_count: int
     weight_pct: float
     risk_score: float
+    concentration_level: str = Field(default="normal", pattern="^(normal|watch|high)$")
+    concentration_label: str = "正常"
+    suggested_max_weight_pct: float = 0
+    excess_weight_pct: float = 0
+    excess_market_value: float = 0
 
 
 class PortfolioRiskContribution(BaseModel):

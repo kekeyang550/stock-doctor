@@ -452,6 +452,9 @@ def test_portfolio_risk_endpoint_accepts_position_weights():
     assert payload["weight_mode"] == "custom"
     assert payload["total_position_weight"] == 100
     assert payload["concentration"]["top_industry_ratio"] == 0.8
+    assert payload["industry_exposures"][0]["concentration_level"] == "high"
+    assert payload["industry_exposures"][0]["suggested_max_weight_pct"] == 40
+    assert payload["industry_exposures"][0]["excess_weight_pct"] == 40
     position_by_symbol = {item["symbol"]: item for item in payload["positions"]}
     assert position_by_symbol["600519"]["weight_pct"] == 80
     assert position_by_symbol["300750"]["weight_pct"] == 20

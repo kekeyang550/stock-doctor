@@ -65,8 +65,13 @@ class PortfolioRiskService:
         normalized_weights, raw_weights, weight_mode, total_position_weight = self._weights(snapshots, position_weights)
         average_total = round(sum(item.score.total * normalized_weights.get(item.symbol, 0) for item in diagnoses), 1)
         average_risk = round(sum(item.score.risk * normalized_weights.get(item.symbol, 0) for item in diagnoses), 1)
-        concentration = self._concentration(snapshots, normalized_weights)
-        industry_exposures = self._industry_exposures(snapshots, diagnosis_by_symbol, normalized_weights)
+        concentration = self._concentration(snapshots, raw_weights)
+        industry_exposures = self._industry_exposures(
+            snapshots,
+            diagnosis_by_symbol,
+            raw_weights,
+            total_market_value,
+        )
         distribution = self._distribution(diagnoses)
         pressure = self._pressure_score(
             average_risk_score=average_risk,
@@ -156,11 +161,11 @@ class PortfolioRiskService:
             for snapshot in snapshots
         ]
 
-    def _concentration(self, snapshots: list[StockSnapshot], normalized_weights: dict[str, float]) -> PortfolioRiskConcentration:
+    def _concentration(self, snapshots: list[StockSnapshot], raw_weights: dict[str, float]) -> PortfolioRiskConcentration:
         industry_counts = Counter(snapshot.industry for snapshot in snapshots)
         industry_weights: dict[str, float] = defaultdict(float)
         for snapshot in snapshots:
-            industry_weights[snapshot.industry] += normalized_weights.get(snapshot.symbol, 0)
+            industry_weights[snapshot.industry] += raw_weights.get(snapshot.symbol, 0) / 100
         top_industry, top_ratio = max(industry_weights.items(), key=lambda item: item[1])
         top_count = industry_counts[top_industry]
         return PortfolioRiskConcentration(
@@ -174,27 +179,37 @@ class PortfolioRiskService:
         self,
         snapshots: list[StockSnapshot],
         diagnosis_by_symbol: dict[str, DiagnosisResponse],
-        normalized_weights: dict[str, float],
+        raw_weights: dict[str, float],
+        total_market_value: float,
     ) -> list[PortfolioIndustryExposure]:
         industry_counts = Counter(snapshot.industry for snapshot in snapshots)
         industry_weights: dict[str, float] = defaultdict(float)
         industry_risk_pressure: dict[str, float] = defaultdict(float)
         for snapshot in snapshots:
-            weight = normalized_weights.get(snapshot.symbol, 0)
+            weight = raw_weights.get(snapshot.symbol, 0) / 100
             diagnosis = diagnosis_by_symbol.get(snapshot.symbol)
             risk_pressure = 100 - diagnosis.score.risk if diagnosis is not None else 0
             industry_weights[snapshot.industry] += weight
             industry_risk_pressure[snapshot.industry] += weight * risk_pressure
 
-        exposures = [
-            PortfolioIndustryExposure(
-                industry=industry,
-                stock_count=industry_counts[industry],
-                weight_pct=round(weight * 100, 2),
-                risk_score=round(industry_risk_pressure[industry], 1),
+        exposures = []
+        for industry, weight in industry_weights.items():
+            weight_pct = round(weight * 100, 2)
+            limit = self._industry_weight_limit(industry_counts[industry], len(industry_counts))
+            excess_weight_pct = round(max(0, weight_pct - limit), 2)
+            exposures.append(
+                PortfolioIndustryExposure(
+                    industry=industry,
+                    stock_count=industry_counts[industry],
+                    weight_pct=weight_pct,
+                    risk_score=round(industry_risk_pressure[industry], 1),
+                    concentration_level=self._industry_concentration_level(weight_pct),
+                    concentration_label=self._industry_concentration_label(weight_pct),
+                    suggested_max_weight_pct=limit,
+                    excess_weight_pct=excess_weight_pct,
+                    excess_market_value=round(total_market_value * excess_weight_pct / 100, 2),
+                )
             )
-            for industry, weight in industry_weights.items()
-        ]
         return sorted(exposures, key=lambda item: (item.weight_pct, item.risk_score), reverse=True)
 
     def _distribution(self, diagnoses: list[DiagnosisResponse]) -> PortfolioRiskDistribution:
@@ -344,10 +359,12 @@ class PortfolioRiskService:
                 suggestions.append(f"按组合市值估算，现金缓冲约 {cash_amount:.2f} 元。")
         elif total_position_weight > 105:
             suggestions.append(f"当前模拟仓位 {total_position_weight:.1f}%，已超过 100%，请核对是否存在杠杆或重复录入。")
-        if drivers:
-            suggestions.append(f"优先复核 {drivers[0].name}：{drivers[0].primary_risk}")
         if concentration.top_industry_ratio >= 0.5 and concentration.top_industry_count >= 2:
             suggestions.append(f"{concentration.top_industry} 占比较高，注意行业共振回撤。")
+        elif concentration.top_industry_ratio >= 0.45:
+            suggestions.append(f"{concentration.top_industry} 权重接近集中度上限，新增仓位优先分散到其他行业。")
+        if drivers:
+            suggestions.append(f"优先复核 {drivers[0].name}：{drivers[0].primary_risk}")
         if distribution.high_count:
             suggestions.append(f"{distribution.high_count} 只标的处于高风险档，先检查风控线和事件窗口。")
         if not suggestions:
@@ -361,3 +378,24 @@ class PortfolioRiskService:
             return 0
         cash_pct = max(0, 100 - total_position_weight)
         return round(total_market_value * cash_pct / 100, 2)
+
+    def _industry_weight_limit(self, stock_count: int, industry_count: int) -> float:
+        if industry_count <= 1:
+            return 100
+        if stock_count >= 2:
+            return 45
+        return 40
+
+    def _industry_concentration_level(self, weight_pct: float) -> str:
+        if weight_pct >= 55:
+            return "high"
+        if weight_pct >= 40:
+            return "watch"
+        return "normal"
+
+    def _industry_concentration_label(self, weight_pct: float) -> str:
+        if weight_pct >= 55:
+            return "过度集中"
+        if weight_pct >= 40:
+            return "接近上限"
+        return "正常"

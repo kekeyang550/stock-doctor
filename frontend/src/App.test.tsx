@@ -652,9 +652,39 @@ const portfolioRisk = {
     industry_count: 3,
   },
   industry_exposures: [
-    { industry: '白酒', stock_count: 1, weight_pct: 33.33, risk_score: 18.4 },
-    { industry: '汽车整车', stock_count: 1, weight_pct: 33.33, risk_score: 23.1 },
-    { industry: '股份制银行', stock_count: 1, weight_pct: 33.33, risk_score: 15.2 },
+    {
+      industry: '白酒',
+      stock_count: 1,
+      weight_pct: 33.33,
+      risk_score: 18.4,
+      concentration_level: 'normal',
+      concentration_label: '正常',
+      suggested_max_weight_pct: 40,
+      excess_weight_pct: 0,
+      excess_market_value: 0,
+    },
+    {
+      industry: '汽车整车',
+      stock_count: 1,
+      weight_pct: 33.33,
+      risk_score: 23.1,
+      concentration_level: 'normal',
+      concentration_label: '正常',
+      suggested_max_weight_pct: 40,
+      excess_weight_pct: 0,
+      excess_market_value: 0,
+    },
+    {
+      industry: '股份制银行',
+      stock_count: 1,
+      weight_pct: 33.33,
+      risk_score: 15.2,
+      concentration_level: 'normal',
+      concentration_label: '正常',
+      suggested_max_weight_pct: 40,
+      excess_weight_pct: 0,
+      excess_market_value: 0,
+    },
   ],
   distribution: {
     high_count: 1,
@@ -1628,6 +1658,30 @@ describe('App', () => {
         ...portfolioRisk.concentration,
         top_industry_ratio: 1,
       },
+      industry_exposures: [
+        {
+          industry: '白酒',
+          stock_count: 1,
+          weight_pct: 80,
+          risk_score: 14.4,
+          concentration_level: 'high',
+          concentration_label: '过度集中',
+          suggested_max_weight_pct: 40,
+          excess_weight_pct: 40,
+          excess_market_value: 40000,
+        },
+        {
+          industry: '股份制银行',
+          stock_count: 1,
+          weight_pct: 0,
+          risk_score: 0,
+          concentration_level: 'normal',
+          concentration_label: '正常',
+          suggested_max_weight_pct: 40,
+          excess_weight_pct: 0,
+          excess_market_value: 0,
+        },
+      ],
       positions: [
         { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 80, market_value: 80000 },
         { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 0, market_value: 0 },
@@ -1668,6 +1722,10 @@ describe('App', () => {
     expect(riskPanel).toHaveTextContent('100,000 元')
     expect(riskPanel).toHaveTextContent('80,000 元')
     expect(riskPanel).toHaveTextContent('现金缓冲')
+    expect(riskPanel).toHaveTextContent('过度集中')
+    expect(riskPanel).toHaveTextContent('上限 40.0%')
+    expect(riskPanel).toHaveTextContent('超额 40.0%')
+    expect(riskPanel).toHaveTextContent('40,000 元')
   })
 
   it('shows strategy backtest summary with sample trades and drawdown', async () => {

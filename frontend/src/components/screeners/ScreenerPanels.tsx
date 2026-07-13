@@ -578,7 +578,18 @@ export function RiskExposurePanel({
             <div className="portfolio-suggestions">
               <strong>行业暴露</strong>
               {industryExposures.slice(0, 4).map((item) => (
-                <span key={item.industry}>{item.industry} {formatWeightPercent(item.weight_pct)} · {item.stock_count} 只 · 风险压力 {item.risk_score.toFixed(1)}</span>
+                <span key={item.industry}>
+                  <b className={`concentration-pill ${item.concentration_level}`}>{item.concentration_label}</b>
+                  {item.industry} {formatWeightPercent(item.weight_pct)} · 上限 {formatWeightPercent(item.suggested_max_weight_pct)} · 风险压力 {item.risk_score.toFixed(1)}
+                  {item.excess_weight_pct > 0 ? (
+                    <small>
+                      超额 {formatWeightPercent(item.excess_weight_pct)}
+                      {item.excess_market_value > 0 ? ` · ${formatCurrency(item.excess_market_value)}` : ''}
+                    </small>
+                  ) : (
+                    <small>{item.stock_count} 只 · 集中度正常</small>
+                  )}
+                </span>
               ))}
             </div>
           ) : null}

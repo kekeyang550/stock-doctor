@@ -92,6 +92,10 @@ def test_portfolio_risk_report_supports_custom_position_weights():
     assert report.concentration.top_industry_ratio == 0.8
     assert report.industry_exposures[0].industry == "白酒"
     assert report.industry_exposures[0].weight_pct == 80
+    assert report.industry_exposures[0].concentration_level == "high"
+    assert report.industry_exposures[0].concentration_label == "过度集中"
+    assert report.industry_exposures[0].suggested_max_weight_pct == 40
+    assert report.industry_exposures[0].excess_weight_pct == 40
     assert report.top_drivers[0].position_weight_pct >= 0
     maotai_contribution = next(item for item in report.risk_contributions if item.symbol == "600519")
     assert maotai_contribution.weight_pct == 80
@@ -139,5 +143,7 @@ def test_portfolio_risk_report_mentions_cash_buffer_for_partial_weights():
     assert report.total_market_value == 100000
     assert report.cash_amount == 20000
     assert report.positions[0].market_value == 80000
+    assert report.industry_exposures[0].excess_market_value == 40000
     assert any("现金缓冲" in suggestion for suggestion in report.suggestions)
     assert any("20000.00 元" in suggestion for suggestion in report.suggestions)
+    assert any("集中度上限" in suggestion for suggestion in report.suggestions)
