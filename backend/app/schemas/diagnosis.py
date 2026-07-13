@@ -226,6 +226,9 @@ class FundamentalSnapshot(BaseModel):
     revenue_growth: float
     profit_growth: float
     industry_pe_percentile: float = Field(ge=0, le=100)
+    eps: float | None = None
+    gross_margin: float | None = None
+    debt_to_assets: float | None = None
 
 
 class CapitalSnapshot(BaseModel):

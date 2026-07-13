@@ -54,6 +54,9 @@ class FakeTushareClient:
                 "roe_dt": "16.2",
                 "revenue_yoy": "11.5",
                 "netprofit_yoy": "13.7",
+                "eps": "2.18",
+                "grossprofit_margin": "38.4",
+                "debt_to_assets": "41.6",
             }
         ]
 
@@ -115,6 +118,9 @@ def test_tushare_provider_enriches_fundamental_snapshot(monkeypatch):
     assert snapshot.fundamental.roe == 16.2
     assert snapshot.fundamental.revenue_growth == 11.5
     assert snapshot.fundamental.profit_growth == 13.7
+    assert snapshot.fundamental.eps == 2.18
+    assert snapshot.fundamental.gross_margin == 38.4
+    assert snapshot.fundamental.debt_to_assets == 41.6
     assert snapshot.name == "茅台测试"
     assert snapshot.industry == "食品饮料"
     assert "tushare-daily-basic" in snapshot.data_sources

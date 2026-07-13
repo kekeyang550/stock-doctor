@@ -5,6 +5,7 @@ from app.schemas.diagnosis import (
     DataConnectorHealth,
     DataConnectorRuntimeConfig,
     DataConnectorStatus,
+    FundamentalSnapshot,
     ProviderCacheBucketStatus,
     ProviderCacheStatus,
     RiskSnapshot,
@@ -64,6 +65,31 @@ def test_data_quality_report_flags_invalid_fields():
     failing_keys = {check.key for check in report.checks if check.status == "fail"}
     assert {"market", "technical", "risk"}.issubset(failing_keys)
     assert any(check.key == "capital" and check.status == "warn" for check in report.checks)
+
+
+def test_data_quality_report_flags_invalid_optional_financial_ratios():
+    base = MockMarketDataProvider().get_snapshot("600519")
+    snapshot = base.model_copy(
+        update={
+            "fundamental": FundamentalSnapshot(
+                pe_ttm=18,
+                pb=2.1,
+                roe=21,
+                revenue_growth=13,
+                profit_growth=16,
+                industry_pe_percentile=31,
+                gross_margin=128,
+                debt_to_assets=135,
+            ),
+        }
+    )
+
+    report = DataQualityService().build_report(snapshot)
+    fundamental_check = next(check for check in report.checks if check.key == "fundamental")
+
+    assert fundamental_check.status == "fail"
+    assert "毛利率超出常规区间" in fundamental_check.detail
+    assert "资产负债率超出 0-100" in fundamental_check.detail
 
 
 def test_data_quality_report_warns_for_conservative_real_data_fields():

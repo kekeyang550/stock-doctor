@@ -9,6 +9,7 @@ const sourceTokenLabels: Record<string, string> = {
   'tdx-kline': '通达信本地 K 线',
   'tushare-daily-basic': 'Tushare 日行情基础指标',
   'tushare-fina-indicator': 'Tushare 财务指标',
+  'tushare-stock-basic': 'Tushare 基础资料',
   'capital-flow': '资金流',
 }
 

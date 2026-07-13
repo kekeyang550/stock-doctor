@@ -159,7 +159,10 @@ class TushareMarketDataProvider:
             fina_rows = self._rows(
                 client.fina_indicator(
                     ts_code=ts_code,
-                    fields="ts_code,end_date,roe_dt,roe,q_roe,revenue_yoy,netprofit_yoy",
+                    fields=(
+                        "ts_code,end_date,roe_dt,roe,q_roe,revenue_yoy,netprofit_yoy,"
+                        "eps,basic_eps,grossprofit_margin,gross_margin,debt_to_assets"
+                    ),
                 )
             )
         except Exception:
@@ -171,6 +174,9 @@ class TushareMarketDataProvider:
         roe = self._first_float(fina, "roe_dt", "roe", "q_roe", default=0)
         revenue_growth = self._first_float(fina, "revenue_yoy", "or_yoy", default=0)
         profit_growth = self._first_float(fina, "netprofit_yoy", "profit_yoy", default=0)
+        eps = self._first_optional_float(fina, "eps", "basic_eps")
+        gross_margin = self._first_optional_float(fina, "grossprofit_margin", "gross_margin")
+        debt_to_assets = self._first_optional_float(fina, "debt_to_assets")
         if pe_ttm <= 0 and pb <= 0 and roe == 0 and revenue_growth == 0 and profit_growth == 0:
             return None
         return FundamentalSnapshot(
@@ -180,6 +186,9 @@ class TushareMarketDataProvider:
             revenue_growth=revenue_growth,
             profit_growth=profit_growth,
             industry_pe_percentile=self._valuation_percentile(pe_ttm),
+            eps=eps,
+            gross_margin=gross_margin,
+            debt_to_assets=debt_to_assets,
         )
 
     def _basic_info_from_tushare(self, symbol: str) -> dict[str, str] | None:
@@ -268,6 +277,17 @@ class TushareMarketDataProvider:
             except (TypeError, ValueError):
                 continue
         return default
+
+    def _first_optional_float(self, row: dict, *keys: str) -> float | None:
+        for key in keys:
+            value = row.get(key)
+            if value is None or value == "":
+                continue
+            try:
+                return round(float(value), 2)
+            except (TypeError, ValueError):
+                continue
+        return None
 
     def _first_text(self, row: dict, *keys: str) -> str | None:
         for key in keys:

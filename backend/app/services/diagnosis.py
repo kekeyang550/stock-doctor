@@ -112,6 +112,24 @@ class DiagnosisEngine:
             score -= 8
             evidence.append(EvidenceItem(label="成长性", value=f"{growth_avg:.1f}%", interpretation="增长弹性不足", polarity="negative"))
 
+        if base.gross_margin is not None:
+            if base.gross_margin >= 35:
+                score += 6
+                evidence.append(EvidenceItem(label="毛利率", value=f"{base.gross_margin:.1f}%", interpretation="产品盈利空间较好", polarity="positive"))
+            elif base.gross_margin < 15:
+                score -= 5
+                evidence.append(EvidenceItem(label="毛利率", value=f"{base.gross_margin:.1f}%", interpretation="毛利空间偏窄", polarity="negative"))
+        if base.debt_to_assets is not None:
+            if base.debt_to_assets >= 70:
+                score -= 6
+                evidence.append(EvidenceItem(label="资产负债率", value=f"{base.debt_to_assets:.1f}%", interpretation="财务杠杆偏高", polarity="negative"))
+            elif base.debt_to_assets <= 35:
+                score += 4
+                evidence.append(EvidenceItem(label="资产负债率", value=f"{base.debt_to_assets:.1f}%", interpretation="资产负债结构较轻", polarity="positive"))
+        if base.eps is not None and base.eps <= 0:
+            score -= 4
+            evidence.append(EvidenceItem(label="每股收益", value=f"{base.eps:.2f}", interpretation="每股收益为非正，需复核盈利质量", polarity="negative"))
+
         return self._clamp(score), evidence
 
     def _score_capital(self, snapshot: StockSnapshot) -> tuple[int, list[EvidenceItem]]:

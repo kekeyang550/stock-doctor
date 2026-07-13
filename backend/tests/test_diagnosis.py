@@ -36,6 +36,27 @@ def test_strong_stock_receives_high_rating():
     assert "不构成任何投资建议" in result.disclaimer
 
 
+def test_optional_financial_fields_surface_in_evidence():
+    snapshot = make_snapshot(
+        fundamental=FundamentalSnapshot(
+            pe_ttm=18,
+            pb=2.1,
+            roe=21,
+            revenue_growth=13,
+            profit_growth=16,
+            industry_pe_percentile=31,
+            eps=2.5,
+            gross_margin=42,
+            debt_to_assets=28,
+        )
+    )
+
+    result = DiagnosisEngine().diagnose(snapshot, horizon="swing")
+
+    assert any(item.label == "毛利率" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "资产负债率" and item.polarity == "positive" for item in result.evidence)
+
+
 def test_risk_events_reduce_score_and_surface_warning():
     risky = make_snapshot(
         risk=RiskSnapshot(pledge_ratio=22.0, unlock_days=12, st_flag=False, limit_up_streak=0),

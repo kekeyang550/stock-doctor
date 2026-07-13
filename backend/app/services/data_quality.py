@@ -140,6 +140,10 @@ class DataQualityService:
             problems.append("行业估值分位超出 0-100")
         if base.roe < -100 or base.roe > 100:
             problems.append("ROE 超出常规区间")
+        if base.gross_margin is not None and not -100 <= base.gross_margin <= 100:
+            problems.append("毛利率超出常规区间")
+        if base.debt_to_assets is not None and not 0 <= base.debt_to_assets <= 100:
+            problems.append("资产负债率超出 0-100")
         return self._check(
             key="fundamental",
             label="估值财务",
