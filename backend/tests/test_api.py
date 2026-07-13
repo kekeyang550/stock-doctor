@@ -528,7 +528,7 @@ def test_screener_endpoint_returns_explanation_fields():
 
 
 def test_strategy_backtest_endpoint_returns_sample_report():
-    response = client.get("/api/v1/backtests/strategy?preset=breakout-volume&horizon=swing&holding_days=5&fee_bps=8&slippage_bps=12")
+    response = client.get("/api/v1/backtests/strategy?preset=breakout-volume&horizon=swing&holding_days=5&fee_bps=8&slippage_bps=12&exit_on_ma20_break=true")
 
     assert response.status_code == 200
     payload = response.json()
@@ -538,6 +538,7 @@ def test_strategy_backtest_endpoint_returns_sample_report():
     assert payload["price_source"] == "historical-kline"
     assert payload["fee_bps"] == 8
     assert payload["slippage_bps"] == 12
+    assert payload["exit_on_ma20_break"] is True
     assert payload["round_trip_cost_pct"] == 0.4
     assert payload["history_bar_count"] >= 6
     assert payload["history_last_date"]
@@ -556,6 +557,7 @@ def test_strategy_backtest_endpoint_returns_sample_report():
         "history_bar_count",
         "history_last_date",
         "fallback_reason",
+        "exit_reason",
         "rule_tags",
     }.issubset(payload["trades"][0].keys())
     assert payload["trades"][0]["cost_pct"] == 0.4

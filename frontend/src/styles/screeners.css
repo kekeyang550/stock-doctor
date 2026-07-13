@@ -867,7 +867,7 @@
 
 .backtest-parameter-card {
   display: grid;
-  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  grid-template-columns: auto repeat(auto-fit, minmax(110px, 1fr));
   align-items: end;
   gap: 8px;
   margin-top: 8px;
@@ -898,6 +898,19 @@
   padding: 5px 7px;
   color: #1f2f25;
   font: inherit;
+}
+
+.backtest-parameter-card .checkbox-setting {
+  align-items: center;
+  grid-template-columns: 1fr auto;
+  min-height: 54px;
+}
+
+.backtest-parameter-card .checkbox-setting input {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  accent-color: #2f7d55;
 }
 
 .backtest-comparison,

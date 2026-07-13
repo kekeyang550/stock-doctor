@@ -62,6 +62,7 @@ class StrategyBacktestService:
         slippage_bps: float = 10,
         take_profit_pct: float = 0,
         stop_loss_pct: float = 0,
+        exit_on_ma20_break: bool = False,
     ) -> StrategyBacktestReport:
         holding_days = max(1, min(holding_days, 20))
         limit = max(1, min(limit, 30))
@@ -99,6 +100,7 @@ class StrategyBacktestService:
                 round_trip_cost_pct,
                 take_profit_pct,
                 stop_loss_pct,
+                exit_on_ma20_break,
             )
             if trade is not None:
                 trades.append(trade)
@@ -147,6 +149,7 @@ class StrategyBacktestService:
             slippage_bps=slippage_bps,
             take_profit_pct=take_profit_pct,
             stop_loss_pct=stop_loss_pct,
+            exit_on_ma20_break=exit_on_ma20_break,
             round_trip_cost_pct=round(round_trip_cost_pct, 2),
             sample_size=len(snapshots),
             match_count=len(candidates),
@@ -201,6 +204,7 @@ class StrategyBacktestService:
         slippage_bps: float = 10,
         take_profit_pct: float = 0,
         stop_loss_pct: float = 0,
+        exit_on_ma20_break: bool = False,
     ) -> StrategyBacktestComparison:
         normalized_periods = self._normalize_periods(periods)
         reports = [
@@ -215,6 +219,7 @@ class StrategyBacktestService:
                 slippage_bps=slippage_bps,
                 take_profit_pct=take_profit_pct,
                 stop_loss_pct=stop_loss_pct,
+                exit_on_ma20_break=exit_on_ma20_break,
             )
             for holding_days in normalized_periods
         ]
@@ -257,6 +262,7 @@ class StrategyBacktestService:
         slippage_bps: float = 10,
         take_profit_pct: float = 0,
         stop_loss_pct: float = 0,
+        exit_on_ma20_break: bool = False,
     ) -> StrategyBacktestPresetComparison:
         selected_presets = self._normalize_presets(presets)
         reports = [
@@ -271,6 +277,7 @@ class StrategyBacktestService:
                 slippage_bps=slippage_bps,
                 take_profit_pct=take_profit_pct,
                 stop_loss_pct=stop_loss_pct,
+                exit_on_ma20_break=exit_on_ma20_break,
             )
             for preset in selected_presets
         ]
@@ -594,6 +601,7 @@ class StrategyBacktestService:
         cost_pct: float,
         take_profit_pct: float,
         stop_loss_pct: float,
+        exit_on_ma20_break: bool,
     ) -> StrategyBacktestTrade | None:
         points = price_series.series.points
         if len(points) < 2:
@@ -617,6 +625,10 @@ class StrategyBacktestService:
             if take_profit_price is not None and close >= take_profit_price:
                 exit_index = index
                 exit_reason = "take-profit"
+                break
+            if exit_on_ma20_break and close < points[index].ma20:
+                exit_index = index
+                exit_reason = "ma20-break"
                 break
 
         exit_point = points[exit_index]

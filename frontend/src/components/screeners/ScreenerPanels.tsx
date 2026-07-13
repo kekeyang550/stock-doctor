@@ -1022,12 +1022,14 @@ export function StrategyBacktestPanel({
   slippageBps,
   takeProfitPct,
   stopLossPct,
+  exitOnMa20Break,
   limit,
   onHoldingDaysChange,
   onFeeBpsChange,
   onSlippageBpsChange,
   onTakeProfitPctChange,
   onStopLossPctChange,
+  onExitOnMa20BreakChange,
   onLimitChange,
   error,
   comparisonError,
@@ -1049,12 +1051,14 @@ export function StrategyBacktestPanel({
   slippageBps: number
   takeProfitPct: number
   stopLossPct: number
+  exitOnMa20Break: boolean
   limit: number
   onHoldingDaysChange: (days: number) => void
   onFeeBpsChange: (value: number) => void
   onSlippageBpsChange: (value: number) => void
   onTakeProfitPctChange: (value: number) => void
   onStopLossPctChange: (value: number) => void
+  onExitOnMa20BreakChange: (value: boolean) => void
   onLimitChange: (value: number) => void
   error: string | null
   comparisonError: string | null
@@ -1162,6 +1166,10 @@ export function StrategyBacktestPanel({
               <small>止损</small>
               <b>{formatPlainPercent(report.stop_loss_pct)}</b>
             </span>
+            <span>
+              <small>MA20 跌破</small>
+              <b>{report.exit_on_ma20_break ? '启用' : '关闭'}</b>
+            </span>
           </div>
           <div className="backtest-parameter-card">
             <strong>参数</strong>
@@ -1223,6 +1231,15 @@ export function StrategyBacktestPanel({
                 step="1"
                 value={stopLossPct}
                 onChange={(event) => onStopLossPctChange(clampNumber(event.target.value, 0, 100, 0))}
+              />
+            </label>
+            <label className="checkbox-setting">
+              <span>跌破 MA20 退出</span>
+              <input
+                aria-label="回测跌破 MA20 退出"
+                type="checkbox"
+                checked={exitOnMa20Break}
+                onChange={(event) => onExitOnMa20BreakChange(event.target.checked)}
               />
             </label>
           </div>
@@ -1395,6 +1412,7 @@ function backtestPriceSourceLabel(source: StrategyBacktestReport['price_source']
 function backtestExitReasonLabel(reason: StrategyBacktestReport['trades'][number]['exit_reason']) {
   if (reason === 'take-profit') return '止盈退出'
   if (reason === 'stop-loss') return '止损退出'
+  if (reason === 'ma20-break') return '跌破 MA20'
   return '持有到期'
 }
 

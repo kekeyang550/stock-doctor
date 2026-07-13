@@ -186,6 +186,27 @@ def test_strategy_backtest_exits_early_on_stop_loss():
     assert report.trades[0].exit_price == 118
 
 
+def test_strategy_backtest_exits_early_on_ma20_break():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FallingHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        exit_on_ma20_break=True,
+    )
+
+    assert report.exit_on_ma20_break is True
+    assert report.trades[0].exit_reason == "ma20-break"
+    assert report.trades[0].holding_days == 1
+    assert report.trades[0].exit_price == 119
+
+
 def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails():
     provider = MockMarketDataProvider()
     snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]

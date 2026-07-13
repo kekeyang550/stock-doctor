@@ -51,6 +51,7 @@ class StrategyBacktestActionService:
         slippage_bps: float,
         take_profit_pct: float,
         stop_loss_pct: float,
+        exit_on_ma20_break: bool,
     ) -> StrategyBacktestActionPlan:
         status_by_key = {
             str(record.get("key")): str(record.get("status"))
@@ -68,6 +69,7 @@ class StrategyBacktestActionService:
                     slippage_bps=slippage_bps,
                     take_profit_pct=take_profit_pct,
                     stop_loss_pct=stop_loss_pct,
+                    exit_on_ma20_break=exit_on_ma20_break,
                     action_id=action.id,
                 )
             )
@@ -88,11 +90,13 @@ class StrategyBacktestActionService:
         slippage_bps: float,
         take_profit_pct: float,
         stop_loss_pct: float,
+        exit_on_ma20_break: bool,
         action_id: str,
     ) -> str:
         return (
             f"BACKTEST:{preset}:{horizon}:hold={holding_days}:limit={limit}:"
-            f"fee={fee_bps:g}:slippage={slippage_bps:g}:take={take_profit_pct:g}:stop={stop_loss_pct:g}:{action_id}"
+            f"fee={fee_bps:g}:slippage={slippage_bps:g}:take={take_profit_pct:g}:"
+            f"stop={stop_loss_pct:g}:ma20={int(exit_on_ma20_break)}:{action_id}"
         )
 
     def _quality_actions(self, report: StrategyBacktestReport) -> list[StrategyBacktestAction]:
