@@ -170,6 +170,7 @@ const hotspotModes = [
 ]
 
 const BACKTEST_PARAMETERS_STORAGE_KEY = 'stock-doctor-backtest-parameters-v1'
+const PORTFOLIO_INPUTS_STORAGE_KEY = 'stock-doctor-portfolio-inputs-v1'
 
 type BacktestParameters = {
   holding_days: number
@@ -178,11 +179,21 @@ type BacktestParameters = {
   limit: number
 }
 
+type PortfolioInputs = {
+  weights: Record<string, string>
+  portfolio_value: string
+}
+
 const DEFAULT_BACKTEST_PARAMETERS: BacktestParameters = {
   holding_days: 5,
   fee_bps: 5,
   slippage_bps: 10,
   limit: 8,
+}
+
+const DEFAULT_PORTFOLIO_INPUTS: PortfolioInputs = {
+  weights: {},
+  portfolio_value: '',
 }
 
 export default function App() {
@@ -228,8 +239,9 @@ export default function App() {
   const [rankingSort, setRankingSort] = useState('total')
   const [screenerPreset, setScreenerPreset] = useState('strong')
   const [hotspotMode, setHotspotMode] = useState('balanced')
-  const [portfolioWeights, setPortfolioWeights] = useState<Record<string, string>>({})
-  const [portfolioValue, setPortfolioValue] = useState('')
+  const [storedPortfolioInputs] = useState(readStoredPortfolioInputs)
+  const [portfolioWeights, setPortfolioWeights] = useState<Record<string, string>>(storedPortfolioInputs.weights)
+  const [portfolioValue, setPortfolioValue] = useState(storedPortfolioInputs.portfolio_value)
   const [storedBacktestParameters] = useState(readStoredBacktestParameters)
   const [backtestHoldingDays, setBacktestHoldingDays] = useState(storedBacktestParameters.holding_days)
   const [backtestFeeBps, setBacktestFeeBps] = useState(storedBacktestParameters.fee_bps)
@@ -429,6 +441,10 @@ export default function App() {
       return next
     })
   }, [])
+
+  useEffect(() => {
+    writeStoredPortfolioInputs({ weights: portfolioWeights, portfolio_value: portfolioValue })
+  }, [portfolioWeights, portfolioValue])
 
   const loadHotspotCandidatePool = useCallback(async () => {
     setHotspotCandidatesError(null)
@@ -1738,6 +1754,69 @@ function writeStoredBacktestParameters(parameters: BacktestParameters) {
   } catch {
     // localStorage can be unavailable in restricted browser modes; keep the in-memory state.
   }
+}
+
+function readStoredPortfolioInputs(): PortfolioInputs {
+  if (typeof window === 'undefined') {
+    return DEFAULT_PORTFOLIO_INPUTS
+  }
+
+  try {
+    const raw = window.localStorage.getItem(PORTFOLIO_INPUTS_STORAGE_KEY)
+    if (!raw) {
+      return DEFAULT_PORTFOLIO_INPUTS
+    }
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return DEFAULT_PORTFOLIO_INPUTS
+    }
+    return normalizePortfolioInputs(parsed as Partial<PortfolioInputs>)
+  } catch {
+    return DEFAULT_PORTFOLIO_INPUTS
+  }
+}
+
+function writeStoredPortfolioInputs(inputs: PortfolioInputs) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(PORTFOLIO_INPUTS_STORAGE_KEY, JSON.stringify(normalizePortfolioInputs(inputs)))
+  } catch {
+    // localStorage can be unavailable in restricted browser modes; keep the in-memory state.
+  }
+}
+
+function normalizePortfolioInputs(inputs: Partial<PortfolioInputs>): PortfolioInputs {
+  const weights: Record<string, string> = {}
+  const rawWeights = inputs.weights
+  if (rawWeights && typeof rawWeights === 'object' && !Array.isArray(rawWeights)) {
+    Object.entries(rawWeights).forEach(([symbol, value]) => {
+      const normalizedSymbol = symbol.trim()
+      const normalizedValue = normalizePortfolioInputNumber(value, 0, 100)
+      if (normalizedSymbol && normalizedSymbol.length <= 12 && normalizedValue !== '') {
+        weights[normalizedSymbol] = normalizedValue
+      }
+    })
+  }
+
+  return {
+    weights,
+    portfolio_value: normalizePortfolioInputNumber(inputs.portfolio_value, 0, 1_000_000_000),
+  }
+}
+
+function normalizePortfolioInputNumber(value: unknown, min: number, max: number) {
+  const text = String(value ?? '').trim()
+  if (!text) {
+    return ''
+  }
+  const parsed = Number(text)
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+    return ''
+  }
+  return text
 }
 
 function normalizeBacktestParameters(parameters: Partial<BacktestParameters>): BacktestParameters {

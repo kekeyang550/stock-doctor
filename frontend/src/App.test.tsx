@@ -1726,6 +1726,32 @@ describe('App', () => {
     expect(riskPanel).toHaveTextContent('上限 40.0%')
     expect(riskPanel).toHaveTextContent('超额 40.0%')
     expect(riskPanel).toHaveTextContent('40,000 元')
+    expect(JSON.parse(window.localStorage.getItem('stock-doctor-portfolio-inputs-v1') ?? '{}')).toEqual({
+      weights: { '600519': '80' },
+      portfolio_value: '100000',
+    })
+  })
+
+  it('restores stored portfolio simulation inputs', async () => {
+    window.localStorage.setItem('stock-doctor-portfolio-inputs-v1', JSON.stringify({
+      weights: { '600519': '65', BAD: 'not-a-number' },
+      portfolio_value: '120000',
+    }))
+
+    render(<App />)
+
+    const weightInput = await screen.findByLabelText('模拟仓位 贵州茅台')
+    const portfolioValueInput = await screen.findByLabelText('组合市值')
+    expect(weightInput).toHaveValue(65)
+    expect(portfolioValueInput).toHaveValue(120000)
+
+    await waitFor(() => {
+      const portfolioCalls = vi.mocked(fetch).mock.calls
+        .map((call) => decodeURIComponent(String(call[0])))
+        .filter((url) => url.includes('/risk/portfolio'))
+      expect(portfolioCalls.some((url) => url.includes('weights=600519:65'))).toBe(true)
+      expect(portfolioCalls.some((url) => url.includes('portfolio_value=120000'))).toBe(true)
+    })
   })
 
   it('shows strategy backtest summary with sample trades and drawdown', async () => {
