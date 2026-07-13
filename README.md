@@ -92,6 +92,8 @@ The workspace also includes a manual refresh job panel. Refresh jobs record prov
 
 The connector panel also shows data freshness: latest successful refresh time, refresh age, covered stock count, coverage rate, and the recommended next action.
 
+The system area includes a runtime configuration panel backed by `/api/v1/system/runtime-config`. It shows the active provider, provider options, request timeout, cache TTL, freshness threshold, and local TongDaXin/TongHuaShun path availability. These settings are read-only in the UI; update environment variables and restart the backend to change them.
+
 Optional runtime knobs for real-data trials:
 
 ```powershell
@@ -101,4 +103,6 @@ $env:STOCK_DOCTOR_DATA_FRESHNESS_STALE_AFTER_MINUTES = "30"
 $env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "E:\new_tdx64\vipdoc"
 ```
 
-These values are returned by `/api/v1/system/data-connectors` and displayed in the data trust panel so the current real-data operating assumptions are visible before diagnosis or backtest decisions.
+These values are returned by `/api/v1/system/data-connectors` and `/api/v1/system/runtime-config`, then displayed in the data trust/runtime panels so the current real-data operating assumptions are visible before diagnosis or backtest decisions.
+
+JSON, HTML, and Markdown research exports include connector health, cache telemetry, stock-level data quality checks, runtime settings, and local path status so reports remain auditable outside the app.
