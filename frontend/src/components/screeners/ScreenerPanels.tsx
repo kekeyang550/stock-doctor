@@ -367,6 +367,16 @@ export function DataQualityOverviewPanel({
   overview: DataQualityOverview | null
   onSelect: (symbol: string) => void
 }) {
+  const [qualityFilter, setQualityFilter] = useState<'all' | 'runtime' | 'fallback' | 'warn' | 'fail'>('all')
+  const reports = overview?.reports ?? []
+  const qualityBuckets = {
+    runtime: reports.filter((report) => dataQualityCategory(report) === 'runtime'),
+    fallback: reports.filter((report) => dataQualityCategory(report) === 'fallback'),
+    warn: reports.filter((report) => dataQualityCategory(report) === 'warn'),
+    fail: reports.filter((report) => dataQualityCategory(report) === 'fail'),
+  }
+  const filteredReports = qualityFilter === 'all' ? reports : qualityBuckets[qualityFilter]
+  const selectedLowest = filteredReports[0] ?? null
   return (
     <section className="panel quality-overview-panel">
       <div className="panel-title split-title">
@@ -381,23 +391,42 @@ export function DataQualityOverviewPanel({
           <div className="quality-overview-metrics">
             <SummaryMetric label="平均质量" value={overview.average_score.toFixed(1)} />
             <SummaryMetric label="可靠" value={overview.pass_count} />
-            <SummaryMetric label="关注" value={overview.warn_count} />
+            <SummaryMetric label="部分兜底" value={qualityBuckets.fallback.length} />
+            <SummaryMetric label="运行刷新" value={qualityBuckets.runtime.length} />
             <SummaryMetric label="异常" value={overview.fail_count} />
           </div>
-          {overview.lowest_report ? (
+          <div className="mini-segments quality-filter" aria-label="数据质量筛选">
+            {([
+              ['all', `全部 ${reports.length}`],
+              ['runtime', `运行 ${qualityBuckets.runtime.length}`],
+              ['fallback', `兜底 ${qualityBuckets.fallback.length}`],
+              ['warn', `核验 ${qualityBuckets.warn.length}`],
+              ['fail', `异常 ${qualityBuckets.fail.length}`],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={qualityFilter === value ? 'selected' : ''}
+                onClick={() => setQualityFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {selectedLowest ? (
             <button
               type="button"
-              className={`quality-lowest ${overview.lowest_report.status}`}
-              onClick={() => onSelect(overview.lowest_report!.symbol)}
+              className={`quality-lowest ${selectedLowest.status}`}
+              onClick={() => onSelect(selectedLowest.symbol)}
             >
               <span>
-                <strong>{overview.lowest_report.name}</strong>
-                <small>{overview.lowest_report.symbol} · {overview.lowest_report.summary}</small>
+                <strong>{selectedLowest.name}</strong>
+                <small>{selectedLowest.symbol} · {dataQualityCategoryLabel(selectedLowest)} · {selectedLowest.summary}</small>
               </span>
-              <em>{overview.lowest_report.score}</em>
+              <em>{selectedLowest.score}</em>
             </button>
           ) : (
-            <p className="empty-text">暂无可检查标的</p>
+            <p className="empty-text">当前筛选下暂无数据质量问题</p>
           )}
         </>
       ) : (
@@ -405,6 +434,23 @@ export function DataQualityOverviewPanel({
       )}
     </section>
   )
+}
+
+function dataQualityCategory(report: DataQualityReport) {
+  if (report.status === 'fail') return 'fail'
+  if (report.checks.some((check) => check.key === 'runtime_environment' && check.status !== 'pass')) return 'runtime'
+  if (report.checks.some((check) => check.key === 'source_coverage' && check.status === 'warn')) return 'fallback'
+  if (report.status === 'warn') return 'warn'
+  return 'pass'
+}
+
+function dataQualityCategoryLabel(report: DataQualityReport) {
+  const category = dataQualityCategory(report)
+  if (category === 'runtime') return '运行需刷新'
+  if (category === 'fallback') return '部分兜底'
+  if (category === 'warn') return '需核验'
+  if (category === 'fail') return '异常'
+  return '可靠'
 }
 
 

@@ -300,12 +300,38 @@ const dataQuality = {
 const dataQualityOverview = {
   scope: 'watchlist',
   stock_count: 3,
-  average_score: 90,
+  average_score: 88.3,
   pass_count: 0,
   warn_count: 3,
   fail_count: 0,
   lowest_report: dataQuality,
-  reports: [dataQuality],
+  reports: [
+    dataQuality,
+    {
+      ...dataQuality,
+      symbol: '300750',
+      name: '宁德时代',
+      score: 85,
+      summary: '数据质量 85 分，运行环境需要刷新。',
+      checks: [
+        ...dataQuality.checks.filter((check) => check.key !== 'source_coverage'),
+        {
+          key: 'runtime_environment',
+          label: '运行环境',
+          status: 'warn',
+          detail: '缓存桶需刷新：历史行情。',
+          impact: '影响真实数据获取稳定性、缓存复用和 fallback 风险判断。',
+        },
+      ],
+    },
+    {
+      ...dataQuality,
+      symbol: '002594',
+      name: '比亚迪',
+      score: 90,
+      summary: '数据质量 90 分，存在 1 个可继续观察的问题。',
+    },
+  ],
 }
 
 const thesis = {
@@ -1369,6 +1395,13 @@ describe('App', () => {
     const qualityOverviewPanel = screen.getByRole('heading', { name: '数据质量总览' }).closest('section')!
     expect(within(qualityOverviewPanel).getByText('平均质量')).toBeInTheDocument()
     expect(within(qualityOverviewPanel).getByText('贵州茅台')).toBeInTheDocument()
+    expect(within(qualityOverviewPanel).getByRole('button', { name: '运行 1' })).toBeInTheDocument()
+    fireEvent.click(within(qualityOverviewPanel).getByRole('button', { name: '运行 1' }))
+    expect(within(qualityOverviewPanel).getByText('宁德时代')).toBeInTheDocument()
+    expect(within(qualityOverviewPanel).getByText(/运行需刷新/)).toBeInTheDocument()
+    fireEvent.click(within(qualityOverviewPanel).getByRole('button', { name: '兜底 2' }))
+    expect(within(qualityOverviewPanel).getByText('贵州茅台')).toBeInTheDocument()
+    expect(within(qualityOverviewPanel).getAllByText(/部分兜底/).length).toBeGreaterThan(0)
     const hotspotPanel = screen.getByRole('heading', { name: '热点总览' }).closest('section')!
     expect(within(hotspotPanel).getByText('热点强')).toBeInTheDocument()
     expect(within(hotspotPanel).getByText('新能源汽车')).toBeInTheDocument()
