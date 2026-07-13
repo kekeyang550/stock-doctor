@@ -436,3 +436,52 @@ def test_strategy_backtest_actions_turn_metrics_into_followups(tmp_path):
     assert plan.action_count == len(plan.actions)
     assert plan.high_count + plan.medium_count + plan.low_count == len(plan.actions)
     assert any(action.category in {"样本数量", "样本可信度", "历史对比"} for action in plan.actions)
+
+
+def test_strategy_backtest_actions_include_score_weak_exit_followup(tmp_path):
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+    backtest_service = StrategyBacktestService(market_data_provider=FallingHistoricalProvider())
+    report = backtest_service.run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=1,
+        diagnosis_exit_score=65,
+    )
+    period_comparison = backtest_service.compare_periods(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        periods=[3, 5, 10],
+        limit=1,
+        diagnosis_exit_score=65,
+    )
+    preset_comparison = backtest_service.compare_presets(
+        presets=["strong", "value", "capital-risk"],
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=1,
+        diagnosis_exit_score=65,
+    )
+    history = StrategyBacktestHistoryService().compare(
+        preset="breakout-volume",
+        horizon="swing",
+        state_store=JsonStateStore(tmp_path / "state.json"),
+    )
+
+    plan = StrategyBacktestActionService().build_plan(
+        report=report,
+        period_comparison=period_comparison,
+        preset_comparison=preset_comparison,
+        history=history,
+    )
+
+    assert any(action.id == "backtest-score-weak-exit" for action in plan.actions)
+    assert any(action.category == "诊断转弱" and "触发 1 笔" in action.metric for action in plan.actions)

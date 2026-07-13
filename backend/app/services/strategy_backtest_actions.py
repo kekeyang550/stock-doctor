@@ -172,6 +172,19 @@ class StrategyBacktestActionService:
                     metric=f"稳定 {report.stability_score}",
                 )
             )
+        score_weak_count = report.exit_reason_counts.get("score-weak", 0)
+        if score_weak_count > 0:
+            actions.append(
+                self._action(
+                    raw_id="score-weak-exit",
+                    priority="medium",
+                    category="诊断转弱",
+                    title="复核诊断转弱退出",
+                    detail="部分交易因诊断代理分跌破阈值提前退出，建议检查阈值是否过紧，并复核对应标的的技术面和资金面变化。",
+                    trigger=f"{score_weak_count} 笔交易触发诊断转弱退出。",
+                    metric=f"诊断阈值 {report.diagnosis_exit_score:g} / 触发 {score_weak_count} 笔",
+                )
+            )
         if report.average_return_pct > 0 and report.return_drawdown_ratio >= 1:
             actions.append(
                 self._action(
