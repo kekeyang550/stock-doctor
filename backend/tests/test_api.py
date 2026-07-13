@@ -474,6 +474,25 @@ def test_portfolio_risk_endpoint_accepts_portfolio_value():
     assert any("现金缓冲" in suggestion for suggestion in payload["suggestions"])
 
 
+def test_portfolio_risk_endpoint_accepts_real_position_lots():
+    response = client.get(
+        "/api/v1/risk/portfolio?scope=watchlist&horizon=swing&holdings=600519:10:1200&portfolio_value=20000"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["weight_mode"] == "custom"
+    assert payload["total_market_value"] == 20000
+    position_by_symbol = {item["symbol"]: item for item in payload["positions"]}
+    maotai = position_by_symbol["600519"]
+    assert maotai["shares"] == 10
+    assert maotai["cost_price"] == 1200
+    assert maotai["market_value"] == 15183
+    assert maotai["cost_amount"] == 12000
+    assert maotai["unrealized_pnl"] == 3183
+    assert maotai["unrealized_pnl_pct"] == 26.52
+
+
 def test_screener_endpoint_returns_preset_candidates():
     response = client.get("/api/v1/screeners/strong")
 

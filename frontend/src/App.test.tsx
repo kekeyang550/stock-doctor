@@ -738,9 +738,9 @@ const portfolioRisk = {
   ],
   exposures: riskExposure,
   positions: [
-    { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 33.33, market_value: 0 },
-    { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 33.33, market_value: 0 },
-    { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 33.33, market_value: 0 },
+    { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 33.33, market_value: 0, shares: 0, cost_price: 0, cost_amount: 0, unrealized_pnl: 0, unrealized_pnl_pct: 0 },
+    { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 33.33, market_value: 0, shares: 0, cost_price: 0, cost_amount: 0, unrealized_pnl: 0, unrealized_pnl_pct: 0 },
+    { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 33.33, market_value: 0, shares: 0, cost_price: 0, cost_amount: 0, unrealized_pnl: 0, unrealized_pnl_pct: 0 },
   ],
 }
 
@@ -1683,9 +1683,9 @@ describe('App', () => {
         },
       ],
       positions: [
-        { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 80, market_value: 80000 },
-        { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 0, market_value: 0 },
-        { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 0, market_value: 0 },
+        { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 80, market_value: 80000, shares: 0, cost_price: 0, cost_amount: 0, unrealized_pnl: 0, unrealized_pnl_pct: 0 },
+        { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 0, market_value: 0, shares: 0, cost_price: 0, cost_amount: 0, unrealized_pnl: 0, unrealized_pnl_pct: 0 },
+        { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 0, market_value: 0, shares: 0, cost_price: 0, cost_amount: 0, unrealized_pnl: 0, unrealized_pnl_pct: 0 },
       ],
       suggestions: [
         '当前模拟仓位 80.0%，保留约 20.0% 现金缓冲。',
@@ -1728,6 +1728,7 @@ describe('App', () => {
     expect(riskPanel).toHaveTextContent('40,000 元')
     expect(JSON.parse(window.localStorage.getItem('stock-doctor-portfolio-inputs-v1') ?? '{}')).toEqual({
       weights: { '600519': '80' },
+      lots: {},
       portfolio_value: '100000',
     })
   })
@@ -1751,6 +1752,65 @@ describe('App', () => {
         .filter((url) => url.includes('/risk/portfolio'))
       expect(portfolioCalls.some((url) => url.includes('weights=600519:65'))).toBe(true)
       expect(portfolioCalls.some((url) => url.includes('portfolio_value=120000'))).toBe(true)
+    })
+  })
+
+  it('refreshes portfolio risk with real lot cost inputs', async () => {
+    const lotRisk = {
+      ...portfolioRisk,
+      weight_mode: 'custom',
+      total_position_weight: 75.91,
+      total_market_value: 20000,
+      cash_amount: 4817,
+      positions: [
+        {
+          symbol: '600519',
+          name: '贵州茅台',
+          industry: '白酒',
+          weight_pct: 75.91,
+          market_value: 15183,
+          shares: 10,
+          cost_price: 1200,
+          cost_amount: 12000,
+          unrealized_pnl: 3183,
+          unrealized_pnl_pct: 26.52,
+        },
+        { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 0, market_value: 0, shares: 0, cost_price: 0, cost_amount: 0, unrealized_pnl: 0, unrealized_pnl_pct: 0 },
+        { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 0, market_value: 0, shares: 0, cost_price: 0, cost_amount: 0, unrealized_pnl: 0, unrealized_pnl_pct: 0 },
+      ],
+    }
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/risk/portfolio') && target.includes('holdings=')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(lotRisk) } as Response)
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const portfolioValueInput = await screen.findByLabelText('组合市值')
+    fireEvent.change(portfolioValueInput, { target: { value: '20000' } })
+    fireEvent.change(await screen.findByLabelText('持仓数量 贵州茅台'), { target: { value: '10' } })
+    fireEvent.change(await screen.findByLabelText('成本价 贵州茅台'), { target: { value: '1200' } })
+
+    await waitFor(() => {
+      const portfolioCalls = vi.mocked(fetch).mock.calls
+        .map((call) => decodeURIComponent(String(call[0])))
+        .filter((url) => url.includes('/risk/portfolio'))
+      expect(portfolioCalls.some((url) => url.includes('holdings=600519:10:1200'))).toBe(true)
+      expect(portfolioCalls.some((url) => url.includes('portfolio_value=20000'))).toBe(true)
+    })
+
+    const riskPanel = screen.getByRole('heading', { name: '组合风险' }).closest('section')!
+    await waitFor(() => expect(riskPanel).toHaveTextContent('成本 12,000 元'))
+    expect(riskPanel).toHaveTextContent('+3,183 元')
+    expect(riskPanel).toHaveTextContent('+26.52%')
+    expect(JSON.parse(window.localStorage.getItem('stock-doctor-portfolio-inputs-v1') ?? '{}')).toEqual({
+      weights: {},
+      lots: { '600519': { shares: '10', cost_price: '1200' } },
+      portfolio_value: '20000',
     })
   })
 

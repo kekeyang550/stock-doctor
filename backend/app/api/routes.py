@@ -651,6 +651,7 @@ async def portfolio_risk(
     scope: str = Query(default="watchlist", pattern="^(watchlist|all)$"),
     horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
     weights: str | None = Query(default=None),
+    holdings: str | None = Query(default=None),
     portfolio_value: float | None = Query(default=None, ge=0),
 ) -> PortfolioRiskReport:
     stocks = data_provider.get_watchlist() if scope == "watchlist" else data_provider.list_stocks()
@@ -675,6 +676,7 @@ async def portfolio_risk(
         alerts=alerts,
         exposures=exposures,
         position_weights=_parse_position_weights(weights),
+        position_lots=_parse_position_lots(holdings),
         portfolio_value=portfolio_value,
     )
 
@@ -697,6 +699,27 @@ def _parse_position_weights(value: str | None) -> dict[str, float] | None:
         if weight > 0:
             weights[symbol] = weight
     return weights or None
+
+
+def _parse_position_lots(value: str | None) -> dict[str, dict[str, float]] | None:
+    if not value:
+        return None
+    lots: dict[str, dict[str, float]] = {}
+    for chunk in value.split(","):
+        parts = [part.strip() for part in chunk.split(":")]
+        if len(parts) < 2:
+            continue
+        symbol = parts[0].upper()
+        if not symbol:
+            continue
+        try:
+            shares = float(parts[1])
+            cost_price = float(parts[2]) if len(parts) >= 3 and parts[2] else 0
+        except ValueError:
+            continue
+        if shares > 0:
+            lots[symbol] = {"shares": shares, "cost_price": max(0, cost_price)}
+    return lots or None
 
 
 def _parse_holding_periods(value: str | None) -> list[int]:

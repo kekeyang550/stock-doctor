@@ -408,6 +408,7 @@ export function fetchPortfolioRisk(
   scope = 'watchlist',
   weights?: Record<string, string | number>,
   portfolioValue?: string | number,
+  lots?: Record<string, { shares?: string | number; cost_price?: string | number }>,
 ): Promise<PortfolioRiskReport> {
   const params = new URLSearchParams({ horizon, scope })
   const weightPairs = Object.entries(weights ?? {})
@@ -416,6 +417,13 @@ export function fetchPortfolioRisk(
     .map(([symbol, value]) => `${symbol}:${value}`)
   if (weightPairs.length) {
     params.set('weights', weightPairs.join(','))
+  }
+  const lotPairs = Object.entries(lots ?? {})
+    .map(([symbol, lot]) => [symbol, Number(lot.shares), Number(lot.cost_price ?? 0)] as const)
+    .filter(([, shares]) => Number.isFinite(shares) && shares > 0)
+    .map(([symbol, shares, costPrice]) => `${symbol}:${shares}:${Number.isFinite(costPrice) && costPrice > 0 ? costPrice : 0}`)
+  if (lotPairs.length) {
+    params.set('holdings', lotPairs.join(','))
   }
   const numericPortfolioValue = Number(portfolioValue)
   if (Number.isFinite(numericPortfolioValue) && numericPortfolioValue > 0) {

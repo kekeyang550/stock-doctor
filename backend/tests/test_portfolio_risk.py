@@ -147,3 +147,47 @@ def test_portfolio_risk_report_mentions_cash_buffer_for_partial_weights():
     assert any("现金缓冲" in suggestion for suggestion in report.suggestions)
     assert any("20000.00 元" in suggestion for suggestion in report.suggestions)
     assert any("集中度上限" in suggestion for suggestion in report.suggestions)
+
+
+def test_portfolio_risk_report_uses_real_lot_costs_when_available():
+    provider = MockMarketDataProvider()
+    provider.replace_watchlist(["600519", "300750", "002594"])
+    diagnosis_engine = DiagnosisEngine()
+    alert_engine = AlertEngine()
+    exposure_service = RiskExposureService()
+
+    snapshots = []
+    diagnoses = []
+    alerts = []
+    for stock in provider.get_watchlist():
+        snapshot = provider.get_snapshot(stock.symbol)
+        assert snapshot is not None
+        diagnosis = diagnosis_engine.diagnose(snapshot, horizon="swing")
+        snapshots.append(snapshot)
+        diagnoses.append(diagnosis)
+        alerts.extend(alert_engine.build_alerts(snapshot, diagnosis))
+
+    exposures = exposure_service.summarize(alerts)
+    report = PortfolioRiskService().build(
+        scope="watchlist",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        alerts=alerts,
+        exposures=exposures,
+        position_weights={"600519": 10},
+        position_lots={"600519": {"shares": 10, "cost_price": 1200}},
+        portfolio_value=20000,
+    )
+
+    maotai = next(item for item in report.positions if item.symbol == "600519")
+    assert report.weight_mode == "custom"
+    assert report.total_market_value == 20000
+    assert report.cash_amount == 4817
+    assert maotai.shares == 10
+    assert maotai.cost_price == 1200
+    assert maotai.market_value == 15183
+    assert maotai.cost_amount == 12000
+    assert maotai.unrealized_pnl == 3183
+    assert maotai.unrealized_pnl_pct == 26.52
+    assert maotai.weight_pct > 75

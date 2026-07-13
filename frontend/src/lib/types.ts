@@ -748,6 +748,11 @@ export type PortfolioPositionWeight = {
   industry: string
   weight_pct: number
   market_value: number
+  shares: number
+  cost_price: number
+  cost_amount: number
+  unrealized_pnl: number
+  unrealized_pnl_pct: number
 }
 
 export type PortfolioRiskReport = {

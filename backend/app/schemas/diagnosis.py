@@ -704,6 +704,11 @@ class PortfolioPositionWeight(BaseModel):
     industry: str
     weight_pct: float
     market_value: float = 0
+    shares: float = 0
+    cost_price: float = 0
+    cost_amount: float = 0
+    unrealized_pnl: float = 0
+    unrealized_pnl_pct: float = 0
 
 
 class PortfolioRiskReport(BaseModel):

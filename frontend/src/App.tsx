@@ -181,6 +181,7 @@ type BacktestParameters = {
 
 type PortfolioInputs = {
   weights: Record<string, string>
+  lots: Record<string, { shares: string; cost_price: string }>
   portfolio_value: string
 }
 
@@ -193,6 +194,7 @@ const DEFAULT_BACKTEST_PARAMETERS: BacktestParameters = {
 
 const DEFAULT_PORTFOLIO_INPUTS: PortfolioInputs = {
   weights: {},
+  lots: {},
   portfolio_value: '',
 }
 
@@ -241,6 +243,7 @@ export default function App() {
   const [hotspotMode, setHotspotMode] = useState('balanced')
   const [storedPortfolioInputs] = useState(readStoredPortfolioInputs)
   const [portfolioWeights, setPortfolioWeights] = useState<Record<string, string>>(storedPortfolioInputs.weights)
+  const [portfolioLots, setPortfolioLots] = useState<Record<string, { shares: string; cost_price: string }>>(storedPortfolioInputs.lots)
   const [portfolioValue, setPortfolioValue] = useState(storedPortfolioInputs.portfolio_value)
   const [storedBacktestParameters] = useState(readStoredBacktestParameters)
   const [backtestHoldingDays, setBacktestHoldingDays] = useState(storedBacktestParameters.holding_days)
@@ -442,9 +445,23 @@ export default function App() {
     })
   }, [])
 
+  const setPortfolioLot = useCallback((symbol: string, field: 'shares' | 'cost_price', value: string) => {
+    setPortfolioLots((current) => {
+      const next = { ...current }
+      const existing = next[symbol] ?? { shares: '', cost_price: '' }
+      const updated = { ...existing, [field]: value }
+      if (updated.shares.trim() === '' && updated.cost_price.trim() === '') {
+        delete next[symbol]
+      } else {
+        next[symbol] = updated
+      }
+      return next
+    })
+  }, [])
+
   useEffect(() => {
-    writeStoredPortfolioInputs({ weights: portfolioWeights, portfolio_value: portfolioValue })
-  }, [portfolioWeights, portfolioValue])
+    writeStoredPortfolioInputs({ weights: portfolioWeights, lots: portfolioLots, portfolio_value: portfolioValue })
+  }, [portfolioLots, portfolioWeights, portfolioValue])
 
   const loadHotspotCandidatePool = useCallback(async () => {
     setHotspotCandidatesError(null)
@@ -529,10 +546,10 @@ export default function App() {
   }, [horizon, watchlist])
 
   useEffect(() => {
-    fetchPortfolioRisk(horizon, 'watchlist', portfolioWeights, portfolioValue)
+    fetchPortfolioRisk(horizon, 'watchlist', portfolioWeights, portfolioValue, portfolioLots)
       .then(setPortfolioRisk)
       .catch((err) => setError(err instanceof Error ? err.message : '风险敞口加载失败'))
-  }, [horizon, watchlist, portfolioWeights, portfolioValue])
+  }, [horizon, watchlist, portfolioLots, portfolioWeights, portfolioValue])
 
   useEffect(() => {
     fetchTrend(selectedSymbol)
@@ -618,6 +635,7 @@ export default function App() {
         diagnosis_change: diagnosisChange,
         portfolio_risk: portfolioRisk,
         portfolio_weight_inputs: portfolioWeights,
+        portfolio_lot_inputs: portfolioLots,
         portfolio_value_input: portfolioValue,
         strategy_backtest: strategyBacktest,
         strategy_backtest_parameters: {
@@ -640,7 +658,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1044,8 +1062,10 @@ export default function App() {
           report={portfolioRisk}
           watchlist={watchlist}
           positionWeights={portfolioWeights}
+          positionLots={portfolioLots}
           portfolioValue={portfolioValue}
           onPositionWeightChange={setPortfolioWeight}
+          onPositionLotChange={setPortfolioLot}
           onPortfolioValueChange={setPortfolioValue}
           onSelect={setSelectedSymbol}
         />
@@ -1260,7 +1280,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`- 现金缓冲: ${markdownText(portfolioRisk.cash_amount ?? 0)} 元`)
   lines.push('')
   lines.push('### 模拟仓位')
-  markdownList(lines, positions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${item.industry} - ${item.weight_pct}% - ${item.market_value ?? 0} 元`)
+  markdownList(lines, positions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${item.industry} - ${item.weight_pct}% - 市值 ${item.market_value ?? 0} 元 - 数量 ${item.shares ?? 0} - 成本 ${item.cost_amount ?? 0} 元 - 浮盈亏 ${item.unrealized_pnl ?? 0} 元 (${item.unrealized_pnl_pct ?? 0}%)`)
   lines.push('')
   lines.push('### 行业暴露')
   markdownList(
@@ -1490,7 +1510,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       </div>
       <p>${escapeHtml(portfolioRisk.summary ?? "")}</p>
       <h3>模拟仓位</h3>
-      ${positions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.market_value ?? 0)} 元</small></div>`).join("") || "<p>暂无模拟仓位</p>"}
+      ${positions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · ${escapeHtml(item.weight_pct)}% · 市值 ${escapeHtml(item.market_value ?? 0)} 元 · 数量 ${escapeHtml(item.shares ?? 0)} · 成本 ${escapeHtml(item.cost_amount ?? 0)} 元 · 浮盈亏 ${escapeHtml(item.unrealized_pnl ?? 0)} 元 (${escapeHtml(item.unrealized_pnl_pct ?? 0)}%)</small></div>`).join("") || "<p>暂无模拟仓位</p>"}
       <h3>行业暴露</h3>
       ${industryExposures.map((item: any) => `<div class="row"><strong>${escapeHtml(item.industry)}</strong><small>权重 ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.stock_count)} 只 · ${escapeHtml(item.concentration_label ?? "集中度正常")} · 上限 ${escapeHtml(item.suggested_max_weight_pct ?? 0)}% · 超额 ${escapeHtml(item.excess_weight_pct ?? 0)}% · 超额金额 ${escapeHtml(item.excess_market_value ?? 0)} 元 · 风险压力 ${escapeHtml(item.risk_score)}</small></div>`).join("") || "<p>暂无行业暴露</p>"}
       <h3>风险贡献</h3>
@@ -1790,6 +1810,7 @@ function writeStoredPortfolioInputs(inputs: PortfolioInputs) {
 
 function normalizePortfolioInputs(inputs: Partial<PortfolioInputs>): PortfolioInputs {
   const weights: Record<string, string> = {}
+  const lots: Record<string, { shares: string; cost_price: string }> = {}
   const rawWeights = inputs.weights
   if (rawWeights && typeof rawWeights === 'object' && !Array.isArray(rawWeights)) {
     Object.entries(rawWeights).forEach(([symbol, value]) => {
@@ -1800,9 +1821,25 @@ function normalizePortfolioInputs(inputs: Partial<PortfolioInputs>): PortfolioIn
       }
     })
   }
+  const rawLots = inputs.lots
+  if (rawLots && typeof rawLots === 'object' && !Array.isArray(rawLots)) {
+    Object.entries(rawLots).forEach(([symbol, value]) => {
+      const normalizedSymbol = symbol.trim()
+      if (!normalizedSymbol || normalizedSymbol.length > 12 || !value || typeof value !== 'object' || Array.isArray(value)) {
+        return
+      }
+      const lot = value as Partial<{ shares: unknown; cost_price: unknown }>
+      const shares = normalizePortfolioInputNumber(lot.shares, 0, 1_000_000_000)
+      const costPrice = normalizePortfolioInputNumber(lot.cost_price, 0, 1_000_000)
+      if (shares !== '' || costPrice !== '') {
+        lots[normalizedSymbol] = { shares, cost_price: costPrice }
+      }
+    })
+  }
 
   return {
     weights,
+    lots,
     portfolio_value: normalizePortfolioInputNumber(inputs.portfolio_value, 0, 1_000_000_000),
   }
 }

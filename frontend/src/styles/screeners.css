@@ -1307,7 +1307,7 @@
 
 .position-weight-list label {
   display: grid;
-  grid-template-columns: minmax(72px, 1fr) 62px 72px 16px;
+  grid-template-columns: minmax(72px, 1fr) minmax(150px, 1.5fr) 64px 16px 74px 24px 74px 24px;
   gap: 8px;
   align-items: center;
 }
@@ -1325,4 +1325,10 @@
 .position-weight-list em {
   font-style: normal;
   color: #6a7a70;
+}
+
+@media (max-width: 760px) {
+  .position-weight-list label {
+    grid-template-columns: minmax(84px, 1fr) minmax(120px, 1fr) 64px 16px;
+  }
 }

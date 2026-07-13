@@ -461,16 +461,20 @@ export function RiskExposurePanel({
   report,
   watchlist,
   positionWeights,
+  positionLots,
   portfolioValue,
   onPositionWeightChange,
+  onPositionLotChange,
   onPortfolioValueChange,
   onSelect,
 }: {
   report: PortfolioRiskReport | null
   watchlist: StockSummary[]
   positionWeights: Record<string, string>
+  positionLots: Record<string, { shares: string; cost_price: string }>
   portfolioValue: string
   onPositionWeightChange: (symbol: string, value: string) => void
+  onPositionLotChange: (symbol: string, field: 'shares' | 'cost_price', value: string) => void
   onPortfolioValueChange: (value: string) => void
   onSelect: (symbol: string) => void
 }) {
@@ -480,7 +484,18 @@ export function RiskExposurePanel({
   const rebalanceActions = report?.rebalance_actions ?? []
   const positions = report?.positions.length
     ? report.positions
-    : watchlist.map((stock) => ({ symbol: stock.symbol, name: stock.name, industry: stock.industry, weight_pct: 0, market_value: 0 }))
+    : watchlist.map((stock) => ({
+      symbol: stock.symbol,
+      name: stock.name,
+      industry: stock.industry,
+      weight_pct: 0,
+      market_value: 0,
+      shares: 0,
+      cost_price: 0,
+      cost_amount: 0,
+      unrealized_pnl: 0,
+      unrealized_pnl_pct: 0,
+    }))
   return (
     <section className="panel exposure-panel">
       <div className="panel-title split-title">
@@ -556,22 +571,46 @@ export function RiskExposurePanel({
               <em>元</em>
             </label>
             <div className="position-weight-list">
-              {positions.map((position) => (
-                <label key={position.symbol}>
-                  <span>{position.name}</span>
-                  <small>{position.symbol}{position.market_value > 0 ? ` · ${formatCurrency(position.market_value)}` : ''}</small>
-                  <input
-                    aria-label={`模拟仓位 ${position.name}`}
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={positionWeights[position.symbol] ?? formatWeightInput(position.weight_pct)}
-                    onChange={(event) => onPositionWeightChange(position.symbol, event.target.value)}
-                  />
-                  <em>%</em>
-                </label>
-              ))}
+              {positions.map((position) => {
+                const lot = positionLots[position.symbol] ?? { shares: '', cost_price: '' }
+                return (
+                  <label key={position.symbol}>
+                    <span>{position.name}</span>
+                    <small>
+                      {position.symbol}{position.market_value > 0 ? ` · ${formatCurrency(position.market_value)}` : ''}
+                      {position.cost_amount > 0 ? ` · 成本 ${formatCurrency(position.cost_amount)} · ${formatSignedCurrency(position.unrealized_pnl)} (${formatPositionSignedPercent(position.unrealized_pnl_pct)})` : ''}
+                    </small>
+                    <input
+                      aria-label={`模拟仓位 ${position.name}`}
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={positionWeights[position.symbol] ?? formatWeightInput(position.weight_pct)}
+                      onChange={(event) => onPositionWeightChange(position.symbol, event.target.value)}
+                    />
+                    <em>%</em>
+                    <input
+                      aria-label={`持仓数量 ${position.name}`}
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={lot.shares}
+                      onChange={(event) => onPositionLotChange(position.symbol, 'shares', event.target.value)}
+                    />
+                    <em>股</em>
+                    <input
+                      aria-label={`成本价 ${position.name}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={lot.cost_price}
+                      onChange={(event) => onPositionLotChange(position.symbol, 'cost_price', event.target.value)}
+                    />
+                    <em>元</em>
+                  </label>
+                )
+              })}
             </div>
           </div>
           {industryExposures.length ? (
@@ -665,6 +704,17 @@ function formatWeightPercent(value: number) {
 function formatCurrency(value: number) {
   if (!Number.isFinite(value) || value <= 0) return '0 元'
   return `${Math.round(value).toLocaleString('zh-CN')} 元`
+}
+
+function formatSignedCurrency(value: number) {
+  if (!Number.isFinite(value)) return '+0 元'
+  const prefix = value >= 0 ? '+' : ''
+  return `${prefix}${Math.round(value).toLocaleString('zh-CN')} 元`
+}
+
+function formatPositionSignedPercent(value: number) {
+  if (!Number.isFinite(value)) return '+0.00%'
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
 function rebalanceActionLabel(action: 'reduce' | 'hold' | 'increase') {
