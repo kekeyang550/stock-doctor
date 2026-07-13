@@ -339,7 +339,7 @@ function DataQualityPanel({ report }: { report: DataQualityReport | null }) {
           <h3>数据质量</h3>
         </span>
         <small className={report ? report.status : 'warn'}>
-          {report ? qualityStatusLabel(report.status) : '加载中'}
+          {report ? qualityReportStatusLabel(report) : '加载中'}
         </small>
       </div>
       {report ? (
@@ -353,7 +353,7 @@ function DataQualityPanel({ report }: { report: DataQualityReport | null }) {
           </div>
           <div className="quality-checks">
             {report.checks.map((check) => (
-              <DataQualityCheckRow key={check.key} check={check} />
+              <DataQualityCheckRow key={check.key} check={check} report={report} />
             ))}
           </div>
         </>
@@ -366,12 +366,12 @@ function DataQualityPanel({ report }: { report: DataQualityReport | null }) {
 
 
 
-function DataQualityCheckRow({ check }: { check: DataQualityCheck }) {
+function DataQualityCheckRow({ check, report }: { check: DataQualityCheck; report: DataQualityReport }) {
   return (
     <article className={`quality-check ${check.status}`}>
       <div>
         <strong>{check.label}</strong>
-        <em>{qualityStatusLabel(check.status)}</em>
+        <em>{qualityCheckStatusLabel(check, report)}</em>
       </div>
       <p>{check.detail}</p>
       <small>{check.impact}</small>
@@ -383,8 +383,26 @@ function DataQualityCheckRow({ check }: { check: DataQualityCheck }) {
 
 function qualityStatusLabel(status: DataQualityReport['status']) {
   if (status === 'pass') return '可靠'
-  if (status === 'warn') return '关注'
+  if (status === 'warn') return '需核验'
   return '异常'
+}
+
+function qualityReportStatusLabel(report: DataQualityReport) {
+  if (report.status !== 'warn') return qualityStatusLabel(report.status)
+  if (report.checks.some((check) => check.key === 'runtime_environment' && check.status === 'warn')) {
+    return '运行需刷新'
+  }
+  if (report.checks.some((check) => check.key === 'source_coverage' && check.status === 'warn')) {
+    return '部分兜底'
+  }
+  return qualityStatusLabel(report.status)
+}
+
+function qualityCheckStatusLabel(check: DataQualityCheck, report: DataQualityReport) {
+  if (check.status !== 'warn') return qualityStatusLabel(check.status)
+  if (check.key === 'runtime_environment') return '需刷新'
+  if (check.key === 'source_coverage') return '部分兜底'
+  return qualityReportStatusLabel(report)
 }
 
 

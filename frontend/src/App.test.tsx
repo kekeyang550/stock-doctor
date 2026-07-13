@@ -1455,6 +1455,7 @@ describe('App', () => {
     expect(within(reviewPanel).getByText('验证论证假设 1')).toBeInTheDocument()
     const qualityPanel = screen.getByRole('heading', { name: '数据质量' }).closest('section')!
     expect(within(qualityPanel).getAllByText('可靠').length).toBeGreaterThan(0)
+    expect(within(qualityPanel).getAllByText('部分兜底').length).toBeGreaterThan(0)
     expect(within(qualityPanel).getByText('行情字段')).toBeInTheDocument()
     expect(within(qualityPanel).getByText('来源覆盖')).toBeInTheDocument()
     expect(within(qualityPanel).getByText('真实来源：东方财富估值详情、通达信本地 K 线；保守估算：成长字段。')).toBeInTheDocument()
