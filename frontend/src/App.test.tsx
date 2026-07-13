@@ -1629,6 +1629,10 @@ describe('App', () => {
         { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 0 },
         { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 0 },
       ],
+      suggestions: [
+        '当前模拟仓位 80.0%，保留约 20.0% 现金缓冲。',
+        '优先复核 贵州茅台：估值波动',
+      ],
     }
     const defaultFetch = vi.mocked(fetch).getMockImplementation()!
     vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
@@ -1654,6 +1658,7 @@ describe('App', () => {
     const riskPanel = screen.getByRole('heading', { name: '组合风险' }).closest('section')!
     await waitFor(() => expect(riskPanel).toHaveTextContent('自定义权重'))
     expect(riskPanel).toHaveTextContent('总权重 80.0%')
+    expect(riskPanel).toHaveTextContent('现金缓冲')
   })
 
   it('shows strategy backtest summary with sample trades and drawdown', async () => {

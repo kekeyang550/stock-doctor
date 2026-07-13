@@ -75,7 +75,7 @@ class PortfolioRiskService:
         drivers = self._drivers(snapshots, diagnosis_by_symbol, alerts, raw_weights)
         risk_contributions = self._risk_contributions(snapshots, diagnosis_by_symbol, normalized_weights, raw_weights)
         rebalance_actions = self._rebalance_actions(risk_contributions)
-        suggestions = self._suggestions(pressure, concentration, distribution, drivers)
+        suggestions = self._suggestions(pressure, concentration, distribution, drivers, total_position_weight)
         positions = self._positions(snapshots, raw_weights)
 
         return PortfolioRiskReport(
@@ -311,8 +311,14 @@ class PortfolioRiskService:
         concentration: PortfolioRiskConcentration,
         distribution: PortfolioRiskDistribution,
         drivers: list[PortfolioRiskDriver],
+        total_position_weight: float,
     ) -> list[str]:
         suggestions: list[str] = []
+        if total_position_weight < 95:
+            cash_pct = round(100 - total_position_weight, 1)
+            suggestions.append(f"当前模拟仓位 {total_position_weight:.1f}%，保留约 {cash_pct:.1f}% 现金缓冲。")
+        elif total_position_weight > 105:
+            suggestions.append(f"当前模拟仓位 {total_position_weight:.1f}%，已超过 100%，请核对是否存在杠杆或重复录入。")
         if drivers:
             suggestions.append(f"优先复核 {drivers[0].name}：{drivers[0].primary_risk}")
         if concentration.top_industry_ratio >= 0.5 and concentration.top_industry_count >= 2:

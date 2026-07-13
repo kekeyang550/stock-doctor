@@ -50,6 +50,7 @@ def test_portfolio_risk_report_summarizes_watchlist():
     assert report.risk_contributions[0].contribution_score >= report.risk_contributions[-1].contribution_score
     assert report.suggestions
     assert report.exposures == exposures
+    assert not any("现金缓冲" in suggestion for suggestion in report.suggestions)
 
 
 def test_portfolio_risk_report_supports_custom_position_weights():
@@ -101,3 +102,37 @@ def test_portfolio_risk_report_supports_custom_position_weights():
     assert maotai_action.current_weight_pct == 80
     assert maotai_action.suggested_weight_pct <= 80
     assert maotai_action.reason
+    assert not any("现金缓冲" in suggestion for suggestion in report.suggestions)
+
+
+def test_portfolio_risk_report_mentions_cash_buffer_for_partial_weights():
+    provider = MockMarketDataProvider()
+    provider.replace_watchlist(["600519", "300750", "002594"])
+    diagnosis_engine = DiagnosisEngine()
+    alert_engine = AlertEngine()
+    exposure_service = RiskExposureService()
+
+    snapshots = []
+    diagnoses = []
+    alerts = []
+    for stock in provider.get_watchlist():
+        snapshot = provider.get_snapshot(stock.symbol)
+        assert snapshot is not None
+        diagnosis = diagnosis_engine.diagnose(snapshot, horizon="swing")
+        snapshots.append(snapshot)
+        diagnoses.append(diagnosis)
+        alerts.extend(alert_engine.build_alerts(snapshot, diagnosis))
+
+    exposures = exposure_service.summarize(alerts)
+    report = PortfolioRiskService().build(
+        scope="watchlist",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        alerts=alerts,
+        exposures=exposures,
+        position_weights={"600519": 80},
+    )
+
+    assert report.total_position_weight == 80
+    assert any("现金缓冲" in suggestion for suggestion in report.suggestions)
