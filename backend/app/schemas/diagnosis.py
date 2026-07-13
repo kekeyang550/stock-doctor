@@ -203,6 +203,9 @@ class DataQualityOverview(BaseModel):
     pass_count: int
     warn_count: int
     fail_count: int
+    runtime_warn_count: int = 0
+    fallback_warn_count: int = 0
+    generic_warn_count: int = 0
     lowest_report: DataQualityReport | None
     reports: list[DataQualityReport]
 

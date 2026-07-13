@@ -184,6 +184,9 @@ export type DataQualityOverview = {
   pass_count: number
   warn_count: number
   fail_count: number
+  runtime_warn_count?: number
+  fallback_warn_count?: number
+  generic_warn_count?: number
   lowest_report: DataQualityReport | null
   reports: DataQualityReport[]
 }

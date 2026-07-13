@@ -209,6 +209,8 @@ def test_data_quality_overview_endpoint_summarizes_scope():
     assert payload["stock_count"] >= 1
     assert payload["average_score"] >= 0
     assert payload["pass_count"] + payload["warn_count"] + payload["fail_count"] == payload["stock_count"]
+    assert {"runtime_warn_count", "fallback_warn_count", "generic_warn_count"}.issubset(payload.keys())
+    assert payload["runtime_warn_count"] + payload["fallback_warn_count"] + payload["generic_warn_count"] <= payload["warn_count"] + payload["fail_count"]
     assert payload["lowest_report"]["symbol"]
     assert len(payload["reports"]) == payload["stock_count"]
 

@@ -304,6 +304,9 @@ const dataQualityOverview = {
   pass_count: 0,
   warn_count: 3,
   fail_count: 0,
+  runtime_warn_count: 1,
+  fallback_warn_count: 2,
+  generic_warn_count: 0,
   lowest_report: dataQuality,
   reports: [
     dataQuality,

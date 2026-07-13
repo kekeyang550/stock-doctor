@@ -203,6 +203,9 @@ async def data_quality_overview(
         pass_count=len([report for report in reports if report.status == "pass"]),
         warn_count=len([report for report in reports if report.status == "warn"]),
         fail_count=len([report for report in reports if report.status == "fail"]),
+        runtime_warn_count=len([report for report in reports if _data_quality_category(report) == "runtime"]),
+        fallback_warn_count=len([report for report in reports if _data_quality_category(report) == "fallback"]),
+        generic_warn_count=len([report for report in reports if _data_quality_category(report) == "warn"]),
         lowest_report=reports[0] if reports else None,
         reports=reports,
     )
@@ -215,6 +218,18 @@ async def data_quality(symbol: str) -> DataQualityReport:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
     connector_health = data_connector_health_service.build_health(provider=data_provider)
     return data_quality_service.build_report(snapshot, connector_health=connector_health)
+
+
+def _data_quality_category(report: DataQualityReport) -> str:
+    if report.status == "fail":
+        return "fail"
+    if any(check.key == "runtime_environment" and check.status != "pass" for check in report.checks):
+        return "runtime"
+    if any(check.key == "source_coverage" and check.status == "warn" for check in report.checks):
+        return "fallback"
+    if report.status == "warn":
+        return "warn"
+    return "pass"
 
 
 @router.get("/system/data-connectors", response_model=DataConnectorHealth)

@@ -375,6 +375,9 @@ export function DataQualityOverviewPanel({
     warn: reports.filter((report) => dataQualityCategory(report) === 'warn'),
     fail: reports.filter((report) => dataQualityCategory(report) === 'fail'),
   }
+  const runtimeCount = overview?.runtime_warn_count ?? qualityBuckets.runtime.length
+  const fallbackCount = overview?.fallback_warn_count ?? qualityBuckets.fallback.length
+  const genericWarnCount = overview?.generic_warn_count ?? qualityBuckets.warn.length
   const filteredReports = qualityFilter === 'all' ? reports : qualityBuckets[qualityFilter]
   const selectedLowest = filteredReports[0] ?? null
   return (
@@ -391,16 +394,16 @@ export function DataQualityOverviewPanel({
           <div className="quality-overview-metrics">
             <SummaryMetric label="平均质量" value={overview.average_score.toFixed(1)} />
             <SummaryMetric label="可靠" value={overview.pass_count} />
-            <SummaryMetric label="部分兜底" value={qualityBuckets.fallback.length} />
-            <SummaryMetric label="运行刷新" value={qualityBuckets.runtime.length} />
+            <SummaryMetric label="部分兜底" value={fallbackCount} />
+            <SummaryMetric label="运行刷新" value={runtimeCount} />
             <SummaryMetric label="异常" value={overview.fail_count} />
           </div>
           <div className="mini-segments quality-filter" aria-label="数据质量筛选">
             {([
               ['all', `全部 ${reports.length}`],
-              ['runtime', `运行 ${qualityBuckets.runtime.length}`],
-              ['fallback', `兜底 ${qualityBuckets.fallback.length}`],
-              ['warn', `核验 ${qualityBuckets.warn.length}`],
+              ['runtime', `运行 ${runtimeCount}`],
+              ['fallback', `兜底 ${fallbackCount}`],
+              ['warn', `核验 ${genericWarnCount}`],
               ['fail', `异常 ${qualityBuckets.fail.length}`],
             ] as const).map(([value, label]) => (
               <button
