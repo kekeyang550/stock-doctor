@@ -11,6 +11,7 @@ import type {
   DataQualityOverview,
   DataQualityReport,
   DataRefreshJob,
+  DataRuntimeSettings,
   DataSource,
   Diagnosis,
   DiagnosisChangeItem,
@@ -49,6 +50,76 @@ import type {
   WatchlistSummary,
 } from '../../lib/types'
 import { formatReportTime } from '../../lib/formatters'
+
+export function SystemRuntimeConfigPanel({ settings }: { settings: DataRuntimeSettings | null }) {
+  const providerOptions = settings?.provider_options?.length ? settings.provider_options.join(' / ') : '未返回'
+  const paths = settings?.paths ?? []
+
+  return (
+    <section className="panel runtime-config-panel">
+      <div className="panel-title split-title">
+        <span>
+          <Database size={18} />
+          <h3>运行配置</h3>
+        </span>
+        <small>{settings ? `当前 ${settings.active_provider}` : '加载中'}</small>
+      </div>
+      {settings ? (
+        <>
+          <div className="runtime-config-grid">
+            <RuntimeConfigItem label="数据源" value={settings.active_provider} detail={`可选：${providerOptions}`} />
+            <RuntimeConfigItem label="请求超时" value={`${settings.request_timeout_seconds} 秒`} detail="真实行情接口单次等待上限" />
+            <RuntimeConfigItem label="缓存 TTL" value={`${settings.cache_ttl_seconds} 秒`} detail="行情缓存有效窗口" />
+            <RuntimeConfigItem label="过期阈值" value={`${settings.freshness_stale_after_minutes} 分钟`} detail="超过后提示数据偏旧" />
+          </div>
+          <div className="runtime-path-list">
+            {paths.map((item) => (
+              <article key={item.key} className={`runtime-path ${runtimePathStatusClass(item.exists)}`}>
+                <div>
+                  <strong>{item.label}</strong>
+                  <em>{runtimePathStatusLabel(item.exists)}</em>
+                </div>
+                <p>{item.value || '未配置'}</p>
+                <small>{item.env_var}</small>
+              </article>
+            ))}
+          </div>
+          <p className="runtime-config-note">
+            修改这些配置需要更新后端环境变量并重启服务后生效。
+          </p>
+        </>
+      ) : (
+        <p className="empty-text">正在读取运行配置...</p>
+      )}
+    </section>
+  )
+}
+
+
+function RuntimeConfigItem({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <span className="runtime-config-item">
+      <small>{label}</small>
+      <strong>{value}</strong>
+      <em>{detail}</em>
+    </span>
+  )
+}
+
+
+function runtimePathStatusLabel(exists: boolean | null) {
+  if (exists === true) return '可用'
+  if (exists === false) return '未找到'
+  return '未配置'
+}
+
+
+function runtimePathStatusClass(exists: boolean | null) {
+  if (exists === true) return 'online'
+  if (exists === false) return 'fallback'
+  return 'unknown'
+}
+
 
 export function SystemStoragePanel({
   status,

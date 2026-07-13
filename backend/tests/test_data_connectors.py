@@ -175,3 +175,19 @@ def test_data_connector_health_endpoint():
     assert any(item["name"] == "通达信本地日线" for item in payload["connectors"])
     assert any(item["name"] == "AKShare" for item in payload["connectors"])
     assert all("next_action" in item for item in payload["connectors"])
+
+
+def test_runtime_config_endpoint_exposes_provider_and_local_paths():
+    response = client.get("/api/v1/system/runtime-config")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["active_provider"] in {"mock", "eastmoney", "akshare"}
+    assert "eastmoney" in payload["provider_options"]
+    assert payload["request_timeout_seconds"] == settings.data_request_timeout_seconds
+    assert payload["cache_ttl_seconds"] == settings.data_cache_ttl_seconds
+    assert payload["freshness_stale_after_minutes"] == settings.data_freshness_stale_after_minutes
+    assert payload["restart_required"] is True
+    paths = {item["key"]: item for item in payload["paths"]}
+    assert paths["tdx_vipdoc"]["env_var"] == "STOCK_DOCTOR_TDX_VIPDOC_PATH"
+    assert paths["ths_stockname"]["env_var"] == "STOCK_DOCTOR_THS_STOCKNAME_PATHS"

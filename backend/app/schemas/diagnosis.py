@@ -104,6 +104,25 @@ class DataConnectorHealth(BaseModel):
     connectors: list[DataConnectorStatus]
 
 
+class RuntimePathSetting(BaseModel):
+    key: str
+    label: str
+    env_var: str
+    value: str
+    configured: bool
+    exists: bool | None = None
+
+
+class DataRuntimeSettings(BaseModel):
+    active_provider: str
+    provider_options: list[str]
+    request_timeout_seconds: int
+    cache_ttl_seconds: int
+    freshness_stale_after_minutes: int
+    paths: list[RuntimePathSetting]
+    restart_required: bool = True
+
+
 class DataRefreshJob(BaseModel):
     id: str
     provider: str

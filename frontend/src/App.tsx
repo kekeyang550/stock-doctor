@@ -27,6 +27,7 @@ import {
 import {
   DataConnectorPanel,
   SystemReadinessPanel,
+  SystemRuntimeConfigPanel,
   SystemStoragePanel,
 } from './components/system/SystemPanels'
 import {
@@ -43,6 +44,7 @@ import {
   fetchDataFreshness,
   fetchDataQuality,
   fetchDataQualityOverview,
+  fetchDataRuntimeSettings,
   fetchDataSources,
   fetchDiagnosis,
   fetchDiagnosisChange,
@@ -96,6 +98,7 @@ import type {
   DataQualityOverview,
   DataQualityReport,
   DataRefreshJob,
+  DataRuntimeSettings,
   DataSource,
   Diagnosis,
   DiagnosisChangeItem,
@@ -191,6 +194,7 @@ export default function App() {
   const [connectorHealth, setConnectorHealth] = useState<DataConnectorHealth | null>(null)
   const [freshness, setFreshness] = useState<DataFreshnessStatus | null>(null)
   const [refreshJobs, setRefreshJobs] = useState<DataRefreshJob[]>([])
+  const [runtimeSettings, setRuntimeSettings] = useState<DataRuntimeSettings | null>(null)
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
   const [systemReadiness, setSystemReadiness] = useState<SystemReadiness | null>(null)
   const [storageImportPayload, setStorageImportPayload] = useState<StorageImportPayload | null>(null)
@@ -279,12 +283,13 @@ export default function App() {
   }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps])
 
   const loadStocks = useCallback(async () => {
-    const [items, watchItems, market, sources, connectors, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotActions] = await Promise.all([
+    const [items, watchItems, market, sources, connectors, runtime, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotActions] = await Promise.all([
       fetchStocks(),
       fetchWatchlist(),
       fetchMarketOverview(),
       fetchDataSources(),
       fetchDataConnectorHealth(),
+      fetchDataRuntimeSettings(),
       fetchDataFreshness(),
       fetchRefreshJobs(),
       fetchStorageStatus(),
@@ -300,6 +305,7 @@ export default function App() {
     setOverview(market)
     setDataSources(sources)
     setConnectorHealth(connectors)
+    setRuntimeSettings(runtime)
     setFreshness(fresh)
     setRefreshJobs(jobs)
     setStorageStatus(storage)
@@ -1035,6 +1041,8 @@ export default function App() {
           applyingImport={applyingImport}
           error={storageError}
         />
+
+        <SystemRuntimeConfigPanel settings={runtimeSettings} />
 
         <SystemReadinessPanel readiness={systemReadiness} />
 

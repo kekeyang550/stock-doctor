@@ -193,6 +193,33 @@ const connectorHealth = {
   ],
 }
 
+const runtimeSettings = {
+  active_provider: 'mock',
+  provider_options: ['mock', 'eastmoney', 'akshare'],
+  request_timeout_seconds: 8,
+  cache_ttl_seconds: 300,
+  freshness_stale_after_minutes: 30,
+  paths: [
+    {
+      key: 'tdx_vipdoc',
+      label: '通达信 vipdoc',
+      env_var: 'STOCK_DOCTOR_TDX_VIPDOC_PATH',
+      value: 'E:\\new_tdx64\\vipdoc',
+      configured: true,
+      exists: false,
+    },
+    {
+      key: 'ths_stockname',
+      label: '同花顺股票名表',
+      env_var: 'STOCK_DOCTOR_THS_STOCKNAME_PATHS',
+      value: 'D:\\同花顺软件\\同花顺\\stockname\\stockname_16_0.txt',
+      configured: true,
+      exists: true,
+    },
+  ],
+  restart_required: true,
+}
+
 const refreshJobs = [
   {
     id: 'job-1',
@@ -1215,6 +1242,9 @@ describe('App', () => {
       if (url.includes('/system/data-connectors')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(connectorHealth) })
       }
+      if (url.includes('/system/runtime-config')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(runtimeSettings) })
+      }
       if (url.includes('/system/refresh-jobs')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(refreshJobs) })
       }
@@ -1283,6 +1313,13 @@ describe('App', () => {
     expect(screen.getByText('诊断报告')).toBeInTheDocument()
     expect(screen.getByText('导出')).toBeInTheDocument()
     expect(screen.getByText('预检')).toBeInTheDocument()
+    const runtimePanel = screen.getByRole('heading', { name: '运行配置' }).closest('section')!
+    expect(within(runtimePanel).getByText('数据源')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('mock')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('通达信 vipdoc')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('STOCK_DOCTOR_TDX_VIPDOC_PATH')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('同花顺股票名表')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('修改这些配置需要更新后端环境变量并重启服务后生效。')).toBeInTheDocument()
     const readinessPanel = screen.getByRole('heading', { name: '系统就绪度' }).closest('section')!
     expect(within(readinessPanel).getByText('88')).toBeInTheDocument()
     expect(within(readinessPanel).getByText('状态存储')).toBeInTheDocument()
@@ -2014,6 +2051,9 @@ describe('App', () => {
       }
       if (target.includes('/system/data-connectors')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(connectorHealth) } as Response)
+      }
+      if (target.includes('/system/runtime-config')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(runtimeSettings) } as Response)
       }
       if (target.includes('/system/storage')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(storageStatus) } as Response)

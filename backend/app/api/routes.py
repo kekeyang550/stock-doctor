@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.config import settings
 from app.schemas.diagnosis import (
     AlertItem,
     ConceptHeatItem,
@@ -11,6 +13,7 @@ from app.schemas.diagnosis import (
     DataQualityReport,
     DataRefreshJob,
     DataRefreshJobRequest,
+    DataRuntimeSettings,
     DiagnosisChangeReport,
     DiagnosisResponse,
     DiagnosisThesis,
@@ -55,6 +58,7 @@ from app.schemas.diagnosis import (
     WatchlistRequest,
     WatchlistSummary,
     IndustryExposure,
+    RuntimePathSetting,
 )
 from app.services.alerts import AlertEngine
 from app.services.concept_heat import ConceptHeatService
@@ -212,6 +216,37 @@ async def data_quality(symbol: str) -> DataQualityReport:
 @router.get("/system/data-connectors", response_model=DataConnectorHealth)
 async def system_data_connectors() -> DataConnectorHealth:
     return data_connector_health_service.build_health(provider=data_provider)
+
+
+@router.get("/system/runtime-config", response_model=DataRuntimeSettings)
+async def system_runtime_config() -> DataRuntimeSettings:
+    ths_paths = [path.strip() for path in settings.ths_stockname_paths.split(";") if path.strip()]
+    path_settings = [
+        RuntimePathSetting(
+            key="tdx_vipdoc",
+            label="通达信 vipdoc",
+            env_var="STOCK_DOCTOR_TDX_VIPDOC_PATH",
+            value=settings.tdx_vipdoc_path,
+            configured=bool(settings.tdx_vipdoc_path.strip()),
+            exists=Path(settings.tdx_vipdoc_path).exists() if settings.tdx_vipdoc_path.strip() else None,
+        ),
+        RuntimePathSetting(
+            key="ths_stockname",
+            label="同花顺股票名表",
+            env_var="STOCK_DOCTOR_THS_STOCKNAME_PATHS",
+            value=settings.ths_stockname_paths,
+            configured=bool(ths_paths),
+            exists=any(Path(path).exists() for path in ths_paths) if ths_paths else None,
+        ),
+    ]
+    return DataRuntimeSettings(
+        active_provider=settings.data_provider,
+        provider_options=["mock", "eastmoney", "akshare"],
+        request_timeout_seconds=settings.data_request_timeout_seconds,
+        cache_ttl_seconds=settings.data_cache_ttl_seconds,
+        freshness_stale_after_minutes=settings.data_freshness_stale_after_minutes,
+        paths=path_settings,
+    )
 
 
 @router.get("/system/refresh-jobs", response_model=list[DataRefreshJob])

@@ -6,6 +6,7 @@ import type {
   DataQualityOverview,
   DataQualityReport,
   DataRefreshJob,
+  DataRuntimeSettings,
   DataSource,
   Diagnosis,
   DiagnosisChangeReport,
@@ -120,6 +121,10 @@ export function fetchDataQualityOverview(scope = 'watchlist'): Promise<DataQuali
 
 export function fetchDataConnectorHealth(): Promise<DataConnectorHealth> {
   return getJson<DataConnectorHealth>('/api/v1/system/data-connectors')
+}
+
+export function fetchDataRuntimeSettings(): Promise<DataRuntimeSettings> {
+  return getJson<DataRuntimeSettings>('/api/v1/system/runtime-config')
 }
 
 export function fetchRefreshJobs(): Promise<DataRefreshJob[]> {

@@ -61,6 +61,25 @@ export type DataConnectorHealth = {
   connectors: DataConnectorStatus[]
 }
 
+export type RuntimePathSetting = {
+  key: string
+  label: string
+  env_var: string
+  value: string
+  configured: boolean
+  exists: boolean | null
+}
+
+export type DataRuntimeSettings = {
+  active_provider: string
+  provider_options: string[]
+  request_timeout_seconds: number
+  cache_ttl_seconds: number
+  freshness_stale_after_minutes: number
+  paths: RuntimePathSetting[]
+  restart_required: boolean
+}
+
 export type ProviderCacheBucketStatus = {
   key: string
   label: string
