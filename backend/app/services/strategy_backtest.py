@@ -64,6 +64,7 @@ class StrategyBacktestService:
         stop_loss_pct: float = 0,
         exit_on_ma20_break: bool = False,
         exit_volume_ratio: float = 0,
+        diagnosis_exit_score: float = 0,
     ) -> StrategyBacktestReport:
         holding_days = max(1, min(holding_days, 20))
         limit = max(1, min(limit, 30))
@@ -72,6 +73,7 @@ class StrategyBacktestService:
         take_profit_pct = max(0.0, min(float(take_profit_pct), 100.0))
         stop_loss_pct = max(0.0, min(float(stop_loss_pct), 100.0))
         exit_volume_ratio = max(0.0, min(float(exit_volume_ratio), 5.0))
+        diagnosis_exit_score = max(0.0, min(float(diagnosis_exit_score), 100.0))
         round_trip_cost_pct = self._round_trip_cost_pct(fee_bps, slippage_bps)
         snapshot_by_symbol = {item.symbol: item for item in snapshots}
         candidates = self._screener_service.screen(snapshots=snapshots, diagnoses=diagnoses, preset=preset)
@@ -104,6 +106,7 @@ class StrategyBacktestService:
                 stop_loss_pct,
                 exit_on_ma20_break,
                 exit_volume_ratio,
+                diagnosis_exit_score,
             )
             if trade is not None:
                 trades.append(trade)
@@ -155,6 +158,7 @@ class StrategyBacktestService:
             stop_loss_pct=stop_loss_pct,
             exit_on_ma20_break=exit_on_ma20_break,
             exit_volume_ratio=exit_volume_ratio,
+            diagnosis_exit_score=diagnosis_exit_score,
             round_trip_cost_pct=round(round_trip_cost_pct, 2),
             sample_size=len(snapshots),
             match_count=len(candidates),
@@ -212,6 +216,7 @@ class StrategyBacktestService:
         stop_loss_pct: float = 0,
         exit_on_ma20_break: bool = False,
         exit_volume_ratio: float = 0,
+        diagnosis_exit_score: float = 0,
     ) -> StrategyBacktestComparison:
         normalized_periods = self._normalize_periods(periods)
         reports = [
@@ -228,6 +233,7 @@ class StrategyBacktestService:
                 stop_loss_pct=stop_loss_pct,
                 exit_on_ma20_break=exit_on_ma20_break,
                 exit_volume_ratio=exit_volume_ratio,
+                diagnosis_exit_score=diagnosis_exit_score,
             )
             for holding_days in normalized_periods
         ]
@@ -272,6 +278,7 @@ class StrategyBacktestService:
         stop_loss_pct: float = 0,
         exit_on_ma20_break: bool = False,
         exit_volume_ratio: float = 0,
+        diagnosis_exit_score: float = 0,
     ) -> StrategyBacktestPresetComparison:
         selected_presets = self._normalize_presets(presets)
         reports = [
@@ -288,6 +295,7 @@ class StrategyBacktestService:
                 stop_loss_pct=stop_loss_pct,
                 exit_on_ma20_break=exit_on_ma20_break,
                 exit_volume_ratio=exit_volume_ratio,
+                diagnosis_exit_score=diagnosis_exit_score,
             )
             for preset in selected_presets
         ]
@@ -447,6 +455,7 @@ class StrategyBacktestService:
             "stop-loss": 0,
             "ma20-break": 0,
             "volume-fade": 0,
+            "score-weak": 0,
         }
         for trade in trades:
             counts[trade.exit_reason] = counts.get(trade.exit_reason, 0) + 1
@@ -625,6 +634,7 @@ class StrategyBacktestService:
         stop_loss_pct: float,
         exit_on_ma20_break: bool,
         exit_volume_ratio: float,
+        diagnosis_exit_score: float,
     ) -> StrategyBacktestTrade | None:
         points = price_series.series.points
         if len(points) < 2:
@@ -657,6 +667,10 @@ class StrategyBacktestService:
                 exit_index = index
                 exit_reason = "volume-fade"
                 break
+            if diagnosis_exit_score > 0 and self._diagnosis_proxy_score(entry, points[index]) < diagnosis_exit_score:
+                exit_index = index
+                exit_reason = "score-weak"
+                break
 
         exit_point = points[exit_index]
 
@@ -686,6 +700,13 @@ class StrategyBacktestService:
             rule_tags=rule_tags,
             signal_reason=signal_reason,
         )
+
+    def _diagnosis_proxy_score(self, entry: TrendPoint, point: TrendPoint) -> float:
+        price_return_pct = ((point.close - entry.close) / entry.close) * 100 if entry.close > 0 else 0
+        ma20_gap_pct = ((point.close - point.ma20) / point.ma20) * 100 if point.ma20 > 0 else 0
+        volume_bonus = (point.volume_ratio - 1) * 6
+        score = 70 + price_return_pct * 1.5 + ma20_gap_pct * 0.8 + volume_bonus
+        return max(0.0, min(100.0, score))
 
     def _price_series(self, snapshot: StockSnapshot, holding_days: int) -> PriceSeriesResult:
         requested_days = max(holding_days + 5, 60)

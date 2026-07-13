@@ -240,6 +240,28 @@ def test_strategy_backtest_exits_early_on_volume_fade():
     assert report.trades[0].exit_price == 126
 
 
+def test_strategy_backtest_exits_early_on_diagnosis_score_weakening():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FallingHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        diagnosis_exit_score=65,
+    )
+
+    assert report.diagnosis_exit_score == 65
+    assert report.trades[0].exit_reason == "score-weak"
+    assert report.exit_reason_counts["score-weak"] >= 1
+    assert report.trades[0].holding_days == 1
+    assert report.trades[0].exit_price == 119
+
+
 def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails():
     provider = MockMarketDataProvider()
     snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]

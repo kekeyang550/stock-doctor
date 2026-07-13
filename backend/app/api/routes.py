@@ -790,6 +790,7 @@ async def strategy_backtest(
     stop_loss_pct: float = Query(default=0, ge=0, le=100),
     exit_on_ma20_break: bool = Query(default=False),
     exit_volume_ratio: float = Query(default=0, ge=0, le=5),
+    diagnosis_exit_score: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestReport:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -808,6 +809,7 @@ async def strategy_backtest(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
     strategy_backtest_history_service.record(
         report=report,
@@ -821,6 +823,7 @@ async def strategy_backtest(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
         state_store=create_state_store(),
     )
     return report
@@ -854,6 +857,7 @@ async def strategy_backtest_actions(
     stop_loss_pct: float = Query(default=0, ge=0, le=100),
     exit_on_ma20_break: bool = Query(default=False),
     exit_volume_ratio: float = Query(default=0, ge=0, le=5),
+    diagnosis_exit_score: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestActionPlan:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -868,6 +872,7 @@ async def strategy_backtest_actions(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
 
 
@@ -885,6 +890,7 @@ async def update_strategy_backtest_action_status(
     stop_loss_pct: float = Query(default=0, ge=0, le=100),
     exit_on_ma20_break: bool = Query(default=False),
     exit_volume_ratio: float = Query(default=0, ge=0, le=5),
+    diagnosis_exit_score: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestActionPlan:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -899,6 +905,7 @@ async def update_strategy_backtest_action_status(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
     if action_id not in {action.id for action in plan.actions}:
         raise HTTPException(status_code=404, detail="Strategy backtest action not found")
@@ -914,6 +921,7 @@ async def update_strategy_backtest_action_status(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
         action_id=action_id,
     )
     statuses = [record for record in store.load_review_action_statuses() if record.get("key") != key]
@@ -932,6 +940,7 @@ async def update_strategy_backtest_action_status(
             "stop_loss_pct": stop_loss_pct,
             "exit_on_ma20_break": exit_on_ma20_break,
             "exit_volume_ratio": exit_volume_ratio,
+            "diagnosis_exit_score": diagnosis_exit_score,
             "action_id": action_id,
             "status": request.status,
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -949,6 +958,7 @@ async def update_strategy_backtest_action_status(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
 
 
@@ -963,6 +973,7 @@ def _build_strategy_backtest_action_plan(
     stop_loss_pct: float,
     exit_on_ma20_break: bool,
     exit_volume_ratio: float,
+    diagnosis_exit_score: float,
 ) -> StrategyBacktestActionPlan:
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
@@ -979,6 +990,7 @@ def _build_strategy_backtest_action_plan(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
     period_comparison = strategy_backtest_service.compare_periods(
         preset=preset,
@@ -992,6 +1004,7 @@ def _build_strategy_backtest_action_plan(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
     preset_comparison = strategy_backtest_service.compare_presets(
         presets=["strong", "value", "capital-risk"],
@@ -1006,6 +1019,7 @@ def _build_strategy_backtest_action_plan(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
     history = strategy_backtest_history_service.compare(
         preset=preset,
@@ -1030,6 +1044,7 @@ def _build_strategy_backtest_action_plan(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
 
 
@@ -1045,6 +1060,7 @@ async def strategy_backtest_presets(
     stop_loss_pct: float = Query(default=0, ge=0, le=100),
     exit_on_ma20_break: bool = Query(default=False),
     exit_volume_ratio: float = Query(default=0, ge=0, le=5),
+    diagnosis_exit_score: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestPresetComparison:
     selected_presets = _parse_backtest_presets(presets)
     if any(preset not in SCREENER_PRESETS for preset in selected_presets):
@@ -1064,6 +1080,7 @@ async def strategy_backtest_presets(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
 
 
@@ -1079,6 +1096,7 @@ async def strategy_backtest_periods(
     stop_loss_pct: float = Query(default=0, ge=0, le=100),
     exit_on_ma20_break: bool = Query(default=False),
     exit_volume_ratio: float = Query(default=0, ge=0, le=5),
+    diagnosis_exit_score: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestComparison:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -1097,6 +1115,7 @@ async def strategy_backtest_periods(
         stop_loss_pct=stop_loss_pct,
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
+        diagnosis_exit_score=diagnosis_exit_score,
     )
 
 

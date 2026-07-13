@@ -25,6 +25,7 @@ class StrategyBacktestHistoryService:
         stop_loss_pct: float = 0,
         exit_on_ma20_break: bool = False,
         exit_volume_ratio: float = 0,
+        diagnosis_exit_score: float = 0,
         now: datetime | None = None,
     ) -> StrategyBacktestHistoryItem:
         created_at = (now or datetime.now(timezone.utc)).isoformat()
@@ -41,6 +42,7 @@ class StrategyBacktestHistoryService:
             stop_loss_pct=stop_loss_pct,
             exit_on_ma20_break=exit_on_ma20_break,
             exit_volume_ratio=exit_volume_ratio,
+            diagnosis_exit_score=diagnosis_exit_score,
             price_source=report.price_source,
             sample_confidence_score=report.sample_confidence_score,
             sample_confidence_label=report.sample_confidence_label,

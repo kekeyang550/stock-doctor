@@ -1024,6 +1024,7 @@ export function StrategyBacktestPanel({
   stopLossPct,
   exitOnMa20Break,
   exitVolumeRatio,
+  diagnosisExitScore,
   limit,
   onHoldingDaysChange,
   onFeeBpsChange,
@@ -1032,6 +1033,7 @@ export function StrategyBacktestPanel({
   onStopLossPctChange,
   onExitOnMa20BreakChange,
   onExitVolumeRatioChange,
+  onDiagnosisExitScoreChange,
   onLimitChange,
   error,
   comparisonError,
@@ -1055,6 +1057,7 @@ export function StrategyBacktestPanel({
   stopLossPct: number
   exitOnMa20Break: boolean
   exitVolumeRatio: number
+  diagnosisExitScore: number
   limit: number
   onHoldingDaysChange: (days: number) => void
   onFeeBpsChange: (value: number) => void
@@ -1063,6 +1066,7 @@ export function StrategyBacktestPanel({
   onStopLossPctChange: (value: number) => void
   onExitOnMa20BreakChange: (value: boolean) => void
   onExitVolumeRatioChange: (value: number) => void
+  onDiagnosisExitScoreChange: (value: number) => void
   onLimitChange: (value: number) => void
   error: string | null
   comparisonError: string | null
@@ -1178,6 +1182,10 @@ export function StrategyBacktestPanel({
               <small>量比退出</small>
               <b>{Number(report.exit_volume_ratio.toFixed(2)) || '关闭'}</b>
             </span>
+            <span>
+              <small>诊断退出</small>
+              <b>{report.diagnosis_exit_score > 0 ? report.diagnosis_exit_score : '关闭'}</b>
+            </span>
           </div>
           <div className="backtest-parameter-card">
             <strong>参数</strong>
@@ -1260,6 +1268,18 @@ export function StrategyBacktestPanel({
                 step="0.1"
                 value={exitVolumeRatio}
                 onChange={(event) => onExitVolumeRatioChange(clampNumber(event.target.value, 0, 5, 0))}
+              />
+            </label>
+            <label>
+              <span>诊断退出分</span>
+              <input
+                aria-label="回测诊断退出分"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={diagnosisExitScore}
+                onChange={(event) => onDiagnosisExitScoreChange(clampNumber(event.target.value, 0, 100, 0))}
               />
             </label>
           </div>
@@ -1443,11 +1463,12 @@ function backtestExitReasonLabel(reason: StrategyBacktestReport['trades'][number
   if (reason === 'stop-loss') return '止损退出'
   if (reason === 'ma20-break') return '跌破 MA20'
   if (reason === 'volume-fade') return '缩量退出'
+  if (reason === 'score-weak') return '诊断转弱'
   return '持有到期'
 }
 
 function backtestExitReasonEntries(report: StrategyBacktestReport) {
-  const reasons: StrategyBacktestReport['trades'][number]['exit_reason'][] = ['holding-period', 'take-profit', 'stop-loss', 'ma20-break', 'volume-fade']
+  const reasons: StrategyBacktestReport['trades'][number]['exit_reason'][] = ['holding-period', 'take-profit', 'stop-loss', 'ma20-break', 'volume-fade', 'score-weak']
   const counts: Partial<Record<StrategyBacktestReport['trades'][number]['exit_reason'], number>> =
     report.exit_reason_counts ?? {}
   return reasons
@@ -1461,6 +1482,7 @@ function backtestHistoryParameterLabel(item: StrategyBacktestHistoryComparison['
   if (item.stop_loss_pct > 0) exits.push(`止损 ${item.stop_loss_pct}%`)
   if (item.exit_on_ma20_break) exits.push('MA20')
   if (item.exit_volume_ratio > 0) exits.push(`量比 ${Number(item.exit_volume_ratio.toFixed(2))}`)
+  if (item.diagnosis_exit_score > 0) exits.push(`诊断 ${Number(item.diagnosis_exit_score.toFixed(0))}`)
   return exits.length ? exits.join(' / ') : '固定持有'
 }
 

@@ -180,6 +180,7 @@ type BacktestParameters = {
   stop_loss_pct: number
   exit_on_ma20_break: boolean
   exit_volume_ratio: number
+  diagnosis_exit_score: number
   limit: number
 }
 
@@ -197,6 +198,7 @@ const DEFAULT_BACKTEST_PARAMETERS: BacktestParameters = {
   stop_loss_pct: 0,
   exit_on_ma20_break: false,
   exit_volume_ratio: 0,
+  diagnosis_exit_score: 0,
   limit: 8,
 }
 
@@ -262,6 +264,7 @@ export default function App() {
   const [backtestStopLossPct, setBacktestStopLossPct] = useState(storedBacktestParameters.stop_loss_pct)
   const [backtestExitOnMa20Break, setBacktestExitOnMa20Break] = useState(storedBacktestParameters.exit_on_ma20_break)
   const [backtestExitVolumeRatio, setBacktestExitVolumeRatio] = useState(storedBacktestParameters.exit_volume_ratio)
+  const [backtestDiagnosisExitScore, setBacktestDiagnosisExitScore] = useState(storedBacktestParameters.diagnosis_exit_score)
   const [backtestLimit, setBacktestLimit] = useState(storedBacktestParameters.limit)
   const [selectedSymbol, setSelectedSymbol] = useState('600519')
   const [horizon, setHorizon] = useState('swing')
@@ -311,9 +314,10 @@ export default function App() {
       stop_loss_pct: backtestStopLossPct,
       exit_on_ma20_break: backtestExitOnMa20Break,
       exit_volume_ratio: backtestExitVolumeRatio,
+      diagnosis_exit_score: backtestDiagnosisExitScore,
       limit: backtestLimit,
     })
-  }, [backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct])
+  }, [backtestDiagnosisExitScore, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct])
 
   const loadStocks = useCallback(async () => {
     const [items, watchItems, market, sources, connectors, runtime, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotActions] = await Promise.all([
@@ -404,10 +408,10 @@ export default function App() {
     setStrategyBacktestPresetComparisonError(null)
     setStrategyBacktestActionsError(null)
     try {
-      const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct, backtestExitOnMa20Break, backtestExitVolumeRatio)
+      const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestDiagnosisExitScore)
       setStrategyBacktest(report)
       try {
-        const actions = await fetchStrategyBacktestActions(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct, backtestExitOnMa20Break, backtestExitVolumeRatio)
+        const actions = await fetchStrategyBacktestActions(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestDiagnosisExitScore)
         setStrategyBacktestActions(actions)
       } catch (err) {
         const message = err instanceof Error ? err.message : '回测动作加载失败'
@@ -423,7 +427,7 @@ export default function App() {
         setStrategyBacktestHistory(null)
       }
       try {
-        const comparison = await fetchStrategyBacktestComparison(screenerPreset, horizon, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct, backtestExitOnMa20Break, backtestExitVolumeRatio)
+        const comparison = await fetchStrategyBacktestComparison(screenerPreset, horizon, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestDiagnosisExitScore)
         setStrategyBacktestComparison(comparison)
       } catch (err) {
         const message = err instanceof Error ? err.message : '周期对比加载失败'
@@ -431,7 +435,7 @@ export default function App() {
         setStrategyBacktestComparison(null)
       }
       try {
-        const presetComparison = await fetchStrategyBacktestPresetComparison(horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct, backtestExitOnMa20Break, backtestExitVolumeRatio)
+        const presetComparison = await fetchStrategyBacktestPresetComparison(horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestDiagnosisExitScore)
         setStrategyBacktestPresetComparison(presetComparison)
       } catch (err) {
         const message = err instanceof Error ? err.message : '策略对比加载失败'
@@ -448,7 +452,7 @@ export default function App() {
       setStrategyBacktestActions(null)
       setError(message)
     }
-  }, [backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, horizon, screenerPreset])
+  }, [backtestDiagnosisExitScore, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, horizon, screenerPreset])
 
   const setPortfolioWeight = useCallback((symbol: string, value: string) => {
     setPortfolioWeights((current) => {
@@ -693,6 +697,7 @@ export default function App() {
           stop_loss_pct: backtestStopLossPct,
           exit_on_ma20_break: backtestExitOnMa20Break,
           exit_volume_ratio: backtestExitVolumeRatio,
+          diagnosis_exit_score: backtestDiagnosisExitScore,
           limit: backtestLimit,
           holding_days: backtestHoldingDays,
         },
@@ -710,7 +715,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
+  }, [backtestDiagnosisExitScore, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -904,6 +909,7 @@ export default function App() {
         backtestStopLossPct,
         backtestExitOnMa20Break,
         backtestExitVolumeRatio,
+        backtestDiagnosisExitScore,
       )
       setStrategyBacktestActions(nextPlan)
     } catch (err) {
@@ -911,7 +917,7 @@ export default function App() {
     } finally {
       setUpdatingBacktestActionId(null)
     }
-  }, [backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, horizon, screenerPreset])
+  }, [backtestDiagnosisExitScore, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, horizon, screenerPreset])
 
   const exportStorage = useCallback(async () => {
     setError(null)
@@ -1239,6 +1245,7 @@ export default function App() {
           stopLossPct={backtestStopLossPct}
           exitOnMa20Break={backtestExitOnMa20Break}
           exitVolumeRatio={backtestExitVolumeRatio}
+          diagnosisExitScore={backtestDiagnosisExitScore}
           limit={backtestLimit}
           onHoldingDaysChange={setBacktestHoldingDays}
           onFeeBpsChange={setBacktestFeeBps}
@@ -1247,6 +1254,7 @@ export default function App() {
           onStopLossPctChange={setBacktestStopLossPct}
           onExitOnMa20BreakChange={setBacktestExitOnMa20Break}
           onExitVolumeRatioChange={setBacktestExitVolumeRatio}
+          onDiagnosisExitScoreChange={setBacktestDiagnosisExitScore}
           onLimitChange={setBacktestLimit}
           error={strategyBacktestError}
           comparisonError={strategyBacktestComparisonError}
@@ -1381,7 +1389,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push('')
   lines.push(`- 价格来源: ${markdownText(strategyBacktestPriceSourceLabel(strategyBacktest.price_source))}`)
   lines.push(`- 持有周期: ${markdownText(strategyBacktest.holding_days ?? '-')} 日`)
-  lines.push(`- 退出规则: 止盈 ${markdownText(strategyBacktest.take_profit_pct ?? 0)}% / 止损 ${markdownText(strategyBacktest.stop_loss_pct ?? 0)}% / MA20 跌破 ${strategyBacktest.exit_on_ma20_break ? '启用' : '关闭'} / 量比低于 ${markdownText(strategyBacktest.exit_volume_ratio ?? 0)}`)
+  lines.push(`- 退出规则: 止盈 ${markdownText(strategyBacktest.take_profit_pct ?? 0)}% / 止损 ${markdownText(strategyBacktest.stop_loss_pct ?? 0)}% / MA20 跌破 ${strategyBacktest.exit_on_ma20_break ? '启用' : '关闭'} / 量比低于 ${markdownText(strategyBacktest.exit_volume_ratio ?? 0)} / 诊断低于 ${markdownText(strategyBacktest.diagnosis_exit_score ?? 0)}`)
   lines.push(`- 交易数/胜率: ${markdownText(strategyBacktest.trade_count ?? 0)} / ${markdownText(strategyBacktest.win_rate ?? 0)}%`)
   lines.push(`- 平均收益/最大回撤: ${markdownText(formatReportSignedPercent(strategyBacktest.average_return_pct ?? 0))} / ${markdownText(formatReportSignedPercent(strategyBacktest.max_drawdown_pct ?? 0))}`)
   lines.push(`- 退出分布: ${markdownText(strategyBacktestExitDistribution(strategyBacktest))}`)
@@ -1668,6 +1676,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>止损</span><strong>${escapeHtml(strategyBacktest.stop_loss_pct ?? strategyBacktestParameters.stop_loss_pct ?? 0)}%</strong></div>
         <div class="metric"><span>MA20 跌破</span><strong>${strategyBacktest.exit_on_ma20_break ? "启用" : "关闭"}</strong></div>
         <div class="metric"><span>量比退出</span><strong>${escapeHtml(strategyBacktest.exit_volume_ratio ?? strategyBacktestParameters.exit_volume_ratio ?? 0)}</strong></div>
+        <div class="metric"><span>诊断退出</span><strong>${escapeHtml(strategyBacktest.diagnosis_exit_score ?? strategyBacktestParameters.diagnosis_exit_score ?? 0)}</strong></div>
         <div class="metric"><span>单笔成本</span><strong>${escapeHtml(strategyBacktest.round_trip_cost_pct ?? 0)}%</strong></div>
         <div class="metric"><span>样例交易</span><strong>${escapeHtml(strategyBacktest.trade_count ?? 0)}</strong></div>
         <div class="metric"><span>胜率</span><strong>${escapeHtml(strategyBacktest.win_rate ?? 0)}%</strong></div>
@@ -1824,6 +1833,7 @@ function strategyBacktestExitReasonLabel(reason: unknown) {
   if (reason === 'stop-loss') return '止损退出'
   if (reason === 'ma20-break') return '跌破 MA20'
   if (reason === 'volume-fade') return '缩量退出'
+  if (reason === 'score-weak') return '诊断转弱'
   return '持有到期'
 }
 
@@ -1837,6 +1847,7 @@ function strategyBacktestExitDistribution(report: Record<string, unknown>) {
     ['stop-loss', '止损退出'],
     ['ma20-break', '跌破 MA20'],
     ['volume-fade', '缩量退出'],
+    ['score-weak', '诊断转弱'],
   ]
   const parts = entries
     .map(([key, label]) => {
@@ -1852,10 +1863,12 @@ function strategyBacktestParameterLabel(item: Record<string, unknown>) {
   const takeProfitPct = Number(item.take_profit_pct ?? 0)
   const stopLossPct = Number(item.stop_loss_pct ?? 0)
   const exitVolumeRatio = Number(item.exit_volume_ratio ?? 0)
+  const diagnosisExitScore = Number(item.diagnosis_exit_score ?? 0)
   if (Number.isFinite(takeProfitPct) && takeProfitPct > 0) exits.push(`止盈 ${takeProfitPct}%`)
   if (Number.isFinite(stopLossPct) && stopLossPct > 0) exits.push(`止损 ${stopLossPct}%`)
   if (item.exit_on_ma20_break === true) exits.push('MA20')
   if (Number.isFinite(exitVolumeRatio) && exitVolumeRatio > 0) exits.push(`量比 ${Number(exitVolumeRatio.toFixed(2))}`)
+  if (Number.isFinite(diagnosisExitScore) && diagnosisExitScore > 0) exits.push(`诊断 ${Number(diagnosisExitScore.toFixed(0))}`)
   return exits.length ? exits.join(' / ') : '固定持有'
 }
 
@@ -2227,6 +2240,7 @@ function normalizeBacktestParameters(parameters: Partial<BacktestParameters>): B
     stop_loss_pct: normalizeBacktestNumber(parameters.stop_loss_pct, 0, 100, DEFAULT_BACKTEST_PARAMETERS.stop_loss_pct),
     exit_on_ma20_break: typeof parameters.exit_on_ma20_break === 'boolean' ? parameters.exit_on_ma20_break : DEFAULT_BACKTEST_PARAMETERS.exit_on_ma20_break,
     exit_volume_ratio: normalizeBacktestDecimal(parameters.exit_volume_ratio, 0, 5, DEFAULT_BACKTEST_PARAMETERS.exit_volume_ratio),
+    diagnosis_exit_score: normalizeBacktestNumber(parameters.diagnosis_exit_score, 0, 100, DEFAULT_BACKTEST_PARAMETERS.diagnosis_exit_score),
     limit: normalizeBacktestNumber(parameters.limit, 1, 20, DEFAULT_BACKTEST_PARAMETERS.limit),
   }
 }
