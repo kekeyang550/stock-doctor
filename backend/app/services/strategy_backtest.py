@@ -60,11 +60,15 @@ class StrategyBacktestService:
         limit: int = 8,
         fee_bps: float = 5,
         slippage_bps: float = 10,
+        take_profit_pct: float = 0,
+        stop_loss_pct: float = 0,
     ) -> StrategyBacktestReport:
         holding_days = max(1, min(holding_days, 20))
         limit = max(1, min(limit, 30))
         fee_bps = max(0.0, min(float(fee_bps), 100.0))
         slippage_bps = max(0.0, min(float(slippage_bps), 100.0))
+        take_profit_pct = max(0.0, min(float(take_profit_pct), 100.0))
+        stop_loss_pct = max(0.0, min(float(stop_loss_pct), 100.0))
         round_trip_cost_pct = self._round_trip_cost_pct(fee_bps, slippage_bps)
         snapshot_by_symbol = {item.symbol: item for item in snapshots}
         candidates = self._screener_service.screen(snapshots=snapshots, diagnoses=diagnoses, preset=preset)
@@ -86,7 +90,16 @@ class StrategyBacktestService:
                     historical_last_dates.append(price_series.history_last_date)
             elif price_series.fallback_reason:
                 fallback_reasons.append(price_series.fallback_reason)
-            trade = self._build_trade(snapshot, candidate.reason, candidate.rule_tags, price_series, holding_days, round_trip_cost_pct)
+            trade = self._build_trade(
+                snapshot,
+                candidate.reason,
+                candidate.rule_tags,
+                price_series,
+                holding_days,
+                round_trip_cost_pct,
+                take_profit_pct,
+                stop_loss_pct,
+            )
             if trade is not None:
                 trades.append(trade)
 
@@ -132,6 +145,8 @@ class StrategyBacktestService:
             fallback_reason=fallback_reason,
             fee_bps=fee_bps,
             slippage_bps=slippage_bps,
+            take_profit_pct=take_profit_pct,
+            stop_loss_pct=stop_loss_pct,
             round_trip_cost_pct=round(round_trip_cost_pct, 2),
             sample_size=len(snapshots),
             match_count=len(candidates),
@@ -184,6 +199,8 @@ class StrategyBacktestService:
         limit: int = 8,
         fee_bps: float = 5,
         slippage_bps: float = 10,
+        take_profit_pct: float = 0,
+        stop_loss_pct: float = 0,
     ) -> StrategyBacktestComparison:
         normalized_periods = self._normalize_periods(periods)
         reports = [
@@ -196,6 +213,8 @@ class StrategyBacktestService:
                 limit=limit,
                 fee_bps=fee_bps,
                 slippage_bps=slippage_bps,
+                take_profit_pct=take_profit_pct,
+                stop_loss_pct=stop_loss_pct,
             )
             for holding_days in normalized_periods
         ]
@@ -236,6 +255,8 @@ class StrategyBacktestService:
         limit: int = 8,
         fee_bps: float = 5,
         slippage_bps: float = 10,
+        take_profit_pct: float = 0,
+        stop_loss_pct: float = 0,
     ) -> StrategyBacktestPresetComparison:
         selected_presets = self._normalize_presets(presets)
         reports = [
@@ -248,6 +269,8 @@ class StrategyBacktestService:
                 limit=limit,
                 fee_bps=fee_bps,
                 slippage_bps=slippage_bps,
+                take_profit_pct=take_profit_pct,
+                stop_loss_pct=stop_loss_pct,
             )
             for preset in selected_presets
         ]
@@ -569,6 +592,8 @@ class StrategyBacktestService:
         price_series: PriceSeriesResult,
         holding_days: int,
         cost_pct: float,
+        take_profit_pct: float,
+        stop_loss_pct: float,
     ) -> StrategyBacktestTrade | None:
         points = price_series.series.points
         if len(points) < 2:
@@ -577,9 +602,24 @@ class StrategyBacktestService:
         entry_index = max(0, len(points) - holding_days - 1)
         exit_index = len(points) - 1
         entry = points[entry_index]
-        exit_point = points[exit_index]
         if entry.close <= 0:
             return None
+
+        exit_reason = "holding-period"
+        take_profit_price = entry.close * (1 + take_profit_pct / 100) if take_profit_pct > 0 else None
+        stop_loss_price = entry.close * (1 - stop_loss_pct / 100) if stop_loss_pct > 0 else None
+        for index in range(entry_index + 1, exit_index + 1):
+            close = points[index].close
+            if stop_loss_price is not None and close <= stop_loss_price:
+                exit_index = index
+                exit_reason = "stop-loss"
+                break
+            if take_profit_price is not None and close >= take_profit_price:
+                exit_index = index
+                exit_reason = "take-profit"
+                break
+
+        exit_point = points[exit_index]
 
         window = points[entry_index:exit_index + 1]
         gross_return_pct = ((exit_point.close - entry.close) / entry.close) * 100
@@ -599,6 +639,7 @@ class StrategyBacktestService:
             return_pct=round(return_pct, 2),
             max_drawdown_pct=round(max_drawdown_pct, 2),
             holding_days=exit_index - entry_index,
+            exit_reason=exit_reason,
             price_source=price_series.source,
             history_bar_count=price_series.history_bar_count,
             history_last_date=price_series.history_last_date,

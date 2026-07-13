@@ -21,6 +21,8 @@ class StrategyBacktestHistoryService:
         fee_bps: float,
         slippage_bps: float,
         state_store: StateStore,
+        take_profit_pct: float = 0,
+        stop_loss_pct: float = 0,
         now: datetime | None = None,
     ) -> StrategyBacktestHistoryItem:
         created_at = (now or datetime.now(timezone.utc)).isoformat()
@@ -33,6 +35,8 @@ class StrategyBacktestHistoryService:
             limit=limit,
             fee_bps=fee_bps,
             slippage_bps=slippage_bps,
+            take_profit_pct=take_profit_pct,
+            stop_loss_pct=stop_loss_pct,
             price_source=report.price_source,
             sample_confidence_score=report.sample_confidence_score,
             sample_confidence_label=report.sample_confidence_label,

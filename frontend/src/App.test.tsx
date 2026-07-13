@@ -790,6 +790,8 @@ const strategyBacktest = {
   fallback_reason: null,
   fee_bps: 5,
   slippage_bps: 10,
+  take_profit_pct: 0,
+  stop_loss_pct: 0,
   round_trip_cost_pct: 0.3,
   sample_size: 4,
   match_count: 2,
@@ -837,6 +839,7 @@ const strategyBacktest = {
       return_pct: 3.4,
       max_drawdown_pct: -1.2,
       holding_days: 5,
+      exit_reason: 'holding-period',
       price_source: 'historical-kline',
       history_bar_count: 30,
       history_last_date: '2026-06-30',
@@ -936,6 +939,8 @@ const strategyBacktestHistory = {
     limit: 8,
     fee_bps: 5,
     slippage_bps: 10,
+    take_profit_pct: 0,
+    stop_loss_pct: 0,
     price_source: 'historical-kline',
     sample_confidence_score: 76,
     sample_confidence_label: '高',
@@ -956,6 +961,8 @@ const strategyBacktestHistory = {
     limit: 8,
     fee_bps: 5,
     slippage_bps: 10,
+    take_profit_pct: 0,
+    stop_loss_pct: 0,
     price_source: 'historical-kline',
     sample_confidence_score: 75,
     sample_confidence_label: '高',
@@ -977,6 +984,8 @@ const strategyBacktestHistory = {
       limit: 8,
       fee_bps: 5,
       slippage_bps: 10,
+      take_profit_pct: 0,
+      stop_loss_pct: 0,
       price_source: 'historical-kline',
       sample_confidence_score: 76,
       sample_confidence_label: '高',
@@ -997,6 +1006,8 @@ const strategyBacktestHistory = {
       limit: 8,
       fee_bps: 5,
       slippage_bps: 10,
+      take_profit_pct: 0,
+      stop_loss_pct: 0,
       price_source: 'historical-kline',
       sample_confidence_score: 75,
       sample_confidence_label: '高',
@@ -2087,10 +2098,12 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('5 bps')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('滑点')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('10 bps')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('止盈')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('止损')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('单笔成本')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('0.30%')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('贵州茅台').length).toBeGreaterThan(0)
-    expect(within(backtestPanel).getByText('600519 · 白酒 · 5 日')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('600519 · 白酒 · 5 日 · 持有到期')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('净收益 +3.40%')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('毛收益 +3.40% · 成本 0.30% · 历史K线')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('综合高分')).toBeInTheDocument()
@@ -2327,6 +2340,8 @@ describe('App', () => {
         holding_days: 10,
         fee_bps: 8,
         slippage_bps: 12,
+        take_profit_pct: 0,
+        stop_loss_pct: 0,
         limit: 6,
       })
     })
@@ -2654,6 +2669,8 @@ describe('App', () => {
     expect(exported.strategy_backtest_parameters).toEqual({
       fee_bps: 5,
       slippage_bps: 10,
+      take_profit_pct: 0,
+      stop_loss_pct: 0,
       limit: 8,
       holding_days: 5,
     })

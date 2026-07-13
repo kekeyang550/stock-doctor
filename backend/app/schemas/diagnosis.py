@@ -755,6 +755,7 @@ class StrategyBacktestTrade(BaseModel):
     return_pct: float
     max_drawdown_pct: float
     holding_days: int
+    exit_reason: str = Field(default="holding-period", pattern="^(holding-period|take-profit|stop-loss)$")
     price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
     history_bar_count: int = 0
     history_last_date: str | None = None
@@ -783,6 +784,8 @@ class StrategyBacktestReport(BaseModel):
     fallback_reason: str | None = None
     fee_bps: float = 5
     slippage_bps: float = 10
+    take_profit_pct: float = 0
+    stop_loss_pct: float = 0
     round_trip_cost_pct: float = 0.3
     sample_size: int
     match_count: int
@@ -874,6 +877,8 @@ class StrategyBacktestHistoryItem(BaseModel):
     limit: int
     fee_bps: float
     slippage_bps: float
+    take_profit_pct: float = 0
+    stop_loss_pct: float = 0
     price_source: str = Field(default="synthetic-trend", pattern="^(historical-kline|synthetic-trend)$")
     sample_confidence_score: int = 0
     sample_confidence_label: str = "暂无评估"

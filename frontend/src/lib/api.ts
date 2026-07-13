@@ -318,9 +318,11 @@ export function fetchStrategyBacktest(
   feeBps = 5,
   slippageBps = 10,
   limit = 8,
+  takeProfitPct = 0,
+  stopLossPct = 0,
 ): Promise<StrategyBacktestReport> {
   return getJson<StrategyBacktestReport>(
-    `/api/v1/backtests/strategy?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+    `/api/v1/backtests/strategy?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}`,
   )
 }
 
@@ -330,9 +332,11 @@ export function fetchStrategyBacktestComparison(
   feeBps = 5,
   slippageBps = 10,
   limit = 8,
+  takeProfitPct = 0,
+  stopLossPct = 0,
 ): Promise<StrategyBacktestComparison> {
   return getJson<StrategyBacktestComparison>(
-    `/api/v1/backtests/strategy/periods?preset=${preset}&horizon=${horizon}&periods=3,5,10,20&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+    `/api/v1/backtests/strategy/periods?preset=${preset}&horizon=${horizon}&periods=3,5,10,20&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}`,
   )
 }
 
@@ -342,9 +346,11 @@ export function fetchStrategyBacktestPresetComparison(
   feeBps = 5,
   slippageBps = 10,
   limit = 8,
+  takeProfitPct = 0,
+  stopLossPct = 0,
 ): Promise<StrategyBacktestPresetComparison> {
   return getJson<StrategyBacktestPresetComparison>(
-    `/api/v1/backtests/strategy/presets?horizon=${horizon}&presets=strong,value,capital-risk&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+    `/api/v1/backtests/strategy/presets?horizon=${horizon}&presets=strong,value,capital-risk&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}`,
   )
 }
 
@@ -365,9 +371,11 @@ export function fetchStrategyBacktestActions(
   feeBps = 5,
   slippageBps = 10,
   limit = 8,
+  takeProfitPct = 0,
+  stopLossPct = 0,
 ): Promise<StrategyBacktestActionPlan> {
   return getJson<StrategyBacktestActionPlan>(
-    `/api/v1/backtests/strategy/actions?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+    `/api/v1/backtests/strategy/actions?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}`,
   )
 }
 
@@ -380,9 +388,11 @@ export async function updateStrategyBacktestActionStatus(
   feeBps = 5,
   slippageBps = 10,
   limit = 8,
+  takeProfitPct = 0,
+  stopLossPct = 0,
 ): Promise<StrategyBacktestActionPlan> {
   const response = await fetch(
-    `/api/v1/backtests/strategy/actions/${actionId}?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}`,
+    `/api/v1/backtests/strategy/actions/${actionId}?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

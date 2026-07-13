@@ -22,6 +22,15 @@ class FailingHistoricalProvider:
         raise RuntimeError("provider timeout")
 
 
+class FallingHistoricalProvider:
+    def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
+        prices = [130, 128, 126, 124, 121, 119, 118, 117, 116, 115]
+        return [
+            HistoricalPriceBar(date=f"2026-06-{day:02d}", close=price, volume=1000 + day)
+            for day, price in enumerate(prices, start=21)
+        ][-days:]
+
+
 def test_strategy_backtest_reports_returns_and_drawdown():
     provider = MockMarketDataProvider()
     snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
@@ -129,6 +138,52 @@ def test_strategy_backtest_accepts_custom_cost_assumptions():
     assert report.trades[0].gross_return_pct == 4
     assert report.trades[0].cost_pct == 0.4
     assert report.trades[0].return_pct == pytest.approx(3.6)
+
+
+def test_strategy_backtest_exits_early_on_take_profit():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FakeHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        take_profit_pct=2,
+        stop_loss_pct=0,
+    )
+
+    assert report.take_profit_pct == 2
+    assert report.stop_loss_pct == 0
+    assert report.trades[0].exit_reason == "take-profit"
+    assert report.trades[0].holding_days == 3
+    assert report.trades[0].exit_price == 128
+
+
+def test_strategy_backtest_exits_early_on_stop_loss():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FallingHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        take_profit_pct=0,
+        stop_loss_pct=2,
+    )
+
+    assert report.take_profit_pct == 0
+    assert report.stop_loss_pct == 2
+    assert report.trades[0].exit_reason == "stop-loss"
+    assert report.trades[0].holding_days == 2
+    assert report.trades[0].exit_price == 118
 
 
 def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails():

@@ -176,6 +176,8 @@ type BacktestParameters = {
   holding_days: number
   fee_bps: number
   slippage_bps: number
+  take_profit_pct: number
+  stop_loss_pct: number
   limit: number
 }
 
@@ -189,6 +191,8 @@ const DEFAULT_BACKTEST_PARAMETERS: BacktestParameters = {
   holding_days: 5,
   fee_bps: 5,
   slippage_bps: 10,
+  take_profit_pct: 0,
+  stop_loss_pct: 0,
   limit: 8,
 }
 
@@ -250,6 +254,8 @@ export default function App() {
   const [backtestHoldingDays, setBacktestHoldingDays] = useState(storedBacktestParameters.holding_days)
   const [backtestFeeBps, setBacktestFeeBps] = useState(storedBacktestParameters.fee_bps)
   const [backtestSlippageBps, setBacktestSlippageBps] = useState(storedBacktestParameters.slippage_bps)
+  const [backtestTakeProfitPct, setBacktestTakeProfitPct] = useState(storedBacktestParameters.take_profit_pct)
+  const [backtestStopLossPct, setBacktestStopLossPct] = useState(storedBacktestParameters.stop_loss_pct)
   const [backtestLimit, setBacktestLimit] = useState(storedBacktestParameters.limit)
   const [selectedSymbol, setSelectedSymbol] = useState('600519')
   const [horizon, setHorizon] = useState('swing')
@@ -295,9 +301,11 @@ export default function App() {
       holding_days: backtestHoldingDays,
       fee_bps: backtestFeeBps,
       slippage_bps: backtestSlippageBps,
+      take_profit_pct: backtestTakeProfitPct,
+      stop_loss_pct: backtestStopLossPct,
       limit: backtestLimit,
     })
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct])
 
   const loadStocks = useCallback(async () => {
     const [items, watchItems, market, sources, connectors, runtime, fresh, jobs, storage, readiness, qualityOverview, savedReports, momentum, brief, hotspotActions] = await Promise.all([
@@ -388,10 +396,10 @@ export default function App() {
     setStrategyBacktestPresetComparisonError(null)
     setStrategyBacktestActionsError(null)
     try {
-      const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
+      const report = await fetchStrategyBacktest(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct)
       setStrategyBacktest(report)
       try {
-        const actions = await fetchStrategyBacktestActions(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
+        const actions = await fetchStrategyBacktestActions(screenerPreset, horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct)
         setStrategyBacktestActions(actions)
       } catch (err) {
         const message = err instanceof Error ? err.message : '回测动作加载失败'
@@ -407,7 +415,7 @@ export default function App() {
         setStrategyBacktestHistory(null)
       }
       try {
-        const comparison = await fetchStrategyBacktestComparison(screenerPreset, horizon, backtestFeeBps, backtestSlippageBps, backtestLimit)
+        const comparison = await fetchStrategyBacktestComparison(screenerPreset, horizon, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct)
         setStrategyBacktestComparison(comparison)
       } catch (err) {
         const message = err instanceof Error ? err.message : '周期对比加载失败'
@@ -415,7 +423,7 @@ export default function App() {
         setStrategyBacktestComparison(null)
       }
       try {
-        const presetComparison = await fetchStrategyBacktestPresetComparison(horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit)
+        const presetComparison = await fetchStrategyBacktestPresetComparison(horizon, backtestHoldingDays, backtestFeeBps, backtestSlippageBps, backtestLimit, backtestTakeProfitPct, backtestStopLossPct)
         setStrategyBacktestPresetComparison(presetComparison)
       } catch (err) {
         const message = err instanceof Error ? err.message : '策略对比加载失败'
@@ -432,7 +440,7 @@ export default function App() {
       setStrategyBacktestActions(null)
       setError(message)
     }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, horizon, screenerPreset])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, horizon, screenerPreset])
 
   const setPortfolioWeight = useCallback((symbol: string, value: string) => {
     setPortfolioWeights((current) => {
@@ -673,6 +681,8 @@ export default function App() {
         strategy_backtest_parameters: {
           fee_bps: backtestFeeBps,
           slippage_bps: backtestSlippageBps,
+          take_profit_pct: backtestTakeProfitPct,
+          stop_loss_pct: backtestStopLossPct,
           limit: backtestLimit,
           holding_days: backtestHoldingDays,
         },
@@ -690,7 +700,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -880,6 +890,8 @@ export default function App() {
         backtestFeeBps,
         backtestSlippageBps,
         backtestLimit,
+        backtestTakeProfitPct,
+        backtestStopLossPct,
       )
       setStrategyBacktestActions(nextPlan)
     } catch (err) {
@@ -887,7 +899,7 @@ export default function App() {
     } finally {
       setUpdatingBacktestActionId(null)
     }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, horizon, screenerPreset])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, horizon, screenerPreset])
 
   const exportStorage = useCallback(async () => {
     setError(null)
@@ -1211,10 +1223,14 @@ export default function App() {
           holdingDays={backtestHoldingDays}
           feeBps={backtestFeeBps}
           slippageBps={backtestSlippageBps}
+          takeProfitPct={backtestTakeProfitPct}
+          stopLossPct={backtestStopLossPct}
           limit={backtestLimit}
           onHoldingDaysChange={setBacktestHoldingDays}
           onFeeBpsChange={setBacktestFeeBps}
           onSlippageBpsChange={setBacktestSlippageBps}
+          onTakeProfitPctChange={setBacktestTakeProfitPct}
+          onStopLossPctChange={setBacktestStopLossPct}
           onLimitChange={setBacktestLimit}
           error={strategyBacktestError}
           comparisonError={strategyBacktestComparisonError}
@@ -1349,6 +1365,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push('')
   lines.push(`- 价格来源: ${markdownText(strategyBacktestPriceSourceLabel(strategyBacktest.price_source))}`)
   lines.push(`- 持有周期: ${markdownText(strategyBacktest.holding_days ?? '-')} 日`)
+  lines.push(`- 退出规则: 止盈 ${markdownText(strategyBacktest.take_profit_pct ?? 0)}% / 止损 ${markdownText(strategyBacktest.stop_loss_pct ?? 0)}%`)
   lines.push(`- 交易数/胜率: ${markdownText(strategyBacktest.trade_count ?? 0)} / ${markdownText(strategyBacktest.win_rate ?? 0)}%`)
   lines.push(`- 平均收益/最大回撤: ${markdownText(formatReportSignedPercent(strategyBacktest.average_return_pct ?? 0))} / ${markdownText(formatReportSignedPercent(strategyBacktest.max_drawdown_pct ?? 0))}`)
   lines.push(`- 稳定性: ${markdownText(strategyBacktest.stability_score ?? 0)} (${markdownText(strategyBacktest.stability_label ?? '暂无评估')})`)
@@ -1630,6 +1647,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>成本口径</span><strong>${escapeHtml(strategyBacktest.round_trip_cost_pct ?? 0)}%</strong></div>
         <div class="metric"><span>手续费</span><strong>${escapeHtml(strategyBacktest.fee_bps ?? 0)} bps</strong></div>
         <div class="metric"><span>滑点</span><strong>${escapeHtml(strategyBacktest.slippage_bps ?? 0)} bps</strong></div>
+        <div class="metric"><span>止盈</span><strong>${escapeHtml(strategyBacktest.take_profit_pct ?? strategyBacktestParameters.take_profit_pct ?? 0)}%</strong></div>
+        <div class="metric"><span>止损</span><strong>${escapeHtml(strategyBacktest.stop_loss_pct ?? strategyBacktestParameters.stop_loss_pct ?? 0)}%</strong></div>
         <div class="metric"><span>单笔成本</span><strong>${escapeHtml(strategyBacktest.round_trip_cost_pct ?? 0)}%</strong></div>
         <div class="metric"><span>样例交易</span><strong>${escapeHtml(strategyBacktest.trade_count ?? 0)}</strong></div>
         <div class="metric"><span>胜率</span><strong>${escapeHtml(strategyBacktest.win_rate ?? 0)}%</strong></div>
@@ -1691,7 +1710,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <p>${escapeHtml(strategyPresetComparison.summary ?? "")}</p>
       ${strategyPresetComparison.recommendation_reason ? `<p><strong>策略推荐依据：</strong>${escapeHtml(strategyPresetComparison.recommendation_reason)}</p>` : ""}
       ${presetSummaries.slice(0, 6).map((preset: any) => `<div class="row"><strong>${escapeHtml(preset.label ?? preset.preset)}</strong><small>${escapeHtml(preset.preset)} · 命中 ${escapeHtml(preset.match_count ?? 0)} · 交易 ${escapeHtml(preset.trade_count ?? 0)} · 胜率 ${escapeHtml(preset.win_rate ?? 0)}% · 平均收益 ${escapeHtml(preset.average_return_pct ?? 0)}% · 最大回撤 ${escapeHtml(preset.max_drawdown_pct ?? 0)}% · 收益回撤比 ${escapeHtml(preset.return_drawdown_ratio ?? 0)}${preset.preset === strategyPresetComparison.recommended_preset ? " · 推荐" : ""}</small></div>`).join("") || "<p>暂无策略对比</p>"}
-      ${trades.slice(0, 6).map((trade: any) => `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · 净收益 ${escapeHtml(trade.return_pct)}% · 毛收益 ${escapeHtml(trade.gross_return_pct ?? trade.return_pct)}% · 成本 ${escapeHtml(trade.cost_pct ?? 0)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%</small></div>`).join("") || "<p>暂无样例交易</p>"}
+      ${trades.slice(0, 6).map((trade: any) => `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · ${escapeHtml(strategyBacktestExitReasonLabel(trade.exit_reason))} · 净收益 ${escapeHtml(trade.return_pct)}% · 毛收益 ${escapeHtml(trade.gross_return_pct ?? trade.return_pct)}% · 成本 ${escapeHtml(trade.cost_pct ?? 0)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%</small></div>`).join("") || "<p>暂无样例交易</p>"}
     </section>
 
     <section>
@@ -1778,6 +1797,12 @@ function escapeHtml(value: unknown) {
 
 function strategyBacktestPriceSourceLabel(source: unknown) {
   return source === 'historical-kline' ? '历史K线' : '样例趋势'
+}
+
+function strategyBacktestExitReasonLabel(reason: unknown) {
+  if (reason === 'take-profit') return '止盈退出'
+  if (reason === 'stop-loss') return '止损退出'
+  return '持有到期'
 }
 
 function reviewActionPriorityLabel(priority: unknown) {
@@ -2144,6 +2169,8 @@ function normalizeBacktestParameters(parameters: Partial<BacktestParameters>): B
     holding_days: normalizeBacktestNumber(parameters.holding_days, 1, 60, DEFAULT_BACKTEST_PARAMETERS.holding_days),
     fee_bps: normalizeBacktestNumber(parameters.fee_bps, 0, 100, DEFAULT_BACKTEST_PARAMETERS.fee_bps),
     slippage_bps: normalizeBacktestNumber(parameters.slippage_bps, 0, 100, DEFAULT_BACKTEST_PARAMETERS.slippage_bps),
+    take_profit_pct: normalizeBacktestNumber(parameters.take_profit_pct, 0, 100, DEFAULT_BACKTEST_PARAMETERS.take_profit_pct),
+    stop_loss_pct: normalizeBacktestNumber(parameters.stop_loss_pct, 0, 100, DEFAULT_BACKTEST_PARAMETERS.stop_loss_pct),
     limit: normalizeBacktestNumber(parameters.limit, 1, 20, DEFAULT_BACKTEST_PARAMETERS.limit),
   }
 }

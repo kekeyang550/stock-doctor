@@ -786,6 +786,8 @@ async def strategy_backtest(
     limit: int = Query(default=8, ge=1, le=30),
     fee_bps: float = Query(default=5, ge=0, le=100),
     slippage_bps: float = Query(default=10, ge=0, le=100),
+    take_profit_pct: float = Query(default=0, ge=0, le=100),
+    stop_loss_pct: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestReport:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -800,6 +802,8 @@ async def strategy_backtest(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
     strategy_backtest_history_service.record(
         report=report,
@@ -809,6 +813,8 @@ async def strategy_backtest(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
         state_store=create_state_store(),
     )
     return report
@@ -838,6 +844,8 @@ async def strategy_backtest_actions(
     limit: int = Query(default=8, ge=1, le=30),
     fee_bps: float = Query(default=5, ge=0, le=100),
     slippage_bps: float = Query(default=10, ge=0, le=100),
+    take_profit_pct: float = Query(default=0, ge=0, le=100),
+    stop_loss_pct: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestActionPlan:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -848,6 +856,8 @@ async def strategy_backtest_actions(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
 
 
@@ -861,6 +871,8 @@ async def update_strategy_backtest_action_status(
     limit: int = Query(default=8, ge=1, le=30),
     fee_bps: float = Query(default=5, ge=0, le=100),
     slippage_bps: float = Query(default=10, ge=0, le=100),
+    take_profit_pct: float = Query(default=0, ge=0, le=100),
+    stop_loss_pct: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestActionPlan:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -871,6 +883,8 @@ async def update_strategy_backtest_action_status(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
     if action_id not in {action.id for action in plan.actions}:
         raise HTTPException(status_code=404, detail="Strategy backtest action not found")
@@ -882,6 +896,8 @@ async def update_strategy_backtest_action_status(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
         action_id=action_id,
     )
     statuses = [record for record in store.load_review_action_statuses() if record.get("key") != key]
@@ -896,6 +912,8 @@ async def update_strategy_backtest_action_status(
             "limit": limit,
             "fee_bps": fee_bps,
             "slippage_bps": slippage_bps,
+            "take_profit_pct": take_profit_pct,
+            "stop_loss_pct": stop_loss_pct,
             "action_id": action_id,
             "status": request.status,
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -909,6 +927,8 @@ async def update_strategy_backtest_action_status(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
 
 
@@ -919,6 +939,8 @@ def _build_strategy_backtest_action_plan(
     limit: int,
     fee_bps: float,
     slippage_bps: float,
+    take_profit_pct: float,
+    stop_loss_pct: float,
 ) -> StrategyBacktestActionPlan:
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
@@ -931,6 +953,8 @@ def _build_strategy_backtest_action_plan(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
     period_comparison = strategy_backtest_service.compare_periods(
         preset=preset,
@@ -940,6 +964,8 @@ def _build_strategy_backtest_action_plan(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
     preset_comparison = strategy_backtest_service.compare_presets(
         presets=["strong", "value", "capital-risk"],
@@ -950,6 +976,8 @@ def _build_strategy_backtest_action_plan(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
     history = strategy_backtest_history_service.compare(
         preset=preset,
@@ -970,6 +998,8 @@ def _build_strategy_backtest_action_plan(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
 
 
@@ -981,6 +1011,8 @@ async def strategy_backtest_presets(
     limit: int = Query(default=8, ge=1, le=30),
     fee_bps: float = Query(default=5, ge=0, le=100),
     slippage_bps: float = Query(default=10, ge=0, le=100),
+    take_profit_pct: float = Query(default=0, ge=0, le=100),
+    stop_loss_pct: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestPresetComparison:
     selected_presets = _parse_backtest_presets(presets)
     if any(preset not in SCREENER_PRESETS for preset in selected_presets):
@@ -996,6 +1028,8 @@ async def strategy_backtest_presets(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
 
 
@@ -1007,6 +1041,8 @@ async def strategy_backtest_periods(
     limit: int = Query(default=8, ge=1, le=30),
     fee_bps: float = Query(default=5, ge=0, le=100),
     slippage_bps: float = Query(default=10, ge=0, le=100),
+    take_profit_pct: float = Query(default=0, ge=0, le=100),
+    stop_loss_pct: float = Query(default=0, ge=0, le=100),
 ) -> StrategyBacktestComparison:
     if preset not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail="Screener preset not found")
@@ -1021,6 +1057,8 @@ async def strategy_backtest_periods(
         limit=limit,
         fee_bps=fee_bps,
         slippage_bps=slippage_bps,
+        take_profit_pct=take_profit_pct,
+        stop_loss_pct=stop_loss_pct,
     )
 
 

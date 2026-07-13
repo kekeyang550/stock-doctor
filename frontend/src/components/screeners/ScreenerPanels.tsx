@@ -1020,10 +1020,14 @@ export function StrategyBacktestPanel({
   holdingDays,
   feeBps,
   slippageBps,
+  takeProfitPct,
+  stopLossPct,
   limit,
   onHoldingDaysChange,
   onFeeBpsChange,
   onSlippageBpsChange,
+  onTakeProfitPctChange,
+  onStopLossPctChange,
   onLimitChange,
   error,
   comparisonError,
@@ -1043,10 +1047,14 @@ export function StrategyBacktestPanel({
   holdingDays: number
   feeBps: number
   slippageBps: number
+  takeProfitPct: number
+  stopLossPct: number
   limit: number
   onHoldingDaysChange: (days: number) => void
   onFeeBpsChange: (value: number) => void
   onSlippageBpsChange: (value: number) => void
+  onTakeProfitPctChange: (value: number) => void
+  onStopLossPctChange: (value: number) => void
   onLimitChange: (value: number) => void
   error: string | null
   comparisonError: string | null
@@ -1146,6 +1154,14 @@ export function StrategyBacktestPanel({
               <small>单笔成本</small>
               <b>{formatPlainPercent(report.round_trip_cost_pct)}</b>
             </span>
+            <span>
+              <small>止盈</small>
+              <b>{formatPlainPercent(report.take_profit_pct)}</b>
+            </span>
+            <span>
+              <small>止损</small>
+              <b>{formatPlainPercent(report.stop_loss_pct)}</b>
+            </span>
           </div>
           <div className="backtest-parameter-card">
             <strong>参数</strong>
@@ -1183,6 +1199,30 @@ export function StrategyBacktestPanel({
                 step="1"
                 value={limit}
                 onChange={(event) => onLimitChange(clampNumber(event.target.value, 1, 30, 8))}
+              />
+            </label>
+            <label>
+              <span>止盈 %</span>
+              <input
+                aria-label="回测止盈 %"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={takeProfitPct}
+                onChange={(event) => onTakeProfitPctChange(clampNumber(event.target.value, 0, 100, 0))}
+              />
+            </label>
+            <label>
+              <span>止损 %</span>
+              <input
+                aria-label="回测止损 %"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={stopLossPct}
+                onChange={(event) => onStopLossPctChange(clampNumber(event.target.value, 0, 100, 0))}
               />
             </label>
           </div>
@@ -1322,7 +1362,7 @@ export function StrategyBacktestPanel({
               <article key={`${trade.symbol}-${trade.entry_date}`} className="backtest-trade">
                 <div>
                   <strong>{trade.name}</strong>
-                  <span>{trade.symbol} · {trade.industry} · {trade.holding_days} 日</span>
+                  <span>{trade.symbol} · {trade.industry} · {trade.holding_days} 日 · {backtestExitReasonLabel(trade.exit_reason)}</span>
                 </div>
                 <em className={trade.return_pct >= 0 ? 'up' : 'down'}>净收益 {formatSignedPercent(trade.return_pct)}</em>
                 <small>{trade.entry_price.toFixed(2)} → {trade.exit_price.toFixed(2)} · 回撤 {formatSignedPercent(trade.max_drawdown_pct)}</small>
@@ -1350,6 +1390,12 @@ export function StrategyBacktestPanel({
 
 function backtestPriceSourceLabel(source: StrategyBacktestReport['price_source']) {
   return source === 'historical-kline' ? '历史K线' : '样例趋势'
+}
+
+function backtestExitReasonLabel(reason: StrategyBacktestReport['trades'][number]['exit_reason']) {
+  if (reason === 'take-profit') return '止盈退出'
+  if (reason === 'stop-loss') return '止损退出'
+  return '持有到期'
 }
 
 function formatBacktestHistoryCount(value: number) {

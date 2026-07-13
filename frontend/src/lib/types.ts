@@ -480,6 +480,7 @@ export type StrategyBacktestTrade = {
   return_pct: number
   max_drawdown_pct: number
   holding_days: number
+  exit_reason: 'holding-period' | 'take-profit' | 'stop-loss'
   price_source: 'historical-kline' | 'synthetic-trend'
   history_bar_count: number
   history_last_date: string | null
@@ -508,6 +509,8 @@ export type StrategyBacktestReport = {
   fallback_reason: string | null
   fee_bps: number
   slippage_bps: number
+  take_profit_pct: number
+  stop_loss_pct: number
   round_trip_cost_pct: number
   sample_size: number
   match_count: number
@@ -599,6 +602,8 @@ export type StrategyBacktestHistoryItem = {
   limit: number
   fee_bps: number
   slippage_bps: number
+  take_profit_pct: number
+  stop_loss_pct: number
   price_source: 'historical-kline' | 'synthetic-trend'
   sample_confidence_score: number
   sample_confidence_label: string
