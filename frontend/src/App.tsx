@@ -1,6 +1,7 @@
 import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { StockList } from './components/StockList'
+import { humanizeConnectorMessage } from './lib/sourceLabels'
 import { DiagnosisWorkspace } from './components/diagnosis/DiagnosisPanels'
 import {
   ConceptHeatPanel,
@@ -1172,6 +1173,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const connectorHealth = dataTrust.connector_health ?? {}
   const cacheStatus = connectorHealth.cache_status ?? {}
   const freshness = dataTrust.freshness ?? {}
+  const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
   const industryExposures = Array.isArray(portfolioRisk.industry_exposures) ? portfolioRisk.industry_exposures : []
   const riskContributions = Array.isArray(portfolioRisk.risk_contributions) ? portfolioRisk.risk_contributions : []
@@ -1258,6 +1260,13 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`- 新鲜度: ${markdownText(freshness.status ?? '-')}`)
   lines.push(`- 覆盖率: ${markdownText(freshness.coverage_pct ?? '-')}%`)
   lines.push('')
+  lines.push('### 连接器明细')
+  markdownList(
+    lines,
+    connectors.slice(0, 10),
+    (connector) => `${connector.name} - ${reportConnectorStatusLabel(connector.status)}${connector.active ? ' - 当前启用' : ''} - ${humanizeConnectorMessage(connector.message ?? connector.role ?? '')} - 下一步: ${humanizeConnectorMessage(connector.next_action ?? '-')}`,
+  )
+  lines.push('')
   lines.push('### 缓存桶')
   markdownList(lines, cacheBuckets, (bucket) => `${bucket.label}: ${bucket.active_entries}/${bucket.entries} 有效, 已过期 ${bucket.expired_entries}, 命中 ${bucket.hit_count} / 未命中 ${bucket.miss_count}, 命中率 ${bucket.hit_rate_pct}%`)
   lines.push('')
@@ -1304,6 +1313,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const connectorHealth = dataTrust.connector_health ?? {}
   const cacheStatus = connectorHealth.cache_status ?? {}
   const freshness = dataTrust.freshness ?? {}
+  const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const weightInputs = payload.portfolio_weight_inputs ?? {}
   const scoreTrend = Array.isArray(diagnosisChange.score_trend) ? diagnosisChange.score_trend : []
   const changeDrivers = Array.isArray(diagnosisChange.key_drivers) ? diagnosisChange.key_drivers : []
@@ -1508,6 +1518,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>缓存 TTL</span><strong>${escapeHtml(cacheStatus.ttl_seconds ?? connectorHealth.runtime_config?.cache_ttl_seconds ?? "-")} 秒</strong></div>
       </div>
       <p>${escapeHtml(freshness.message ?? "")}</p>
+      <h3>连接器明细</h3>
+      ${connectors.slice(0, 10).map((connector: any) => `<div class="row"><strong>${escapeHtml(connector.name)}${connector.active ? " · 当前启用" : ""}</strong><small>${escapeHtml(reportConnectorStatusLabel(connector.status))} · ${escapeHtml(humanizeConnectorMessage(connector.message ?? connector.role ?? ""))} · 下一步：${escapeHtml(humanizeConnectorMessage(connector.next_action ?? "-"))}</small></div>`).join("") || "<p>暂无连接器明细</p>"}
       <h3>缓存桶</h3>
       ${cacheBuckets.map((bucket: any) => `<div class="row"><strong>${escapeHtml(bucket.label)}</strong><small>${escapeHtml(bucket.active_entries ?? 0)}/${escapeHtml(bucket.entries ?? 0)} 有效 · 已过期 ${escapeHtml(bucket.expired_entries ?? 0)} · 最近 ${escapeHtml(bucket.nearest_expires_in_seconds ?? 0)} 秒后过期 · 命中 ${escapeHtml(bucket.hit_count ?? 0)} / 未命中 ${escapeHtml(bucket.miss_count ?? 0)} · 命中率 ${escapeHtml(formatReportPercent(bucket.hit_rate_pct ?? 0))} · ${escapeHtml(reportCacheStatusLabel(bucket.status))}</small></div>`).join("") || "<p>暂无缓存遥测</p>"}
     </section>
@@ -1562,6 +1574,15 @@ function reportCacheStatusLabel(status: unknown) {
   if (status === 'partial') return '部分有效'
   if (status === 'expired') return '全部过期'
   return '暂无缓存'
+}
+
+function reportConnectorStatusLabel(status: unknown) {
+  if (status === 'online') return '在线'
+  if (status === 'fallback') return '备用'
+  if (status === 'missing-package') return '缺少依赖'
+  if (status === 'planned') return '规划中'
+  if (status === 'error') return '异常'
+  return '未知'
 }
 
 function reportRebalanceActionLabel(action: unknown) {

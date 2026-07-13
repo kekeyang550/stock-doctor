@@ -151,6 +151,45 @@ const connectorHealth = {
       message: '当前环境未安装 akshare，系统继续使用 Mock 数据。',
       next_action: '在后端环境执行 pip install akshare 后，再设置 STOCK_DOCTOR_DATA_PROVIDER=akshare。',
     },
+    {
+      name: '东方财富',
+      status: 'online',
+      active: false,
+      role: 'A 股行情、指数、历史 K 线',
+      package: null,
+      package_installed: true,
+      configured_provider: 'mock',
+      latency_ms: 120,
+      last_checked_at: '2026-07-10T06:00:00Z',
+      message: 'fundamental-quote-detail 可用，sina-capital-flow 备用已触发。',
+      next_action: '继续观察 tencent-kline 与 tdx-kline 的交叉校验差异。',
+    },
+    {
+      name: '通达信本地日线',
+      status: 'fallback',
+      active: false,
+      role: '本地日线交叉校验',
+      package: null,
+      package_installed: true,
+      configured_provider: 'mock',
+      latency_ms: null,
+      last_checked_at: '2026-07-10T06:00:00Z',
+      message: 'tdx-kline 最近校验 600519：通达信 1518.3，远端 1518.1。',
+      next_action: '若过期，请在通达信客户端补全日线数据。',
+    },
+    {
+      name: '同花顺本地股票名表',
+      status: 'online',
+      active: false,
+      role: '本地股票代码名称索引',
+      package: null,
+      package_installed: true,
+      configured_provider: 'mock',
+      latency_ms: null,
+      last_checked_at: '2026-07-10T06:00:00Z',
+      message: '本地名表可解析招商银行等名称查询。',
+      next_action: '定期更新同花顺本地股票名表。',
+    },
   ],
 }
 
@@ -2299,6 +2338,15 @@ describe('App', () => {
     expect(html).toContain('净收益')
     expect(html).toContain('毛收益')
     expect(html).toContain('缓存命中')
+    expect(html).toContain('连接器明细')
+    expect(html).toContain('东方财富')
+    expect(html).toContain('东方财富估值详情')
+    expect(html).toContain('新浪资金流兜底')
+    expect(html).toContain('通达信本地日线')
+    expect(html).toContain('通达信本地 K 线 最近校验 600519')
+    expect(html).toContain('同花顺本地股票名表')
+    expect(html).not.toContain('sina-capital-flow')
+    expect(html).not.toContain('tdx-kline')
     expect(html).toContain('股票列表')
     expect(html).toContain('1/1 有效')
     expect(html).toContain('行情快照')
@@ -2361,6 +2409,11 @@ describe('App', () => {
     expect(markdown).toContain('切换推荐持有周期复测')
     expect(markdown).toContain('周期选择 - 中优先级 - 待处理')
     expect(markdown).toContain('## 数据可信度')
+    expect(markdown).toContain('### 连接器明细')
+    expect(markdown).toContain('东方财富估值详情')
+    expect(markdown).toContain('新浪资金流兜底')
+    expect(markdown).toContain('通达信本地 K 线')
+    expect(markdown).not.toContain('sina-capital-flow')
     expect(markdown).toContain('缓存桶')
     expect(anchor.download).toBe(`stock-doctor-report-600519-${new Date().toISOString().slice(0, 10)}.md`)
     expect(click).toHaveBeenCalled()
