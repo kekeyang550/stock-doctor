@@ -805,6 +805,13 @@ const strategyBacktest = {
   positive_trade_count: 1,
   negative_trade_count: 1,
   flat_trade_count: 0,
+  exit_reason_counts: {
+    'holding-period': 1,
+    'take-profit': 0,
+    'stop-loss': 0,
+    'ma20-break': 0,
+    'volume-fade': 0,
+  },
   return_median_pct: 1.25,
   return_p25_pct: -0.9,
   return_p75_pct: 3.4,
@@ -2064,6 +2071,9 @@ describe('App', () => {
     expect(within(backtestPanel).getAllByText('最大回撤').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('收益回撤比').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('收益分布')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('退出分布')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('持有到期')).toBeInTheDocument()
+    expect(within(backtestPanel).getAllByText('1 笔').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('权益曲线')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('累计收益')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('路径最大回撤')).toBeInTheDocument()
@@ -2827,6 +2837,8 @@ describe('App', () => {
     expect(html).toContain('收益回撤比')
     expect(html).toContain('0.59')
     expect(html).toContain('收益分布')
+    expect(html).toContain('退出分布')
+    expect(html).toContain('持有到期 1 笔')
     expect(html).toContain('胜 1 / 负 1 / 平 0')
     expect(html).toContain('<span>中位</span><strong>+1.25%</strong>')
     expect(html).toContain('P25 -0.90% · P75 +3.40%')
@@ -2946,6 +2958,7 @@ describe('App', () => {
     expect(markdown).toContain('再平衡建议')
     expect(markdown).toContain('## 策略回测')
     expect(markdown).toContain('退出规则: 止盈 0% / 止损 0% / MA20 跌破 关闭 / 量比低于 0')
+    expect(markdown).toContain('退出分布: 持有到期 1 笔')
     expect(markdown).toContain('历史对比')
     expect(markdown).toContain('固定持有')
     expect(markdown).toContain('### 回测复盘动作')

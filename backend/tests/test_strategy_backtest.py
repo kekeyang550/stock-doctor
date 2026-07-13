@@ -64,6 +64,8 @@ def test_strategy_backtest_reports_returns_and_drawdown():
     assert 0 <= report.win_rate <= 100
     assert report.best_return_pct >= report.worst_return_pct
     assert report.positive_trade_count + report.negative_trade_count + report.flat_trade_count == report.trade_count
+    assert sum(report.exit_reason_counts.values()) == report.trade_count
+    assert report.exit_reason_counts["holding-period"] >= 0
     assert report.return_median_pct >= report.worst_return_pct
     assert report.return_median_pct <= report.best_return_pct
     assert report.return_p25_pct <= report.return_p75_pct

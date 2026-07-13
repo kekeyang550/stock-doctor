@@ -1384,6 +1384,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`- 退出规则: 止盈 ${markdownText(strategyBacktest.take_profit_pct ?? 0)}% / 止损 ${markdownText(strategyBacktest.stop_loss_pct ?? 0)}% / MA20 跌破 ${strategyBacktest.exit_on_ma20_break ? '启用' : '关闭'} / 量比低于 ${markdownText(strategyBacktest.exit_volume_ratio ?? 0)}`)
   lines.push(`- 交易数/胜率: ${markdownText(strategyBacktest.trade_count ?? 0)} / ${markdownText(strategyBacktest.win_rate ?? 0)}%`)
   lines.push(`- 平均收益/最大回撤: ${markdownText(formatReportSignedPercent(strategyBacktest.average_return_pct ?? 0))} / ${markdownText(formatReportSignedPercent(strategyBacktest.max_drawdown_pct ?? 0))}`)
+  lines.push(`- 退出分布: ${markdownText(strategyBacktestExitDistribution(strategyBacktest))}`)
   lines.push(`- 稳定性: ${markdownText(strategyBacktest.stability_score ?? 0)} (${markdownText(strategyBacktest.stability_label ?? '暂无评估')})`)
   lines.push('')
   lines.push('### 历史对比')
@@ -1682,6 +1683,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>胜 / 负 / 平</span><strong>胜 ${escapeHtml(strategyBacktest.positive_trade_count ?? 0)} / 负 ${escapeHtml(strategyBacktest.negative_trade_count ?? 0)} / 平 ${escapeHtml(strategyBacktest.flat_trade_count ?? 0)}</strong></div>
         <div class="metric"><span>中位</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktest.return_median_pct ?? 0))}</strong></div>
         <div class="metric"><span>P25 / P75</span><strong>P25 ${escapeHtml(formatReportSignedPercent(strategyBacktest.return_p25_pct ?? 0))} · P75 ${escapeHtml(formatReportSignedPercent(strategyBacktest.return_p75_pct ?? 0))}</strong></div>
+        <div class="metric"><span>退出分布</span><strong>${escapeHtml(strategyBacktestExitDistribution(strategyBacktest))}</strong></div>
       </div>
       <h3>权益曲线</h3>
       <div class="grid">
@@ -1823,6 +1825,26 @@ function strategyBacktestExitReasonLabel(reason: unknown) {
   if (reason === 'ma20-break') return '跌破 MA20'
   if (reason === 'volume-fade') return '缩量退出'
   return '持有到期'
+}
+
+function strategyBacktestExitDistribution(report: Record<string, unknown>) {
+  const counts = report.exit_reason_counts && typeof report.exit_reason_counts === 'object'
+    ? report.exit_reason_counts as Record<string, unknown>
+    : {}
+  const entries: Array<[string, string]> = [
+    ['holding-period', '持有到期'],
+    ['take-profit', '止盈退出'],
+    ['stop-loss', '止损退出'],
+    ['ma20-break', '跌破 MA20'],
+    ['volume-fade', '缩量退出'],
+  ]
+  const parts = entries
+    .map(([key, label]) => {
+      const count = Number(counts[key] ?? 0)
+      return Number.isFinite(count) && count > 0 ? `${label} ${count} 笔` : ''
+    })
+    .filter(Boolean)
+  return parts.length ? parts.join(' / ') : '暂无退出统计'
 }
 
 function strategyBacktestParameterLabel(item: Record<string, unknown>) {

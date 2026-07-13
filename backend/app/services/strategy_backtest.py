@@ -116,6 +116,7 @@ class StrategyBacktestService:
         positive_trade_count = len([value for value in returns if value > 0])
         negative_trade_count = len([value for value in returns if value < 0])
         flat_trade_count = len([value for value in returns if value == 0])
+        exit_reason_counts = self._exit_reason_counts(trades)
         max_drawdown = min((trade.max_drawdown_pct for trade in trades), default=0.0)
         return_drawdown_ratio = self._return_drawdown_ratio(average_return, max_drawdown)
         chronological_trades = self._chronological_trades(trades)
@@ -165,6 +166,7 @@ class StrategyBacktestService:
             positive_trade_count=positive_trade_count,
             negative_trade_count=negative_trade_count,
             flat_trade_count=flat_trade_count,
+            exit_reason_counts=exit_reason_counts,
             return_median_pct=self._percentile(returns, 0.5),
             return_p25_pct=self._percentile(returns, 0.25),
             return_p75_pct=self._percentile(returns, 0.75),
@@ -437,6 +439,18 @@ class StrategyBacktestService:
         average = sum(values) / len(values)
         variance = sum((value - average) ** 2 for value in values) / len(values)
         return round(variance ** 0.5, 2)
+
+    def _exit_reason_counts(self, trades: list[StrategyBacktestTrade]) -> dict[str, int]:
+        counts = {
+            "holding-period": 0,
+            "take-profit": 0,
+            "stop-loss": 0,
+            "ma20-break": 0,
+            "volume-fade": 0,
+        }
+        for trade in trades:
+            counts[trade.exit_reason] = counts.get(trade.exit_reason, 0) + 1
+        return counts
 
     def _max_consecutive_loss_count(self, trades: list[StrategyBacktestTrade]) -> int:
         longest = 0

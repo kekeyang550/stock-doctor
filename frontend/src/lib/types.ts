@@ -524,6 +524,7 @@ export type StrategyBacktestReport = {
   positive_trade_count?: number
   negative_trade_count?: number
   flat_trade_count?: number
+  exit_reason_counts?: Record<StrategyBacktestTrade['exit_reason'], number>
   return_median_pct?: number
   return_p25_pct?: number
   return_p75_pct?: number

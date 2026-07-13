@@ -799,6 +799,7 @@ class StrategyBacktestReport(BaseModel):
     positive_trade_count: int = 0
     negative_trade_count: int = 0
     flat_trade_count: int = 0
+    exit_reason_counts: dict[str, int] = Field(default_factory=dict)
     return_median_pct: float = 0
     return_p25_pct: float = 0
     return_p75_pct: float = 0

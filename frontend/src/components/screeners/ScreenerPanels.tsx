@@ -1285,6 +1285,15 @@ export function StrategyBacktestPanel({
               <b>P25 {formatSignedPercent(report.return_p25_pct ?? 0)} · P75 {formatSignedPercent(report.return_p75_pct ?? 0)}</b>
             </span>
           </div>
+          <div className="backtest-cost-card">
+            <strong>退出分布</strong>
+            {backtestExitReasonEntries(report).map(([reason, count]) => (
+              <span key={reason}>
+                <small>{backtestExitReasonLabel(reason)}</small>
+                <b>{count} 笔</b>
+              </span>
+            ))}
+          </div>
           {equityCurve.length > 1 ? (
             <div className="backtest-cost-card">
               <strong>权益曲线</strong>
@@ -1435,6 +1444,15 @@ function backtestExitReasonLabel(reason: StrategyBacktestReport['trades'][number
   if (reason === 'ma20-break') return '跌破 MA20'
   if (reason === 'volume-fade') return '缩量退出'
   return '持有到期'
+}
+
+function backtestExitReasonEntries(report: StrategyBacktestReport) {
+  const reasons: StrategyBacktestReport['trades'][number]['exit_reason'][] = ['holding-period', 'take-profit', 'stop-loss', 'ma20-break', 'volume-fade']
+  const counts: Partial<Record<StrategyBacktestReport['trades'][number]['exit_reason'], number>> =
+    report.exit_reason_counts ?? {}
+  return reasons
+    .map((reason) => [reason, counts[reason] ?? 0] as const)
+    .filter(([, count]) => count > 0)
 }
 
 function backtestHistoryParameterLabel(item: StrategyBacktestHistoryComparison['items'][number]) {
