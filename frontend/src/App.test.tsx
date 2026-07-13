@@ -793,6 +793,7 @@ const strategyBacktest = {
   take_profit_pct: 0,
   stop_loss_pct: 0,
   exit_on_ma20_break: false,
+  exit_volume_ratio: 0,
   round_trip_cost_pct: 0.3,
   sample_size: 4,
   match_count: 2,
@@ -943,6 +944,7 @@ const strategyBacktestHistory = {
     take_profit_pct: 0,
     stop_loss_pct: 0,
     exit_on_ma20_break: false,
+    exit_volume_ratio: 0,
     price_source: 'historical-kline',
     sample_confidence_score: 76,
     sample_confidence_label: '高',
@@ -966,6 +968,7 @@ const strategyBacktestHistory = {
     take_profit_pct: 0,
     stop_loss_pct: 0,
     exit_on_ma20_break: false,
+    exit_volume_ratio: 0,
     price_source: 'historical-kline',
     sample_confidence_score: 75,
     sample_confidence_label: '高',
@@ -990,6 +993,7 @@ const strategyBacktestHistory = {
       take_profit_pct: 0,
       stop_loss_pct: 0,
       exit_on_ma20_break: false,
+      exit_volume_ratio: 0,
       price_source: 'historical-kline',
       sample_confidence_score: 76,
       sample_confidence_label: '高',
@@ -1013,6 +1017,7 @@ const strategyBacktestHistory = {
       take_profit_pct: 0,
       stop_loss_pct: 0,
       exit_on_ma20_break: false,
+      exit_volume_ratio: 0,
       price_source: 'historical-kline',
       sample_confidence_score: 75,
       sample_confidence_label: '高',
@@ -2106,6 +2111,7 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('止盈')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('止损')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('MA20 跌破')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('量比退出')).toBeInTheDocument()
     expect(within(backtestPanel).getAllByText('关闭').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('单笔成本')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('0.30%')).toBeInTheDocument()
@@ -2243,7 +2249,7 @@ describe('App', () => {
     expect(backtestPanel).toHaveTextContent('+5.20%')
   })
 
-  it('reloads strategy backtest when fee, slippage, sample limit, and MA20 exit change', async () => {
+  it('reloads strategy backtest when fee, slippage, sample limit, MA20, and volume exit change', async () => {
     render(<App />)
 
     const backtestPanel = await waitFor(() => {
@@ -2257,11 +2263,13 @@ describe('App', () => {
     const slippageInput = within(backtestPanel).getByLabelText('回测滑点 bps')
     const limitInput = within(backtestPanel).getByLabelText('回测样本数量')
     const ma20Input = within(backtestPanel).getByLabelText('回测跌破 MA20 退出')
+    const volumeInput = within(backtestPanel).getByLabelText('回测量比退出阈值')
 
     fireEvent.change(feeInput, { target: { value: '8' } })
     fireEvent.change(slippageInput, { target: { value: '12' } })
     fireEvent.change(limitInput, { target: { value: '6' } })
     fireEvent.click(ma20Input)
+    fireEvent.change(volumeInput, { target: { value: '0.8' } })
 
     await waitFor(() => {
       const backtestCalls = vi.mocked(fetch).mock.calls
@@ -2271,6 +2279,7 @@ describe('App', () => {
       expect(backtestCalls.some((url) => url.includes('slippage_bps=12'))).toBe(true)
       expect(backtestCalls.some((url) => url.includes('limit=6'))).toBe(true)
       expect(backtestCalls.some((url) => url.includes('exit_on_ma20_break=true'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('exit_volume_ratio=0.8'))).toBe(true)
     })
   })
 
@@ -2306,6 +2315,7 @@ describe('App', () => {
       fee_bps: 8,
       slippage_bps: 12,
       exit_on_ma20_break: true,
+      exit_volume_ratio: 0.8,
       limit: 6,
     }))
 
@@ -2321,6 +2331,7 @@ describe('App', () => {
     expect(within(backtestPanel).getByLabelText('回测滑点 bps')).toHaveValue(12)
     expect(within(backtestPanel).getByLabelText('回测样本数量')).toHaveValue(6)
     expect(within(backtestPanel).getByLabelText('回测跌破 MA20 退出')).toBeChecked()
+    expect(within(backtestPanel).getByLabelText('回测量比退出阈值')).toHaveValue(0.8)
 
     await waitFor(() => {
       const backtestCalls = vi.mocked(fetch).mock.calls
@@ -2331,6 +2342,7 @@ describe('App', () => {
       expect(backtestCalls.some((url) => url.includes('slippage_bps=12'))).toBe(true)
       expect(backtestCalls.some((url) => url.includes('limit=6'))).toBe(true)
       expect(backtestCalls.some((url) => url.includes('exit_on_ma20_break=true'))).toBe(true)
+      expect(backtestCalls.some((url) => url.includes('exit_volume_ratio=0.8'))).toBe(true)
     })
   })
 
@@ -2348,6 +2360,7 @@ describe('App', () => {
     fireEvent.change(within(backtestPanel).getByLabelText('回测滑点 bps'), { target: { value: '12' } })
     fireEvent.change(within(backtestPanel).getByLabelText('回测样本数量'), { target: { value: '6' } })
     fireEvent.click(within(backtestPanel).getByLabelText('回测跌破 MA20 退出'))
+    fireEvent.change(within(backtestPanel).getByLabelText('回测量比退出阈值'), { target: { value: '0.8' } })
 
     await waitFor(() => {
       expect(JSON.parse(window.localStorage.getItem('stock-doctor-backtest-parameters-v1') ?? '{}')).toEqual({
@@ -2357,6 +2370,7 @@ describe('App', () => {
         take_profit_pct: 0,
         stop_loss_pct: 0,
         exit_on_ma20_break: true,
+        exit_volume_ratio: 0.8,
         limit: 6,
       })
     })
@@ -2377,6 +2391,7 @@ describe('App', () => {
     expect(within(backtestPanel).getByLabelText('回测滑点 bps')).toHaveValue(10)
     expect(within(backtestPanel).getByLabelText('回测样本数量')).toHaveValue(8)
     expect(within(backtestPanel).getByLabelText('回测跌破 MA20 退出')).not.toBeChecked()
+    expect(within(backtestPanel).getByLabelText('回测量比退出阈值')).toHaveValue(0)
 
     await waitFor(() => {
       const backtestCalls = vi.mocked(fetch).mock.calls
@@ -2688,6 +2703,7 @@ describe('App', () => {
       take_profit_pct: 0,
       stop_loss_pct: 0,
       exit_on_ma20_break: false,
+      exit_volume_ratio: 0,
       limit: 8,
       holding_days: 5,
     })
@@ -2789,6 +2805,7 @@ describe('App', () => {
     expect(html).toContain('滑点')
     expect(html).toContain('10 bps')
     expect(html).toContain('MA20 跌破')
+    expect(html).toContain('量比退出')
     expect(html).toContain('关闭')
     expect(html).toContain('单笔成本')
     expect(html).toContain('0.3%')
@@ -2926,7 +2943,7 @@ describe('App', () => {
     expect(markdown).toContain('symbol,side,shares,price')
     expect(markdown).toContain('再平衡建议')
     expect(markdown).toContain('## 策略回测')
-    expect(markdown).toContain('退出规则: 止盈 0% / 止损 0% / MA20 跌破 关闭')
+    expect(markdown).toContain('退出规则: 止盈 0% / 止损 0% / MA20 跌破 关闭 / 量比低于 0')
     expect(markdown).toContain('历史对比')
     expect(markdown).toContain('### 回测复盘动作')
     expect(markdown).toContain('状态统计: 待处理 2 / 观察中 0 / 已完成 0')

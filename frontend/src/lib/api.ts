@@ -321,9 +321,10 @@ export function fetchStrategyBacktest(
   takeProfitPct = 0,
   stopLossPct = 0,
   exitOnMa20Break = false,
+  exitVolumeRatio = 0,
 ): Promise<StrategyBacktestReport> {
   return getJson<StrategyBacktestReport>(
-    `/api/v1/backtests/strategy?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}`,
+    `/api/v1/backtests/strategy?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}&exit_volume_ratio=${exitVolumeRatio}`,
   )
 }
 
@@ -336,9 +337,10 @@ export function fetchStrategyBacktestComparison(
   takeProfitPct = 0,
   stopLossPct = 0,
   exitOnMa20Break = false,
+  exitVolumeRatio = 0,
 ): Promise<StrategyBacktestComparison> {
   return getJson<StrategyBacktestComparison>(
-    `/api/v1/backtests/strategy/periods?preset=${preset}&horizon=${horizon}&periods=3,5,10,20&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}`,
+    `/api/v1/backtests/strategy/periods?preset=${preset}&horizon=${horizon}&periods=3,5,10,20&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}&exit_volume_ratio=${exitVolumeRatio}`,
   )
 }
 
@@ -351,9 +353,10 @@ export function fetchStrategyBacktestPresetComparison(
   takeProfitPct = 0,
   stopLossPct = 0,
   exitOnMa20Break = false,
+  exitVolumeRatio = 0,
 ): Promise<StrategyBacktestPresetComparison> {
   return getJson<StrategyBacktestPresetComparison>(
-    `/api/v1/backtests/strategy/presets?horizon=${horizon}&presets=strong,value,capital-risk&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}`,
+    `/api/v1/backtests/strategy/presets?horizon=${horizon}&presets=strong,value,capital-risk&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}&exit_volume_ratio=${exitVolumeRatio}`,
   )
 }
 
@@ -377,9 +380,10 @@ export function fetchStrategyBacktestActions(
   takeProfitPct = 0,
   stopLossPct = 0,
   exitOnMa20Break = false,
+  exitVolumeRatio = 0,
 ): Promise<StrategyBacktestActionPlan> {
   return getJson<StrategyBacktestActionPlan>(
-    `/api/v1/backtests/strategy/actions?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}`,
+    `/api/v1/backtests/strategy/actions?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}&exit_volume_ratio=${exitVolumeRatio}`,
   )
 }
 
@@ -395,9 +399,10 @@ export async function updateStrategyBacktestActionStatus(
   takeProfitPct = 0,
   stopLossPct = 0,
   exitOnMa20Break = false,
+  exitVolumeRatio = 0,
 ): Promise<StrategyBacktestActionPlan> {
   const response = await fetch(
-    `/api/v1/backtests/strategy/actions/${actionId}?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}`,
+    `/api/v1/backtests/strategy/actions/${actionId}?preset=${preset}&horizon=${horizon}&holding_days=${holdingDays}&limit=${limit}&fee_bps=${feeBps}&slippage_bps=${slippageBps}&take_profit_pct=${takeProfitPct}&stop_loss_pct=${stopLossPct}&exit_on_ma20_break=${exitOnMa20Break}&exit_volume_ratio=${exitVolumeRatio}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

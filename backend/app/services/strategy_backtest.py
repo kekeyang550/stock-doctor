@@ -63,6 +63,7 @@ class StrategyBacktestService:
         take_profit_pct: float = 0,
         stop_loss_pct: float = 0,
         exit_on_ma20_break: bool = False,
+        exit_volume_ratio: float = 0,
     ) -> StrategyBacktestReport:
         holding_days = max(1, min(holding_days, 20))
         limit = max(1, min(limit, 30))
@@ -70,6 +71,7 @@ class StrategyBacktestService:
         slippage_bps = max(0.0, min(float(slippage_bps), 100.0))
         take_profit_pct = max(0.0, min(float(take_profit_pct), 100.0))
         stop_loss_pct = max(0.0, min(float(stop_loss_pct), 100.0))
+        exit_volume_ratio = max(0.0, min(float(exit_volume_ratio), 5.0))
         round_trip_cost_pct = self._round_trip_cost_pct(fee_bps, slippage_bps)
         snapshot_by_symbol = {item.symbol: item for item in snapshots}
         candidates = self._screener_service.screen(snapshots=snapshots, diagnoses=diagnoses, preset=preset)
@@ -101,6 +103,7 @@ class StrategyBacktestService:
                 take_profit_pct,
                 stop_loss_pct,
                 exit_on_ma20_break,
+                exit_volume_ratio,
             )
             if trade is not None:
                 trades.append(trade)
@@ -150,6 +153,7 @@ class StrategyBacktestService:
             take_profit_pct=take_profit_pct,
             stop_loss_pct=stop_loss_pct,
             exit_on_ma20_break=exit_on_ma20_break,
+            exit_volume_ratio=exit_volume_ratio,
             round_trip_cost_pct=round(round_trip_cost_pct, 2),
             sample_size=len(snapshots),
             match_count=len(candidates),
@@ -205,6 +209,7 @@ class StrategyBacktestService:
         take_profit_pct: float = 0,
         stop_loss_pct: float = 0,
         exit_on_ma20_break: bool = False,
+        exit_volume_ratio: float = 0,
     ) -> StrategyBacktestComparison:
         normalized_periods = self._normalize_periods(periods)
         reports = [
@@ -220,6 +225,7 @@ class StrategyBacktestService:
                 take_profit_pct=take_profit_pct,
                 stop_loss_pct=stop_loss_pct,
                 exit_on_ma20_break=exit_on_ma20_break,
+                exit_volume_ratio=exit_volume_ratio,
             )
             for holding_days in normalized_periods
         ]
@@ -263,6 +269,7 @@ class StrategyBacktestService:
         take_profit_pct: float = 0,
         stop_loss_pct: float = 0,
         exit_on_ma20_break: bool = False,
+        exit_volume_ratio: float = 0,
     ) -> StrategyBacktestPresetComparison:
         selected_presets = self._normalize_presets(presets)
         reports = [
@@ -278,6 +285,7 @@ class StrategyBacktestService:
                 take_profit_pct=take_profit_pct,
                 stop_loss_pct=stop_loss_pct,
                 exit_on_ma20_break=exit_on_ma20_break,
+                exit_volume_ratio=exit_volume_ratio,
             )
             for preset in selected_presets
         ]
@@ -602,6 +610,7 @@ class StrategyBacktestService:
         take_profit_pct: float,
         stop_loss_pct: float,
         exit_on_ma20_break: bool,
+        exit_volume_ratio: float,
     ) -> StrategyBacktestTrade | None:
         points = price_series.series.points
         if len(points) < 2:
@@ -629,6 +638,10 @@ class StrategyBacktestService:
             if exit_on_ma20_break and close < points[index].ma20:
                 exit_index = index
                 exit_reason = "ma20-break"
+                break
+            if exit_volume_ratio > 0 and points[index].volume_ratio < exit_volume_ratio:
+                exit_index = index
+                exit_reason = "volume-fade"
                 break
 
         exit_point = points[exit_index]

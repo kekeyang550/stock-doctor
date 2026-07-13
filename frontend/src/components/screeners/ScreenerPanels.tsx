@@ -1023,6 +1023,7 @@ export function StrategyBacktestPanel({
   takeProfitPct,
   stopLossPct,
   exitOnMa20Break,
+  exitVolumeRatio,
   limit,
   onHoldingDaysChange,
   onFeeBpsChange,
@@ -1030,6 +1031,7 @@ export function StrategyBacktestPanel({
   onTakeProfitPctChange,
   onStopLossPctChange,
   onExitOnMa20BreakChange,
+  onExitVolumeRatioChange,
   onLimitChange,
   error,
   comparisonError,
@@ -1052,6 +1054,7 @@ export function StrategyBacktestPanel({
   takeProfitPct: number
   stopLossPct: number
   exitOnMa20Break: boolean
+  exitVolumeRatio: number
   limit: number
   onHoldingDaysChange: (days: number) => void
   onFeeBpsChange: (value: number) => void
@@ -1059,6 +1062,7 @@ export function StrategyBacktestPanel({
   onTakeProfitPctChange: (value: number) => void
   onStopLossPctChange: (value: number) => void
   onExitOnMa20BreakChange: (value: boolean) => void
+  onExitVolumeRatioChange: (value: number) => void
   onLimitChange: (value: number) => void
   error: string | null
   comparisonError: string | null
@@ -1170,6 +1174,10 @@ export function StrategyBacktestPanel({
               <small>MA20 跌破</small>
               <b>{report.exit_on_ma20_break ? '启用' : '关闭'}</b>
             </span>
+            <span>
+              <small>量比退出</small>
+              <b>{Number(report.exit_volume_ratio.toFixed(2)) || '关闭'}</b>
+            </span>
           </div>
           <div className="backtest-parameter-card">
             <strong>参数</strong>
@@ -1240,6 +1248,18 @@ export function StrategyBacktestPanel({
                 type="checkbox"
                 checked={exitOnMa20Break}
                 onChange={(event) => onExitOnMa20BreakChange(event.target.checked)}
+              />
+            </label>
+            <label>
+              <span>量比退出阈值</span>
+              <input
+                aria-label="回测量比退出阈值"
+                type="number"
+                min="0"
+                max="5"
+                step="0.1"
+                value={exitVolumeRatio}
+                onChange={(event) => onExitVolumeRatioChange(clampNumber(event.target.value, 0, 5, 0))}
               />
             </label>
           </div>
@@ -1413,6 +1433,7 @@ function backtestExitReasonLabel(reason: StrategyBacktestReport['trades'][number
   if (reason === 'take-profit') return '止盈退出'
   if (reason === 'stop-loss') return '止损退出'
   if (reason === 'ma20-break') return '跌破 MA20'
+  if (reason === 'volume-fade') return '缩量退出'
   return '持有到期'
 }
 

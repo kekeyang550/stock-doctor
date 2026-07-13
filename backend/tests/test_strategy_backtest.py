@@ -31,6 +31,16 @@ class FallingHistoricalProvider:
         ][-days:]
 
 
+class FadingVolumeHistoricalProvider:
+    def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
+        prices = [120, 121, 122, 123, 124, 126, 127, 128, 129, 130]
+        volumes = [1000, 1000, 1000, 1000, 1000, 300, 300, 300, 300, 300]
+        return [
+            HistoricalPriceBar(date=f"2026-06-{day:02d}", close=price, volume=volume)
+            for day, price, volume in zip(range(21, 31), prices, volumes, strict=True)
+        ][-days:]
+
+
 def test_strategy_backtest_reports_returns_and_drawdown():
     provider = MockMarketDataProvider()
     snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
@@ -205,6 +215,27 @@ def test_strategy_backtest_exits_early_on_ma20_break():
     assert report.trades[0].exit_reason == "ma20-break"
     assert report.trades[0].holding_days == 1
     assert report.trades[0].exit_price == 119
+
+
+def test_strategy_backtest_exits_early_on_volume_fade():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FadingVolumeHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        exit_volume_ratio=0.5,
+    )
+
+    assert report.exit_volume_ratio == 0.5
+    assert report.trades[0].exit_reason == "volume-fade"
+    assert report.trades[0].holding_days == 1
+    assert report.trades[0].exit_price == 126
 
 
 def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails():
