@@ -461,13 +461,17 @@ export function RiskExposurePanel({
   report,
   watchlist,
   positionWeights,
+  portfolioValue,
   onPositionWeightChange,
+  onPortfolioValueChange,
   onSelect,
 }: {
   report: PortfolioRiskReport | null
   watchlist: StockSummary[]
   positionWeights: Record<string, string>
+  portfolioValue: string
   onPositionWeightChange: (symbol: string, value: string) => void
+  onPortfolioValueChange: (value: string) => void
   onSelect: (symbol: string) => void
 }) {
   const items = report?.exposures ?? []
@@ -476,7 +480,7 @@ export function RiskExposurePanel({
   const rebalanceActions = report?.rebalance_actions ?? []
   const positions = report?.positions.length
     ? report.positions
-    : watchlist.map((stock) => ({ symbol: stock.symbol, name: stock.name, industry: stock.industry, weight_pct: 0 }))
+    : watchlist.map((stock) => ({ symbol: stock.symbol, name: stock.name, industry: stock.industry, weight_pct: 0, market_value: 0 }))
   return (
     <section className="panel exposure-panel">
       <div className="panel-title split-title">
@@ -520,6 +524,11 @@ export function RiskExposurePanel({
               <strong>高 {report.distribution.high_count} / 中 {report.distribution.medium_count} / 低 {report.distribution.low_count}</strong>
               <span>按诊断风险分聚合</span>
             </article>
+            <article>
+              <small>组合市值</small>
+              <strong>{report.total_market_value > 0 ? formatCurrency(report.total_market_value) : '未设置'}</strong>
+              <span>现金 {formatCurrency(report.cash_amount)}</span>
+            </article>
             {report.top_drivers[0] ? (
               <button type="button" onClick={() => onSelect(report.top_drivers[0].symbol)}>
                 <small>首要拖累</small>
@@ -533,11 +542,24 @@ export function RiskExposurePanel({
               <strong>模拟仓位</strong>
               <span>{report.weight_mode === 'custom' ? '自定义权重' : '等权模拟'} · 总权重 {report.total_position_weight.toFixed(1)}%</span>
             </div>
+            <label className="portfolio-value-input">
+              <span>组合市值</span>
+              <input
+                aria-label="组合市值"
+                type="number"
+                min="0"
+                step="1000"
+                value={portfolioValue}
+                onChange={(event) => onPortfolioValueChange(event.target.value)}
+                placeholder="例如 100000"
+              />
+              <em>元</em>
+            </label>
             <div className="position-weight-list">
               {positions.map((position) => (
                 <label key={position.symbol}>
                   <span>{position.name}</span>
-                  <small>{position.symbol}</small>
+                  <small>{position.symbol}{position.market_value > 0 ? ` · ${formatCurrency(position.market_value)}` : ''}</small>
                   <input
                     aria-label={`模拟仓位 ${position.name}`}
                     type="number"
@@ -627,6 +649,11 @@ function formatWeightInput(value: number) {
 function formatWeightPercent(value: number) {
   if (!Number.isFinite(value)) return '--'
   return `${value.toFixed(1)}%`
+}
+
+function formatCurrency(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return '0 元'
+  return `${Math.round(value).toLocaleString('zh-CN')} 元`
 }
 
 function rebalanceActionLabel(action: 'reduce' | 'hold' | 'increase') {

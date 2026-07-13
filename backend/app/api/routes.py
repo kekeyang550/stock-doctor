@@ -651,6 +651,7 @@ async def portfolio_risk(
     scope: str = Query(default="watchlist", pattern="^(watchlist|all)$"),
     horizon: str = Query(default="swing", pattern="^(intraday|swing|position)$"),
     weights: str | None = Query(default=None),
+    portfolio_value: float | None = Query(default=None, ge=0),
 ) -> PortfolioRiskReport:
     stocks = data_provider.get_watchlist() if scope == "watchlist" else data_provider.list_stocks()
     snapshots: list[StockSnapshot] = []
@@ -674,6 +675,7 @@ async def portfolio_risk(
         alerts=alerts,
         exposures=exposures,
         position_weights=_parse_position_weights(weights),
+        portfolio_value=portfolio_value,
     )
 
 

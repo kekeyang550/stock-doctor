@@ -637,6 +637,8 @@ const portfolioRisk = {
   stock_count: 3,
   weight_mode: 'equal',
   total_position_weight: 100,
+  total_market_value: 0,
+  cash_amount: 0,
   average_total_score: 72.7,
   average_risk_score: 74.3,
   portfolio_risk_score: 39,
@@ -706,9 +708,9 @@ const portfolioRisk = {
   ],
   exposures: riskExposure,
   positions: [
-    { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 33.33 },
-    { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 33.33 },
-    { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 33.33 },
+    { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 33.33, market_value: 0 },
+    { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 33.33, market_value: 0 },
+    { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 33.33, market_value: 0 },
   ],
 }
 
@@ -1618,6 +1620,8 @@ describe('App', () => {
       ...portfolioRisk,
       weight_mode: 'custom',
       total_position_weight: 80,
+      total_market_value: 100000,
+      cash_amount: 20000,
       average_total_score: 86,
       average_risk_score: 82,
       concentration: {
@@ -1625,9 +1629,9 @@ describe('App', () => {
         top_industry_ratio: 1,
       },
       positions: [
-        { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 80 },
-        { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 0 },
-        { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 0 },
+        { symbol: '600519', name: '贵州茅台', industry: '白酒', weight_pct: 80, market_value: 80000 },
+        { symbol: '000001', name: '平安银行', industry: '股份制银行', weight_pct: 0, market_value: 0 },
+        { symbol: '002594', name: '比亚迪', industry: '汽车整车', weight_pct: 0, market_value: 0 },
       ],
       suggestions: [
         '当前模拟仓位 80.0%，保留约 20.0% 现金缓冲。',
@@ -1646,6 +1650,8 @@ describe('App', () => {
     render(<App />)
 
     const weightInput = await screen.findByLabelText('模拟仓位 贵州茅台')
+    const portfolioValueInput = await screen.findByLabelText('组合市值')
+    fireEvent.change(portfolioValueInput, { target: { value: '100000' } })
     fireEvent.change(weightInput, { target: { value: '80' } })
 
     await waitFor(() => {
@@ -1654,10 +1660,13 @@ describe('App', () => {
         .map((call) => decodeURIComponent(String(call[0])))
         .filter((url) => url.includes('/risk/portfolio'))
       expect(portfolioCalls.some((url) => url.includes('weights=600519:80'))).toBe(true)
+      expect(portfolioCalls.some((url) => url.includes('portfolio_value=100000'))).toBe(true)
     })
     const riskPanel = screen.getByRole('heading', { name: '组合风险' }).closest('section')!
     await waitFor(() => expect(riskPanel).toHaveTextContent('自定义权重'))
     expect(riskPanel).toHaveTextContent('总权重 80.0%')
+    expect(riskPanel).toHaveTextContent('100,000 元')
+    expect(riskPanel).toHaveTextContent('80,000 元')
     expect(riskPanel).toHaveTextContent('现金缓冲')
   })
 

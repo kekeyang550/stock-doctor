@@ -698,6 +698,7 @@ class PortfolioPositionWeight(BaseModel):
     name: str
     industry: str
     weight_pct: float
+    market_value: float = 0
 
 
 class PortfolioRiskReport(BaseModel):
@@ -706,6 +707,8 @@ class PortfolioRiskReport(BaseModel):
     stock_count: int
     weight_mode: str = Field(default="equal", pattern="^(equal|custom)$")
     total_position_weight: float = 0
+    total_market_value: float = 0
+    cash_amount: float = 0
     average_total_score: float
     average_risk_score: float
     portfolio_risk_score: int

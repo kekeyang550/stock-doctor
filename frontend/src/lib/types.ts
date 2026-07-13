@@ -742,6 +742,7 @@ export type PortfolioPositionWeight = {
   name: string
   industry: string
   weight_pct: number
+  market_value: number
 }
 
 export type PortfolioRiskReport = {
@@ -750,6 +751,8 @@ export type PortfolioRiskReport = {
   stock_count: number
   weight_mode: 'equal' | 'custom'
   total_position_weight: number
+  total_market_value: number
+  cash_amount: number
   average_total_score: number
   average_risk_score: number
   portfolio_risk_score: number

@@ -457,6 +457,20 @@ def test_portfolio_risk_endpoint_accepts_position_weights():
     assert position_by_symbol["300750"]["weight_pct"] == 20
 
 
+def test_portfolio_risk_endpoint_accepts_portfolio_value():
+    response = client.get(
+        "/api/v1/risk/portfolio?scope=watchlist&horizon=swing&weights=600519:80&portfolio_value=100000"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_market_value"] == 100000
+    assert payload["cash_amount"] == 20000
+    position_by_symbol = {item["symbol"]: item for item in payload["positions"]}
+    assert position_by_symbol["600519"]["market_value"] == 80000
+    assert any("现金缓冲" in suggestion for suggestion in payload["suggestions"])
+
+
 def test_screener_endpoint_returns_preset_candidates():
     response = client.get("/api/v1/screeners/strong")
 

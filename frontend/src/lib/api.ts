@@ -403,7 +403,12 @@ export function fetchRiskExposure(horizon: string, scope = 'watchlist'): Promise
   return getJson<RiskExposureItem[]>(`/api/v1/risk/exposure?horizon=${horizon}&scope=${scope}`)
 }
 
-export function fetchPortfolioRisk(horizon: string, scope = 'watchlist', weights?: Record<string, string | number>): Promise<PortfolioRiskReport> {
+export function fetchPortfolioRisk(
+  horizon: string,
+  scope = 'watchlist',
+  weights?: Record<string, string | number>,
+  portfolioValue?: string | number,
+): Promise<PortfolioRiskReport> {
   const params = new URLSearchParams({ horizon, scope })
   const weightPairs = Object.entries(weights ?? {})
     .map(([symbol, value]) => [symbol, Number(value)] as const)
@@ -411,6 +416,10 @@ export function fetchPortfolioRisk(horizon: string, scope = 'watchlist', weights
     .map(([symbol, value]) => `${symbol}:${value}`)
   if (weightPairs.length) {
     params.set('weights', weightPairs.join(','))
+  }
+  const numericPortfolioValue = Number(portfolioValue)
+  if (Number.isFinite(numericPortfolioValue) && numericPortfolioValue > 0) {
+    params.set('portfolio_value', String(numericPortfolioValue))
   }
   return getJson<PortfolioRiskReport>(`/api/v1/risk/portfolio?${params.toString()}`)
 }

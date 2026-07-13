@@ -229,6 +229,7 @@ export default function App() {
   const [screenerPreset, setScreenerPreset] = useState('strong')
   const [hotspotMode, setHotspotMode] = useState('balanced')
   const [portfolioWeights, setPortfolioWeights] = useState<Record<string, string>>({})
+  const [portfolioValue, setPortfolioValue] = useState('')
   const [storedBacktestParameters] = useState(readStoredBacktestParameters)
   const [backtestHoldingDays, setBacktestHoldingDays] = useState(storedBacktestParameters.holding_days)
   const [backtestFeeBps, setBacktestFeeBps] = useState(storedBacktestParameters.fee_bps)
@@ -512,10 +513,10 @@ export default function App() {
   }, [horizon, watchlist])
 
   useEffect(() => {
-    fetchPortfolioRisk(horizon, 'watchlist', portfolioWeights)
+    fetchPortfolioRisk(horizon, 'watchlist', portfolioWeights, portfolioValue)
       .then(setPortfolioRisk)
       .catch((err) => setError(err instanceof Error ? err.message : '风险敞口加载失败'))
-  }, [horizon, watchlist, portfolioWeights])
+  }, [horizon, watchlist, portfolioWeights, portfolioValue])
 
   useEffect(() => {
     fetchTrend(selectedSymbol)
@@ -601,6 +602,7 @@ export default function App() {
         diagnosis_change: diagnosisChange,
         portfolio_risk: portfolioRisk,
         portfolio_weight_inputs: portfolioWeights,
+        portfolio_value_input: portfolioValue,
         strategy_backtest: strategyBacktest,
         strategy_backtest_parameters: {
           fee_bps: backtestFeeBps,
@@ -622,7 +624,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1026,7 +1028,9 @@ export default function App() {
           report={portfolioRisk}
           watchlist={watchlist}
           positionWeights={portfolioWeights}
+          portfolioValue={portfolioValue}
           onPositionWeightChange={setPortfolioWeight}
+          onPortfolioValueChange={setPortfolioValue}
           onSelect={setSelectedSymbol}
         />
 
@@ -1235,10 +1239,12 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`- 风险等级: ${markdownText(portfolioRisk.risk_label ?? '-')}`)
   lines.push(`- 风险压力: ${markdownText(portfolioRisk.portfolio_risk_score ?? '-')}`)
   lines.push(`- 权重模式: ${portfolioRisk.weight_mode === 'custom' ? '自定义权重' : '等权模拟'}`)
-  lines.push(`- 总权重: ${markdownText(portfolioRisk.total_weight_pct ?? '-')}%`)
+  lines.push(`- 总权重: ${markdownText(portfolioRisk.total_position_weight ?? portfolioRisk.total_weight_pct ?? '-')}%`)
+  lines.push(`- 组合市值: ${markdownText(portfolioRisk.total_market_value ?? 0)} 元`)
+  lines.push(`- 现金缓冲: ${markdownText(portfolioRisk.cash_amount ?? 0)} 元`)
   lines.push('')
   lines.push('### 模拟仓位')
-  markdownList(lines, positions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${item.industry} - ${item.weight_pct}%`)
+  markdownList(lines, positions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${item.industry} - ${item.weight_pct}% - ${item.market_value ?? 0} 元`)
   lines.push('')
   lines.push('### 行业暴露')
   markdownList(lines, industryExposures.slice(0, 8), (item) => `${item.industry}: 权重 ${item.weight_pct}%, ${item.stock_count} 只, 风险压力 ${item.risk_score}`)
@@ -1459,10 +1465,12 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>风险压力</span><strong>${escapeHtml(portfolioRisk.portfolio_risk_score ?? "-")}</strong></div>
         <div class="metric"><span>权重模式</span><strong>${escapeHtml(portfolioRisk.weight_mode === "custom" ? "自定义权重" : "等权模拟")}</strong></div>
         <div class="metric"><span>总权重</span><strong>${escapeHtml(portfolioRisk.total_position_weight ?? 0)}%</strong></div>
+        <div class="metric"><span>组合市值</span><strong>${escapeHtml(portfolioRisk.total_market_value ?? 0)} 元</strong></div>
+        <div class="metric"><span>现金缓冲</span><strong>${escapeHtml(portfolioRisk.cash_amount ?? 0)} 元</strong></div>
       </div>
       <p>${escapeHtml(portfolioRisk.summary ?? "")}</p>
       <h3>模拟仓位</h3>
-      ${positions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · ${escapeHtml(item.weight_pct)}%</small></div>`).join("") || "<p>暂无模拟仓位</p>"}
+      ${positions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.symbol)} · ${escapeHtml(item.industry)} · ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.market_value ?? 0)} 元</small></div>`).join("") || "<p>暂无模拟仓位</p>"}
       <h3>行业暴露</h3>
       ${industryExposures.map((item: any) => `<div class="row"><strong>${escapeHtml(item.industry)}</strong><small>权重 ${escapeHtml(item.weight_pct)}% · ${escapeHtml(item.stock_count)} 只 · 风险压力 ${escapeHtml(item.risk_score)}</small></div>`).join("") || "<p>暂无行业暴露</p>"}
       <h3>风险贡献</h3>

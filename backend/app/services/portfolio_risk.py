@@ -26,8 +26,10 @@ class PortfolioRiskService:
         alerts: list[AlertItem],
         exposures: list[RiskExposureItem],
         position_weights: dict[str, float] | None = None,
+        portfolio_value: float | None = None,
     ) -> PortfolioRiskReport:
         stock_count = len(snapshots)
+        total_market_value = max(0, float(portfolio_value or 0))
         if stock_count == 0:
             return PortfolioRiskReport(
                 scope=scope,
@@ -35,6 +37,8 @@ class PortfolioRiskService:
                 stock_count=0,
                 weight_mode="equal",
                 total_position_weight=0,
+                total_market_value=total_market_value,
+                cash_amount=total_market_value,
                 average_total_score=0,
                 average_risk_score=0,
                 portfolio_risk_score=0,
@@ -75,8 +79,17 @@ class PortfolioRiskService:
         drivers = self._drivers(snapshots, diagnosis_by_symbol, alerts, raw_weights)
         risk_contributions = self._risk_contributions(snapshots, diagnosis_by_symbol, normalized_weights, raw_weights)
         rebalance_actions = self._rebalance_actions(risk_contributions)
-        suggestions = self._suggestions(pressure, concentration, distribution, drivers, total_position_weight)
-        positions = self._positions(snapshots, raw_weights)
+        cash_amount = self._cash_amount(total_market_value, total_position_weight)
+        suggestions = self._suggestions(
+            pressure,
+            concentration,
+            distribution,
+            drivers,
+            total_position_weight,
+            total_market_value,
+            cash_amount,
+        )
+        positions = self._positions(snapshots, raw_weights, total_market_value)
 
         return PortfolioRiskReport(
             scope=scope,
@@ -84,6 +97,8 @@ class PortfolioRiskService:
             stock_count=stock_count,
             weight_mode=weight_mode,
             total_position_weight=round(total_position_weight, 2),
+            total_market_value=round(total_market_value, 2),
+            cash_amount=cash_amount,
             average_total_score=average_total,
             average_risk_score=average_risk,
             portfolio_risk_score=pressure,
@@ -124,13 +139,19 @@ class PortfolioRiskService:
         raw = {snapshot.symbol: equal_raw for snapshot in snapshots}
         return normalized, raw, "equal", 100
 
-    def _positions(self, snapshots: list[StockSnapshot], raw_weights: dict[str, float]) -> list[PortfolioPositionWeight]:
+    def _positions(
+        self,
+        snapshots: list[StockSnapshot],
+        raw_weights: dict[str, float],
+        total_market_value: float,
+    ) -> list[PortfolioPositionWeight]:
         return [
             PortfolioPositionWeight(
                 symbol=snapshot.symbol,
                 name=snapshot.name,
                 industry=snapshot.industry,
                 weight_pct=raw_weights.get(snapshot.symbol, 0),
+                market_value=round(total_market_value * raw_weights.get(snapshot.symbol, 0) / 100, 2),
             )
             for snapshot in snapshots
         ]
@@ -312,11 +333,15 @@ class PortfolioRiskService:
         distribution: PortfolioRiskDistribution,
         drivers: list[PortfolioRiskDriver],
         total_position_weight: float,
+        total_market_value: float,
+        cash_amount: float,
     ) -> list[str]:
         suggestions: list[str] = []
         if total_position_weight < 95:
             cash_pct = round(100 - total_position_weight, 1)
             suggestions.append(f"当前模拟仓位 {total_position_weight:.1f}%，保留约 {cash_pct:.1f}% 现金缓冲。")
+            if total_market_value > 0:
+                suggestions.append(f"按组合市值估算，现金缓冲约 {cash_amount:.2f} 元。")
         elif total_position_weight > 105:
             suggestions.append(f"当前模拟仓位 {total_position_weight:.1f}%，已超过 100%，请核对是否存在杠杆或重复录入。")
         if drivers:
@@ -330,3 +355,9 @@ class PortfolioRiskService:
         if pressure >= 65:
             suggestions.append("风险压力偏高，降低新增操作频率，先处理高优先级预警。")
         return suggestions[:3]
+
+    def _cash_amount(self, total_market_value: float, total_position_weight: float) -> float:
+        if total_market_value <= 0:
+            return 0
+        cash_pct = max(0, 100 - total_position_weight)
+        return round(total_market_value * cash_pct / 100, 2)

@@ -132,7 +132,12 @@ def test_portfolio_risk_report_mentions_cash_buffer_for_partial_weights():
         alerts=alerts,
         exposures=exposures,
         position_weights={"600519": 80},
+        portfolio_value=100000,
     )
 
     assert report.total_position_weight == 80
+    assert report.total_market_value == 100000
+    assert report.cash_amount == 20000
+    assert report.positions[0].market_value == 80000
     assert any("现金缓冲" in suggestion for suggestion in report.suggestions)
+    assert any("20000.00 元" in suggestion for suggestion in report.suggestions)

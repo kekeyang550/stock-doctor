@@ -1250,6 +1250,28 @@
   color: #6a7a70;
 }
 
+.portfolio-value-input {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) 24px;
+  gap: 8px;
+  align-items: center;
+}
+
+.portfolio-value-input input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d4e2d0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #ffffff;
+  color: #26382f;
+}
+
+.portfolio-value-input em {
+  font-style: normal;
+  color: #6a7a70;
+}
+
 .position-weight-list {
   display: grid;
   gap: 8px;
