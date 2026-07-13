@@ -1814,6 +1814,27 @@ describe('App', () => {
     })
   })
 
+  it('imports portfolio lots from a csv file', async () => {
+    render(<App />)
+
+    const input = await screen.findByLabelText('导入持仓文件')
+    const file = new File(['symbol,shares,cost_price\n600519,12,1100\nbad,row\n'], 'positions.csv', {
+      type: 'text/csv',
+    })
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('持仓数量 贵州茅台')).toHaveValue(12)
+      expect(screen.getByLabelText('成本价 贵州茅台')).toHaveValue(1100)
+    })
+    await waitFor(() => {
+      const portfolioCalls = vi.mocked(fetch).mock.calls
+        .map((call) => decodeURIComponent(String(call[0])))
+        .filter((url) => url.includes('/risk/portfolio'))
+      expect(portfolioCalls.some((url) => url.includes('holdings=600519:12:1100'))).toBe(true)
+    })
+  })
+
   it('shows strategy backtest summary with sample trades and drawdown', async () => {
     render(<App />)
 

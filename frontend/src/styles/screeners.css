@@ -1273,9 +1273,23 @@
   align-items: center;
 }
 
+.position-weight-editor > div:first-child > span {
+  display: grid;
+  gap: 3px;
+}
+
 .position-weight-editor span,
 .position-weight-editor small {
   color: #6a7a70;
+}
+
+.position-weight-editor strong {
+  color: #26382f;
+}
+
+.portfolio-import-action {
+  justify-self: end;
+  min-height: 32px;
 }
 
 .portfolio-value-input {

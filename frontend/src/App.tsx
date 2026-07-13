@@ -459,6 +459,18 @@ export default function App() {
     })
   }, [])
 
+  const importPortfolioLotsFile = useCallback(async (file: File) => {
+    try {
+      const text = await readTextFile(file)
+      const lots = parsePortfolioLotsText(text)
+      if (Object.keys(lots).length > 0) {
+        setPortfolioLots((current) => ({ ...current, ...lots }))
+      }
+    } catch {
+      setError('持仓导入失败，请检查 CSV/TXT 文件格式。')
+    }
+  }, [])
+
   useEffect(() => {
     writeStoredPortfolioInputs({ weights: portfolioWeights, lots: portfolioLots, portfolio_value: portfolioValue })
   }, [portfolioLots, portfolioWeights, portfolioValue])
@@ -1066,6 +1078,7 @@ export default function App() {
           portfolioValue={portfolioValue}
           onPositionWeightChange={setPortfolioWeight}
           onPositionLotChange={setPortfolioLot}
+          onPositionLotsImport={importPortfolioLotsFile}
           onPortfolioValueChange={setPortfolioValue}
           onSelect={setSelectedSymbol}
         />
@@ -1842,6 +1855,39 @@ function normalizePortfolioInputs(inputs: Partial<PortfolioInputs>): PortfolioIn
     lots,
     portfolio_value: normalizePortfolioInputNumber(inputs.portfolio_value, 0, 1_000_000_000),
   }
+}
+
+function parsePortfolioLotsText(text: string): Record<string, { shares: string; cost_price: string }> {
+  const lots: Record<string, { shares: string; cost_price: string }> = {}
+  text.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim()
+    if (!trimmed || /^symbol|^代码|^证券代码/i.test(trimmed)) {
+      return
+    }
+    const parts = trimmed.split(/[\t,;，；]+/).map((part) => part.trim()).filter(Boolean)
+    if (parts.length < 2) {
+      return
+    }
+    const symbol = parts[0].toUpperCase()
+    const shares = normalizePortfolioInputNumber(parts[1], 0, 1_000_000_000)
+    const costPrice = normalizePortfolioInputNumber(parts[2], 0, 1_000_000)
+    if (symbol && symbol.length <= 12 && shares !== '') {
+      lots[symbol] = { shares, cost_price: costPrice }
+    }
+  })
+  return lots
+}
+
+function readTextFile(file: File): Promise<string> {
+  if (typeof file.text === 'function') {
+    return file.text()
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(file)
+  })
 }
 
 function normalizePortfolioInputNumber(value: unknown, min: number, max: number) {

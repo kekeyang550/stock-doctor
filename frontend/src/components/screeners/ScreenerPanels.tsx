@@ -465,6 +465,7 @@ export function RiskExposurePanel({
   portfolioValue,
   onPositionWeightChange,
   onPositionLotChange,
+  onPositionLotsImport,
   onPortfolioValueChange,
   onSelect,
 }: {
@@ -475,6 +476,7 @@ export function RiskExposurePanel({
   portfolioValue: string
   onPositionWeightChange: (symbol: string, value: string) => void
   onPositionLotChange: (symbol: string, field: 'shares' | 'cost_price', value: string) => void
+  onPositionLotsImport: (file: File) => void
   onPortfolioValueChange: (value: string) => void
   onSelect: (symbol: string) => void
 }) {
@@ -554,8 +556,24 @@ export function RiskExposurePanel({
           </div>
           <div className="position-weight-editor">
             <div>
-              <strong>模拟仓位</strong>
-              <span>{report.weight_mode === 'custom' ? '自定义权重' : '等权模拟'} · 总权重 {report.total_position_weight.toFixed(1)}%</span>
+              <span>
+                <strong>模拟仓位</strong>
+                <small>{report.weight_mode === 'custom' ? '自定义权重' : '等权模拟'} · 总权重 {report.total_position_weight.toFixed(1)}%</small>
+              </span>
+              <label className="file-action portfolio-import-action">
+                <Upload size={15} />
+                <span>导入持仓</span>
+                <input
+                  aria-label="导入持仓文件"
+                  type="file"
+                  accept=".csv,.txt,text/csv,text/plain"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) onPositionLotsImport(file)
+                    event.currentTarget.value = ''
+                  }}
+                />
+              </label>
             </div>
             <label className="portfolio-value-input">
               <span>组合市值</span>
