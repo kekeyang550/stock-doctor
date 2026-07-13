@@ -429,7 +429,9 @@ class PortfolioRiskService:
                 suggestions.append(f"按组合市值估算，现金缓冲约 {cash_amount:.2f} 元。")
         elif total_position_weight > 105:
             suggestions.append(f"当前模拟仓位 {total_position_weight:.1f}%，已超过 100%，请核对是否存在杠杆或重复录入。")
-        if concentration.top_industry_ratio >= 0.5 and concentration.top_industry_count >= 2:
+        if concentration.top_industry_ratio >= 0.55:
+            suggestions.append(f"{concentration.top_industry} 权重过度集中，优先评估降至行业上限以内。")
+        elif concentration.top_industry_ratio >= 0.5 and concentration.top_industry_count >= 2:
             suggestions.append(f"{concentration.top_industry} 占比较高，注意行业共振回撤。")
         elif concentration.top_industry_ratio >= 0.45:
             suggestions.append(f"{concentration.top_industry} 权重接近集中度上限，新增仓位优先分散到其他行业。")

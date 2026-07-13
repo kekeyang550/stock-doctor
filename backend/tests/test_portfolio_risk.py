@@ -146,7 +146,7 @@ def test_portfolio_risk_report_mentions_cash_buffer_for_partial_weights():
     assert report.industry_exposures[0].excess_market_value == 40000
     assert any("现金缓冲" in suggestion for suggestion in report.suggestions)
     assert any("20000.00 元" in suggestion for suggestion in report.suggestions)
-    assert any("集中度上限" in suggestion for suggestion in report.suggestions)
+    assert any("过度集中" in suggestion for suggestion in report.suggestions)
 
 
 def test_portfolio_risk_report_uses_real_lot_costs_when_available():
@@ -191,3 +191,4 @@ def test_portfolio_risk_report_uses_real_lot_costs_when_available():
     assert maotai.unrealized_pnl == 3183
     assert maotai.unrealized_pnl_pct == 26.52
     assert maotai.weight_pct > 75
+    assert any("过度集中" in suggestion for suggestion in report.suggestions)
