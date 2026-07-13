@@ -245,6 +245,7 @@ export default function App() {
   const [portfolioWeights, setPortfolioWeights] = useState<Record<string, string>>(storedPortfolioInputs.weights)
   const [portfolioLots, setPortfolioLots] = useState<Record<string, { shares: string; cost_price: string }>>(storedPortfolioInputs.lots)
   const [portfolioValue, setPortfolioValue] = useState(storedPortfolioInputs.portfolio_value)
+  const [portfolioImportMessage, setPortfolioImportMessage] = useState('')
   const [storedBacktestParameters] = useState(readStoredBacktestParameters)
   const [backtestHoldingDays, setBacktestHoldingDays] = useState(storedBacktestParameters.holding_days)
   const [backtestFeeBps, setBacktestFeeBps] = useState(storedBacktestParameters.fee_bps)
@@ -465,6 +466,9 @@ export default function App() {
       const lots = parsePortfolioLotsText(text)
       if (Object.keys(lots).length > 0) {
         setPortfolioLots((current) => ({ ...current, ...lots }))
+        setPortfolioImportMessage(`已导入 ${Object.keys(lots).length} 只持仓。`)
+      } else {
+        setPortfolioImportMessage('未识别到有效持仓，请使用 symbol,shares,cost_price 格式。')
       }
     } catch {
       setError('持仓导入失败，请检查 CSV/TXT 文件格式。')
@@ -477,6 +481,9 @@ export default function App() {
       const lots = parsePortfolioTradesText(text)
       if (Object.keys(lots).length > 0) {
         setPortfolioLots((current) => ({ ...current, ...lots }))
+        setPortfolioImportMessage(`已从交易流水生成 ${Object.keys(lots).length} 只持仓。`)
+      } else {
+        setPortfolioImportMessage('未识别到有效交易流水，请使用 symbol,side,shares,price 格式。')
       }
     } catch {
       setError('交易流水导入失败，请检查 CSV/TXT 文件格式。')
@@ -1087,6 +1094,7 @@ export default function App() {
           watchlist={watchlist}
           positionWeights={portfolioWeights}
           positionLots={portfolioLots}
+          importMessage={portfolioImportMessage}
           portfolioValue={portfolioValue}
           onPositionWeightChange={setPortfolioWeight}
           onPositionLotChange={setPortfolioLot}

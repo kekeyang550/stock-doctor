@@ -1827,6 +1827,7 @@ describe('App', () => {
       expect(screen.getByLabelText('持仓数量 贵州茅台')).toHaveValue(12)
       expect(screen.getByLabelText('成本价 贵州茅台')).toHaveValue(1100)
     })
+    expect(screen.getByText('已导入 1 只持仓。')).toBeInTheDocument()
     await waitFor(() => {
       const portfolioCalls = vi.mocked(fetch).mock.calls
         .map((call) => decodeURIComponent(String(call[0])))
@@ -1851,6 +1852,7 @@ describe('App', () => {
       expect(screen.getByLabelText('持仓数量 贵州茅台')).toHaveValue(15)
       expect(screen.getByLabelText('成本价 贵州茅台')).toHaveValue(1100)
     })
+    expect(screen.getByText('已从交易流水生成 1 只持仓。')).toBeInTheDocument()
     await waitFor(() => {
       const portfolioCalls = vi.mocked(fetch).mock.calls
         .map((call) => decodeURIComponent(String(call[0])))

@@ -462,6 +462,7 @@ export function RiskExposurePanel({
   watchlist,
   positionWeights,
   positionLots,
+  importMessage,
   portfolioValue,
   onPositionWeightChange,
   onPositionLotChange,
@@ -474,6 +475,7 @@ export function RiskExposurePanel({
   watchlist: StockSummary[]
   positionWeights: Record<string, string>
   positionLots: Record<string, { shares: string; cost_price: string }>
+  importMessage: string
   portfolioValue: string
   onPositionWeightChange: (symbol: string, value: string) => void
   onPositionLotChange: (symbol: string, field: 'shares' | 'cost_price', value: string) => void
@@ -593,6 +595,10 @@ export function RiskExposurePanel({
                 </label>
               </span>
             </div>
+            <p className="portfolio-import-hint">
+              持仓：symbol,shares,cost_price · 流水：symbol,side,shares,price
+              {importMessage ? <strong>{importMessage}</strong> : null}
+            </p>
             <label className="portfolio-value-input">
               <span>组合市值</span>
               <input

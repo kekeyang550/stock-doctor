@@ -1299,6 +1299,19 @@
   gap: 6px;
 }
 
+.portfolio-import-hint {
+  margin: 0;
+  color: #6a7a70;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.portfolio-import-hint strong {
+  color: #31553f;
+}
+
 .portfolio-value-input {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr) 24px;
