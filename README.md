@@ -88,13 +88,13 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 
 The AKShare adapter remains available as an optional aggregation path and keeps the mock provider as a fallback while real A-share fields are normalized.
 
-Tushare Pro is tracked as a planned financial-data enhancement. The app can already report whether the package/token prerequisites are ready without exposing the token value:
+Tushare Pro is available as an optional finance/basic-info enhancement. The app reports whether the package/token prerequisites are ready without exposing the token value:
 
 ```powershell
 $env:STOCK_DOCTOR_TUSHARE_TOKEN = "<your-token>"
 ```
 
-Install `tushare` in the backend environment when you are ready to connect the finance/basic-info normalization layer. `STOCK_DOCTOR_DATA_PROVIDER=tushare` is accepted and safe to start today; the first-stage adapter can enrich PE/PB/ROE/revenue growth/profit growth from Tushare Pro when package and token are present, while stock lists, quotes, history, and any failed finance calls continue to use the Mock fallback.
+Install `tushare` in the backend environment when you are ready to connect the finance/basic-info normalization layer. `STOCK_DOCTOR_DATA_PROVIDER=tushare` is accepted and safe to start today; the adapter can enrich stock name/industry, PE/PB/ROE/revenue growth/profit growth/EPS/gross margin/debt-to-assets, and adjusted daily price history from Tushare Pro when package and token are present. Stock lists, quotes, and any failed Tushare calls continue to use the Mock fallback, and connector health reports the latest failed probe step without returning token values.
 
 The workspace also includes a manual refresh job panel. Refresh jobs record provider, scope, status, duration, and covered stock counts so the same history can later back scheduled real-data updates.
 
@@ -114,4 +114,4 @@ $env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "E:\new_tdx64\vipdoc"
 
 These values are returned by `/api/v1/system/data-connectors` and `/api/v1/system/runtime-config`, then displayed in the data trust/runtime panels so the current real-data operating assumptions are visible before diagnosis or backtest decisions.
 
-JSON, HTML, and Markdown research exports include connector health, cache telemetry, stock-level data quality checks, runtime settings, and local path status so reports remain auditable outside the app.
+JSON, HTML, and Markdown research exports include connector health, cache telemetry, stock-level data quality checks, runtime settings, and local path status so reports remain auditable outside the app. HTML and Markdown exports also include a conclusion page and fixed risk disclosure; the HTML export includes a printable cover and page-break styles for browser "print to PDF" workflows.

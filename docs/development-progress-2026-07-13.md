@@ -99,8 +99,10 @@ STOCK_DOCTOR_TUSHARE_TOKEN=<如需 Tushare 财务增强，填入 token>
 
 ```powershell
 cd backend
-.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```
+
+如果已在 `backend` 下创建虚拟环境，也可以用 `.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8010`。
 
 前端启动：
 
