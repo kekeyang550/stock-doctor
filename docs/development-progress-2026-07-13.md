@@ -65,6 +65,7 @@
    - `STOCK_DOCTOR_DATA_PROVIDER=tushare` 已可安全启动；在财务字段归一化完成前会委托 Mock 回退，并在连接器健康中标明。
    - Tushare provider 第一阶段已支持在包/token 可用时归一化 PE/PB/ROE/营收增速/利润增速，并把来源写入数据质量报告；失败路径继续安全回退。
    - Tushare provider 已在 token 可用时尝试读取前复权日线，回测可优先使用真实复权价格路径，空数据或异常时仍回退 Mock 历史。
+   - Tushare provider 已在 token 可用时尝试读取基础资料，成功后会更新快照名称/行业，并在数据质量报告中显示“Tushare 基础资料”。
 
 ## 本机验证结果
 
@@ -106,8 +107,8 @@ npm run dev -- --host 127.0.0.1 --port 30080
 ## 明天继续开发建议
 
 1. 财务数据第二阶段
-   - 已完成 Tushare Pro 包/token 准备度展示、安全 provider 回退、基础财务指标归一化入口和前复权日线读取。
-   - 下一步在 token 可用后扩大到基础资料和更多财报字段，继续减少 `growth` 等字段保守估算。
+   - 已完成 Tushare Pro 包/token 准备度展示、安全 provider 回退、基础资料、基础财务指标归一化入口和前复权日线读取。
+   - 下一步在 token 可用后扩大到更多财报字段，并做真实 token 实盘连通性校验，继续减少 `growth` 等字段保守估算。
 
 2. 真实数据质量评分
    - 已把来源覆盖率、更新时间、fallback 次数、缓存过期和缓存命中率纳入股票级质量评分。

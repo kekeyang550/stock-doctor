@@ -33,6 +33,7 @@ class FakeTushareModule:
 class FakeTushareClient:
     def __init__(self):
         self.token = ""
+        self.stock_basic_calls = []
 
     def daily_basic(self, ts_code: str, fields: str):
         return [
@@ -53,6 +54,16 @@ class FakeTushareClient:
                 "roe_dt": "16.2",
                 "revenue_yoy": "11.5",
                 "netprofit_yoy": "13.7",
+            }
+        ]
+
+    def stock_basic(self, ts_code: str, fields: str):
+        self.stock_basic_calls.append({"ts_code": ts_code, "fields": fields})
+        return [
+            {
+                "ts_code": ts_code,
+                "name": "茅台测试",
+                "industry": "食品饮料",
             }
         ]
 
@@ -104,11 +115,16 @@ def test_tushare_provider_enriches_fundamental_snapshot(monkeypatch):
     assert snapshot.fundamental.roe == 16.2
     assert snapshot.fundamental.revenue_growth == 11.5
     assert snapshot.fundamental.profit_growth == 13.7
+    assert snapshot.name == "茅台测试"
+    assert snapshot.industry == "食品饮料"
     assert "tushare-daily-basic" in snapshot.data_sources
     assert "tushare-fina-indicator" in snapshot.data_sources
+    assert "tushare-stock-basic" in snapshot.data_sources
+    assert module.client.stock_basic_calls[0]["ts_code"] == "600519.SH"
     tushare = next(source for source in sources if source["name"] == "Tushare Pro")
     assert tushare["status"] == "online"
     assert "财务基础指标" in tushare["role"]
+    assert "基础资料" in tushare["role"]
 
 
 def test_tushare_provider_returns_adjusted_price_history(monkeypatch):

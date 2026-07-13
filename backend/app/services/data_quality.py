@@ -16,6 +16,7 @@ SOURCE_LABELS = {
     "tencent-quotes": "腾讯报价兜底",
     "tushare-daily-basic": "Tushare 日行情基础指标",
     "tushare-fina-indicator": "Tushare 财务指标",
+    "tushare-stock-basic": "Tushare 基础资料",
 }
 
 CONSERVATIVE_FIELD_LABELS = {

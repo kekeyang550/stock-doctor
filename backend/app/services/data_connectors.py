@@ -338,10 +338,10 @@ class DataConnectorHealthService:
         if source is not None and active_provider == "tushare" and source.get("status") == "fallback":
             return "当前 Tushare 已安全回退到 Mock；补齐包、Token 和字段归一化后再承载诊断。"
         if source is not None and active_provider == "tushare":
-            return "继续扩展 Tushare 基础资料和更多财报字段归一化。"
+            return "继续扩展 Tushare 更多财报字段，并做 token 实盘连通性校验。"
         token_configured = bool(settings.tushare_token.strip())
         if not installed:
             return "在后端环境执行 pip install tushare，并配置 STOCK_DOCTOR_TUSHARE_TOKEN。"
         if not token_configured:
             return "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再验证财务和前复权日线增强。"
-        return "继续实现 Tushare 基础资料和更多财报字段归一化后，再扩大 provider 切换范围。"
+        return "继续实现 Tushare 更多财报字段归一化后，再扩大 provider 切换范围。"

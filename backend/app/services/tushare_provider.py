@@ -17,6 +17,7 @@ class TushareMarketDataProvider:
     def __init__(self, ts_module: object | None = None, state_store: StateStore | None = None) -> None:
         self._ts_module = ts_module
         self._fallback = MockMarketDataProvider(state_store=state_store)
+        self._last_basic_enriched = False
         self._last_finance_enriched = False
         self._last_history_enriched = False
 
@@ -27,9 +28,10 @@ class TushareMarketDataProvider:
         return self._fallback.get_market_overview()
 
     def get_data_sources(self) -> list[dict[str, str]]:
+        enriched = self._last_basic_enriched or self._last_finance_enriched or self._last_history_enriched
         status = (
             "online"
-            if self._last_finance_enriched or self._last_history_enriched
+            if enriched
             else "planned"
             if self._is_ready()
             else "fallback"
@@ -60,22 +62,28 @@ class TushareMarketDataProvider:
         if snapshot is None or not self._is_ready():
             return snapshot
         fundamental = self._fundamental_from_tushare(symbol)
-        if fundamental is None:
+        basic_info = self._basic_info_from_tushare(symbol)
+        if fundamental is None and basic_info is None:
             return snapshot
-        self._last_finance_enriched = True
-        sources = sorted(set(snapshot.data_sources) | {"tushare-daily-basic", "tushare-fina-indicator"})
-        conservative_fields = [
-            item
-            for item in snapshot.conservative_fields
-            if item not in {"fundamental", "fundamental-seed", "growth"}
-        ]
-        return snapshot.model_copy(
-            update={
-                "fundamental": fundamental,
-                "data_sources": sources,
-                "conservative_fields": conservative_fields,
-            }
-        )
+        update = {}
+        sources = set(snapshot.data_sources)
+        conservative_fields = list(snapshot.conservative_fields)
+        if fundamental is not None:
+            self._last_finance_enriched = True
+            sources.update({"tushare-daily-basic", "tushare-fina-indicator"})
+            conservative_fields = [
+                item
+                for item in conservative_fields
+                if item not in {"fundamental", "fundamental-seed", "growth"}
+            ]
+            update["fundamental"] = fundamental
+        if basic_info is not None:
+            self._last_basic_enriched = True
+            sources.add("tushare-stock-basic")
+            update.update(basic_info)
+        update["data_sources"] = sorted(sources)
+        update["conservative_fields"] = conservative_fields
+        return snapshot.model_copy(update=update)
 
     def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
         if not self._is_ready():
@@ -101,14 +109,17 @@ class TushareMarketDataProvider:
     def _source_role(self) -> str:
         package_available = self._package_available()
         token_configured = bool(settings.tushare_token.strip())
-        if self._last_finance_enriched and self._last_history_enriched:
-            return "财务基础指标和前复权日线已从 Tushare Pro 增强。"
+        enriched_parts = []
+        if self._last_basic_enriched:
+            enriched_parts.append("基础资料")
         if self._last_finance_enriched:
-            return "财务基础指标已从 Tushare Pro 增强；前复权日线可在回测中尝试读取。"
+            enriched_parts.append("财务基础指标")
         if self._last_history_enriched:
-            return "前复权日线已从 Tushare Pro 增强；财务基础指标会在诊断中尝试读取。"
+            enriched_parts.append("前复权日线")
+        if enriched_parts:
+            return f"{'、'.join(enriched_parts)}已从 Tushare Pro 增强。"
         if package_available and token_configured:
-            return "包和 Token 已就绪；财务基础指标和前复权日线可尝试增强。"
+            return "包和 Token 已就绪；基础资料、财务基础指标和前复权日线可尝试增强。"
         if token_configured:
             return "Token 已配置，但当前环境未安装 tushare 包；继续使用 Mock 回退。"
         if package_available:
@@ -171,6 +182,32 @@ class TushareMarketDataProvider:
             industry_pe_percentile=self._valuation_percentile(pe_ttm),
         )
 
+    def _basic_info_from_tushare(self, symbol: str) -> dict[str, str] | None:
+        client = self._client()
+        stock_basic = getattr(client, "stock_basic", None) if client is not None else None
+        if stock_basic is None:
+            return None
+        try:
+            rows = self._rows(
+                stock_basic(
+                    ts_code=self._ts_code(symbol),
+                    fields="ts_code,name,industry,area,market,list_date",
+                )
+            )
+        except Exception:
+            return None
+        if not rows:
+            return None
+        row = rows[0]
+        update = {}
+        name = self._first_text(row, "name", "stock_name")
+        industry = self._first_text(row, "industry", "sw_industry")
+        if name:
+            update["name"] = name
+        if industry:
+            update["industry"] = industry
+        return update or None
+
     def _history_from_tushare(self, symbol: str, days: int) -> list[HistoricalPriceBar]:
         module = self._ts_module
         if module is None:
@@ -231,6 +268,16 @@ class TushareMarketDataProvider:
             except (TypeError, ValueError):
                 continue
         return default
+
+    def _first_text(self, row: dict, *keys: str) -> str | None:
+        for key in keys:
+            value = row.get(key)
+            if value is None:
+                continue
+            text = str(value).strip()
+            if text:
+                return text
+        return None
 
     def _valuation_percentile(self, pe_ttm: float) -> float:
         if pe_ttm <= 0:

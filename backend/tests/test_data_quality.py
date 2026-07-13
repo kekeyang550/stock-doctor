@@ -94,7 +94,7 @@ def test_data_quality_report_labels_tushare_financial_sources():
     snapshot = base.model_copy(
         update={
             "as_of": date.today().isoformat(),
-            "data_sources": ["tushare-daily-basic", "tushare-fina-indicator"],
+            "data_sources": ["tushare-daily-basic", "tushare-fina-indicator", "tushare-stock-basic"],
             "conservative_fields": [],
         }
     )
@@ -105,6 +105,7 @@ def test_data_quality_report_labels_tushare_financial_sources():
     assert source_check.status == "pass"
     assert "Tushare 日行情基础指标" in source_check.detail
     assert "Tushare 财务指标" in source_check.detail
+    assert "Tushare 基础资料" in source_check.detail
 
 
 def test_data_quality_report_warns_for_runtime_fallback_and_cache():
