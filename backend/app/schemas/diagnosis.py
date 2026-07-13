@@ -217,6 +217,8 @@ class StockSnapshot(StockSummary):
     fundamental: FundamentalSnapshot
     capital: CapitalSnapshot
     risk: RiskSnapshot
+    data_sources: list[str] = Field(default_factory=list)
+    conservative_fields: list[str] = Field(default_factory=list)
 
 
 class ScoreBreakdown(BaseModel):

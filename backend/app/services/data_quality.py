@@ -2,11 +2,37 @@ from datetime import date
 
 from app.schemas.diagnosis import DataQualityCheck, DataQualityReport, StockSnapshot
 
+SOURCE_LABELS = {
+    "capital-flow": "资金流",
+    "fundamental": "财务字段",
+    "fundamental-quote-detail": "东方财富估值详情",
+    "historical-kline": "历史 K 线",
+    "sina-capital-flow": "新浪资金流兜底",
+    "tdx-kline": "通达信本地 K 线",
+    "tencent-direct-search": "腾讯直接搜码",
+    "tencent-index": "腾讯指数兜底",
+    "tencent-kline": "腾讯 K 线兜底",
+    "tencent-quote-detail": "腾讯估值兜底",
+    "tencent-quotes": "腾讯报价兜底",
+}
+
+CONSERVATIVE_FIELD_LABELS = {
+    "capital": "资金字段",
+    "capital-flow": "资金流",
+    "capital-seed": "资金样例种子",
+    "fundamental": "财务字段",
+    "fundamental-seed": "财务样例种子",
+    "growth": "成长字段",
+    "northbound": "北向资金",
+    "technical": "技术指标",
+}
+
 
 class DataQualityService:
     def build_report(self, snapshot: StockSnapshot) -> DataQualityReport:
         checks = [
             self._market_check(snapshot),
+            self._source_coverage_check(snapshot),
             self._technical_check(snapshot),
             self._fundamental_check(snapshot),
             self._capital_check(snapshot),
@@ -44,6 +70,36 @@ class DataQualityService:
             warn=False,
             pass_detail="最新价与涨跌幅字段完整。",
             impact="直接影响关键价位、涨跌幅排序和短线热度判断。",
+        )
+
+    def _source_coverage_check(self, snapshot: StockSnapshot) -> DataQualityCheck:
+        sources = [self._source_label(value) for value in snapshot.data_sources]
+        conservative_fields = [self._conservative_label(value) for value in snapshot.conservative_fields]
+        if conservative_fields:
+            source_text = "、".join(sources) if sources else "未标注真实来源"
+            conservative_text = "、".join(conservative_fields)
+            status = "fail" if not sources and len(conservative_fields) >= 3 else "warn"
+            return DataQualityCheck(
+                key="source_coverage",
+                label="来源覆盖",
+                status=status,
+                detail=f"真实来源：{source_text}；保守估算：{conservative_text}。",
+                impact="用于区分真实数据、备用源和样例/保守估算，影响诊断结论可信度。",
+            )
+        if sources:
+            return DataQualityCheck(
+                key="source_coverage",
+                label="来源覆盖",
+                status="pass",
+                detail=f"真实来源：{'、'.join(sources)}。",
+                impact="用于区分真实数据、备用源和样例/保守估算，影响诊断结论可信度。",
+            )
+        return DataQualityCheck(
+            key="source_coverage",
+            label="来源覆盖",
+            status="pass",
+            detail="当前快照未单独标注字段来源，按字段完整性评估。",
+            impact="用于区分真实数据、备用源和样例/保守估算，影响诊断结论可信度。",
         )
 
     def _technical_check(self, snapshot: StockSnapshot) -> DataQualityCheck:
@@ -173,3 +229,9 @@ class DataQualityService:
         if status == "warn":
             return f"数据质量 {score} 分，存在 {issue_count} 个可继续观察的问题。"
         return f"数据质量 {score} 分，存在 {issue_count} 个会影响诊断可信度的问题。"
+
+    def _source_label(self, value: str) -> str:
+        return SOURCE_LABELS.get(value, value)
+
+    def _conservative_label(self, value: str) -> str:
+        return CONSERVATIVE_FIELD_LABELS.get(value, value)

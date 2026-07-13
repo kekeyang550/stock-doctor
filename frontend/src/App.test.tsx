@@ -225,11 +225,11 @@ const dataQuality = {
   symbol: '600519',
   name: '贵州茅台',
   as_of: '2026-07-10',
-  status: 'pass',
-  score: 100,
-  coverage_pct: 100,
-  issue_count: 0,
-  summary: '数据质量 100 分，当前诊断字段完整。',
+  status: 'warn',
+  score: 90,
+  coverage_pct: 85.7,
+  issue_count: 1,
+  summary: '数据质量 90 分，存在 1 个可继续观察的问题。',
   checks: [
     {
       key: 'market',
@@ -237,6 +237,13 @@ const dataQuality = {
       status: 'pass',
       detail: '最新价与涨跌幅字段完整。',
       impact: '直接影响关键价位、涨跌幅排序和短线热度判断。',
+    },
+    {
+      key: 'source_coverage',
+      label: '来源覆盖',
+      status: 'warn',
+      detail: '真实来源：东方财富估值详情、通达信本地 K 线；保守估算：成长字段。',
+      impact: '用于区分真实数据、备用源和样例/保守估算，影响诊断结论可信度。',
     },
     {
       key: 'technical',
@@ -258,9 +265,9 @@ const dataQuality = {
 const dataQualityOverview = {
   scope: 'watchlist',
   stock_count: 3,
-  average_score: 100,
-  pass_count: 3,
-  warn_count: 0,
+  average_score: 90,
+  pass_count: 0,
+  warn_count: 3,
   fail_count: 0,
   lowest_report: dataQuality,
   reports: [dataQuality],
@@ -1370,6 +1377,8 @@ describe('App', () => {
     const qualityPanel = screen.getByRole('heading', { name: '数据质量' }).closest('section')!
     expect(within(qualityPanel).getAllByText('可靠').length).toBeGreaterThan(0)
     expect(within(qualityPanel).getByText('行情字段')).toBeInTheDocument()
+    expect(within(qualityPanel).getByText('来源覆盖')).toBeInTheDocument()
+    expect(within(qualityPanel).getByText('真实来源：东方财富估值详情、通达信本地 K 线；保守估算：成长字段。')).toBeInTheDocument()
     expect(within(qualityPanel).getByText('技术指标')).toBeInTheDocument()
     const thesisPanel = screen.getByRole('heading', { name: '诊断论证' }).closest('section')!
     expect(within(thesisPanel).getByText('多头假设')).toBeInTheDocument()

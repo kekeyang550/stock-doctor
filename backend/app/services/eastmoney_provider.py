@@ -725,6 +725,8 @@ class EastmoneyMarketDataProvider:
             fundamental=fundamental,
             capital=capital,
             risk=risk,
+            data_sources=sorted(self._source_notes),
+            conservative_fields=sorted(self._partial_notes),
         )
 
     def _technical_from_history(self, symbol: str) -> dict[str, Any] | None:

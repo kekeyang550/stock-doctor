@@ -55,6 +55,7 @@ class AkshareMarketDataProvider:
             "history": {"hit": 0, "miss": 0},
         }
         self._last_error: str | None = None
+        self._source_notes: set[str] = set()
         self._partial_notes: set[str] = set()
 
     def list_stocks(self) -> list[StockSummary]:
@@ -339,6 +340,8 @@ class AkshareMarketDataProvider:
                 st_flag=self._is_st_stock(summary.name),
                 limit_up_streak=1 if summary.change_pct >= 9.8 else 0,
             ),
+            data_sources=sorted(self._source_notes),
+            conservative_fields=sorted(self._partial_notes),
         )
 
     def _is_st_stock(self, name: str) -> bool:
@@ -391,6 +394,7 @@ class AkshareMarketDataProvider:
         industry_pe_percentile = self._first_float(row, "行业市盈率分位", "industry_pe_percentile", default=50)
         if min(pe_ttm, pb) <= 0 and roe == 0 and revenue_growth == 0 and profit_growth == 0:
             return None
+        self._source_notes.add("fundamental")
         return FundamentalSnapshot(
             pe_ttm=pe_ttm,
             pb=pb,
@@ -416,6 +420,7 @@ class AkshareMarketDataProvider:
         turnover_rate = self._first_float(row, "换手率", "turnover_rate", default=0)
         if main_inflow == 0 and northbound_inflow == 0 and turnover_rate == 0:
             return None
+        self._source_notes.add("capital-flow")
         return CapitalSnapshot(
             main_inflow_million=main_inflow,
             northbound_inflow_million=northbound_inflow,
@@ -442,6 +447,7 @@ class AkshareMarketDataProvider:
         closes = [point["close"] for point in points]
         volumes = [point["volume"] for point in points]
         latest = points[-1]
+        self._source_notes.add("historical-kline")
         return {
             "last_price": closes[-1],
             "as_of": latest["date"] or date.today().isoformat(),

@@ -15,6 +15,7 @@ def test_data_quality_report_passes_for_complete_mock_snapshot():
     assert report.coverage_pct == 100
     assert {check.key for check in report.checks} == {
         "market",
+        "source_coverage",
         "technical",
         "fundamental",
         "capital",
@@ -53,3 +54,26 @@ def test_data_quality_report_flags_invalid_fields():
     failing_keys = {check.key for check in report.checks if check.status == "fail"}
     assert {"market", "technical", "risk"}.issubset(failing_keys)
     assert any(check.key == "capital" and check.status == "warn" for check in report.checks)
+
+
+def test_data_quality_report_warns_for_conservative_real_data_fields():
+    base = MockMarketDataProvider().get_snapshot("600519")
+    snapshot = base.model_copy(
+        update={
+            "as_of": date.today().isoformat(),
+            "data_sources": ["fundamental-quote-detail", "sina-capital-flow", "tdx-kline"],
+            "conservative_fields": ["growth", "northbound"],
+        }
+    )
+
+    report = DataQualityService().build_report(snapshot)
+    source_check = next(check for check in report.checks if check.key == "source_coverage")
+
+    assert report.status == "warn"
+    assert report.score == 90
+    assert source_check.status == "warn"
+    assert "东方财富估值详情" in source_check.detail
+    assert "新浪资金流兜底" in source_check.detail
+    assert "通达信本地 K 线" in source_check.detail
+    assert "成长字段" in source_check.detail
+    assert "北向资金" in source_check.detail

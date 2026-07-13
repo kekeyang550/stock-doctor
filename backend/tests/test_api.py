@@ -190,6 +190,7 @@ def test_data_quality_endpoint_returns_field_checks():
     assert {"coverage_pct", "issue_count", "checks"}.issubset(payload.keys())
     assert {item["key"] for item in payload["checks"]} == {
         "market",
+        "source_coverage",
         "technical",
         "fundamental",
         "capital",
