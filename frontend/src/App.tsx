@@ -617,11 +617,12 @@ export default function App() {
         data_trust: {
           sources: dataSources,
           connector_health: connectorHealth,
+          runtime_config: runtimeSettings,
           freshness,
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, reviewActions, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioRisk, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1178,10 +1179,14 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const strategyBacktestActions = payload.strategy_backtest_actions ?? {}
   const reviewActions = payload.review_actions ?? {}
   const dataTrust = payload.data_trust ?? {}
+  const dataQuality = payload.data_quality ?? {}
   const connectorHealth = dataTrust.connector_health ?? {}
   const cacheStatus = connectorHealth.cache_status ?? {}
+  const runtimeConfig = dataTrust.runtime_config ?? connectorHealth.runtime_config ?? {}
   const freshness = dataTrust.freshness ?? {}
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
+  const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
+  const dataQualityChecks = Array.isArray(dataQuality.checks) ? dataQuality.checks : []
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
   const industryExposures = Array.isArray(portfolioRisk.industry_exposures) ? portfolioRisk.industry_exposures : []
   const riskContributions = Array.isArray(portfolioRisk.risk_contributions) ? portfolioRisk.risk_contributions : []
@@ -1267,6 +1272,23 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`- Fallback: ${markdownText(connectorHealth.fallback_provider ?? '-')}`)
   lines.push(`- 新鲜度: ${markdownText(freshness.status ?? '-')}`)
   lines.push(`- 覆盖率: ${markdownText(freshness.coverage_pct ?? '-')}%`)
+  lines.push(`- 数据质量: ${markdownText(dataQuality.score ?? '-')} 分 / ${markdownText(reportQualityStatusLabel(dataQuality.status))} / 覆盖 ${markdownText(dataQuality.coverage_pct ?? '-')}%`)
+  lines.push(`- 质量摘要: ${markdownText(dataQuality.summary ?? '暂无数据质量摘要')}`)
+  lines.push(`- 运行配置: ${markdownText(runtimeConfig.active_provider ?? connectorHealth.active_provider ?? '-')} / 超时 ${markdownText(runtimeConfig.request_timeout_seconds ?? connectorHealth.runtime_config?.request_timeout_seconds ?? '-')} 秒 / 缓存 ${markdownText(runtimeConfig.cache_ttl_seconds ?? connectorHealth.runtime_config?.cache_ttl_seconds ?? '-')} 秒`)
+  lines.push('')
+  lines.push('### 数据质量检查')
+  markdownList(
+    lines,
+    dataQualityChecks,
+    (check) => `${check.label} - ${reportQualityStatusLabel(check.status)} - ${check.detail} - 影响: ${check.impact}`,
+  )
+  lines.push('')
+  lines.push('### 运行配置')
+  markdownList(
+    lines,
+    runtimePaths,
+    (item) => `${item.label} - ${reportRuntimePathStatusLabel(item.exists)} - ${item.env_var} - ${item.value || '未配置'}`,
+  )
   lines.push('')
   lines.push('### 连接器明细')
   markdownList(
@@ -1318,10 +1340,14 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const strategyPresetComparison = payload.strategy_preset_comparison ?? {}
   const reviewActions = payload.review_actions ?? {}
   const dataTrust = payload.data_trust ?? {}
+  const dataQuality = payload.data_quality ?? {}
   const connectorHealth = dataTrust.connector_health ?? {}
   const cacheStatus = connectorHealth.cache_status ?? {}
+  const runtimeConfig = dataTrust.runtime_config ?? connectorHealth.runtime_config ?? {}
   const freshness = dataTrust.freshness ?? {}
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
+  const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
+  const dataQualityChecks = Array.isArray(dataQuality.checks) ? dataQuality.checks : []
   const weightInputs = payload.portfolio_weight_inputs ?? {}
   const scoreTrend = Array.isArray(diagnosisChange.score_trend) ? diagnosisChange.score_trend : []
   const changeDrivers = Array.isArray(diagnosisChange.key_drivers) ? diagnosisChange.key_drivers : []
@@ -1522,10 +1548,23 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>Fallback</span><strong>${escapeHtml(connectorHealth.fallback_provider ?? "-")}</strong></div>
         <div class="metric"><span>缓存状态</span><strong>${escapeHtml(freshness.status ?? "-")}</strong></div>
         <div class="metric"><span>覆盖率</span><strong>${escapeHtml(freshness.coverage_pct ?? "-")}%</strong></div>
+        <div class="metric"><span>质量评分</span><strong>${escapeHtml(dataQuality.score ?? "-")}</strong></div>
+        <div class="metric"><span>质量状态</span><strong>${escapeHtml(reportQualityStatusLabel(dataQuality.status))}</strong></div>
         <div class="metric"><span>缓存命中</span><strong>${escapeHtml(cacheBuckets.length ? `${activeCacheEntries}/${totalCacheEntries} 有效` : "暂无遥测")}</strong></div>
         <div class="metric"><span>缓存 TTL</span><strong>${escapeHtml(cacheStatus.ttl_seconds ?? connectorHealth.runtime_config?.cache_ttl_seconds ?? "-")} 秒</strong></div>
+        <div class="metric"><span>请求超时</span><strong>${escapeHtml(runtimeConfig.request_timeout_seconds ?? connectorHealth.runtime_config?.request_timeout_seconds ?? "-")} 秒</strong></div>
+        <div class="metric"><span>过期阈值</span><strong>${escapeHtml(runtimeConfig.freshness_stale_after_minutes ?? connectorHealth.runtime_config?.freshness_stale_after_minutes ?? "-")} 分钟</strong></div>
       </div>
       <p>${escapeHtml(freshness.message ?? "")}</p>
+      <p>${escapeHtml(dataQuality.summary ?? "暂无数据质量摘要")}</p>
+      <h3>数据质量检查</h3>
+      ${dataQualityChecks.map((check: any) => `<div class="row"><strong>${escapeHtml(check.label)} · ${escapeHtml(reportQualityStatusLabel(check.status))}</strong><small>${escapeHtml(check.detail)} · 影响：${escapeHtml(check.impact)}</small></div>`).join("") || "<p>暂无数据质量检查</p>"}
+      <h3>运行配置</h3>
+      <div class="grid">
+        <div class="metric"><span>当前数据源</span><strong>${escapeHtml(runtimeConfig.active_provider ?? connectorHealth.active_provider ?? "-")}</strong></div>
+        <div class="metric"><span>可选数据源</span><strong>${escapeHtml(Array.isArray(runtimeConfig.provider_options) ? runtimeConfig.provider_options.join(" / ") : "-")}</strong></div>
+      </div>
+      ${runtimePaths.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(reportRuntimePathStatusLabel(item.exists))}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(item.value || "未配置")}</small></div>`).join("") || "<p>暂无本地路径配置</p>"}
       <h3>连接器明细</h3>
       ${connectors.slice(0, 10).map((connector: any) => `<div class="row"><strong>${escapeHtml(connector.name)}${connector.active ? " · 当前启用" : ""}</strong><small>${escapeHtml(reportConnectorStatusLabel(connector.status))} · ${escapeHtml(humanizeConnectorMessage(connector.message ?? connector.role ?? ""))} · 下一步：${escapeHtml(humanizeConnectorMessage(connector.next_action ?? "-"))}</small></div>`).join("") || "<p>暂无连接器明细</p>"}
       <h3>缓存桶</h3>
@@ -1575,6 +1614,19 @@ function reviewActionStatusLabel(status: unknown) {
   if (status === 'watching') return '观察中'
   if (status === 'done') return '已完成'
   return '未设置'
+}
+
+function reportQualityStatusLabel(status: unknown) {
+  if (status === 'pass') return '通过'
+  if (status === 'warn') return '需核验'
+  if (status === 'fail') return '不可用'
+  return '未评估'
+}
+
+function reportRuntimePathStatusLabel(exists: unknown) {
+  if (exists === true) return '可用'
+  if (exists === false) return '未找到'
+  return '未配置'
 }
 
 function reportCacheStatusLabel(status: unknown) {
