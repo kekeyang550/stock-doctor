@@ -667,6 +667,7 @@ export default function App() {
         portfolio_risk: portfolioRisk,
         portfolio_weight_inputs: portfolioWeights,
         portfolio_lot_inputs: portfolioLots,
+        portfolio_import_message: portfolioImportMessage,
         portfolio_value_input: portfolioValue,
         strategy_backtest: strategyBacktest,
         strategy_backtest_parameters: {
@@ -689,7 +690,7 @@ export default function App() {
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
+  }, [backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1263,6 +1264,9 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const runtimeSecrets = Array.isArray(runtimeConfig.secrets) ? runtimeConfig.secrets : []
   const dataQualityChecks = Array.isArray(dataQuality.checks) ? dataQuality.checks : []
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
+  const weightInputs = payload.portfolio_weight_inputs ?? {}
+  const lotInputs = payload.portfolio_lot_inputs ?? {}
+  const portfolioImportMessage = payload.portfolio_import_message ?? ''
   const industryExposures = Array.isArray(portfolioRisk.industry_exposures) ? portfolioRisk.industry_exposures : []
   const riskContributions = Array.isArray(portfolioRisk.risk_contributions) ? portfolioRisk.risk_contributions : []
   const rebalanceActions = Array.isArray(portfolioRisk.rebalance_actions) ? portfolioRisk.rebalance_actions : []
@@ -1312,6 +1316,9 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`- 总权重: ${markdownText(portfolioRisk.total_position_weight ?? portfolioRisk.total_weight_pct ?? '-')}%`)
   lines.push(`- 组合市值: ${markdownText(portfolioRisk.total_market_value ?? 0)} 元`)
   lines.push(`- 现金缓冲: ${markdownText(portfolioRisk.cash_amount ?? 0)} 元`)
+  lines.push(`- 输入权重: ${markdownText(JSON.stringify(weightInputs))}`)
+  lines.push(`- 持仓输入: ${markdownText(JSON.stringify(lotInputs))}`)
+  lines.push(`- 导入提示: ${markdownText(portfolioImportMessage || '持仓 symbol,shares,cost_price；流水 symbol,side,shares,price')}`)
   lines.push('')
   lines.push('### 模拟仓位')
   markdownList(lines, positions.slice(0, 8), (item) => `${item.name} (${item.symbol}) - ${item.industry} - ${item.weight_pct}% - 市值 ${item.market_value ?? 0} 元 - 数量 ${item.shares ?? 0} - 成本 ${item.cost_amount ?? 0} 元 - 浮盈亏 ${item.unrealized_pnl ?? 0} 元 (${item.unrealized_pnl_pct ?? 0}%)`)
@@ -1438,6 +1445,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const runtimeSecrets = Array.isArray(runtimeConfig.secrets) ? runtimeConfig.secrets : []
   const dataQualityChecks = Array.isArray(dataQuality.checks) ? dataQuality.checks : []
   const weightInputs = payload.portfolio_weight_inputs ?? {}
+  const lotInputs = payload.portfolio_lot_inputs ?? {}
+  const portfolioImportMessage = payload.portfolio_import_message ?? ''
   const scoreTrend = Array.isArray(diagnosisChange.score_trend) ? diagnosisChange.score_trend : []
   const changeDrivers = Array.isArray(diagnosisChange.key_drivers) ? diagnosisChange.key_drivers : []
   const changeItems = Array.isArray(diagnosisChange.changes) ? diagnosisChange.changes : []
@@ -1552,6 +1561,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <h3>再平衡建议</h3>
       ${rebalanceActions.map((item: any) => `<div class="row"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(reportRebalanceActionLabel(item.action))} · 当前 ${escapeHtml(item.current_weight_pct)}% · 建议 ${escapeHtml(item.suggested_weight_pct)}% · 调整 ${escapeHtml(item.delta_pct)}% · ${escapeHtml(item.reason)}</small></div>`).join("") || "<p>暂无再平衡建议</p>"}
       <p>输入权重：<code>${escapeHtml(JSON.stringify(weightInputs))}</code></p>
+      <p>持仓输入：<code>${escapeHtml(JSON.stringify(lotInputs))}</code></p>
+      <p>导入提示：${escapeHtml(portfolioImportMessage || "持仓 symbol,shares,cost_price；流水 symbol,side,shares,price")}</p>
     </section>
 
     <section>
