@@ -93,6 +93,8 @@ export type TushareProbeStep = {
   label: string
   status: 'pass' | 'warn' | 'fail' | 'skip'
   detail: string
+  duration_ms?: number | null
+  row_count?: number | null
 }
 
 export type TushareProbeResult = {
@@ -101,6 +103,7 @@ export type TushareProbeResult = {
   status: 'pass' | 'warn' | 'fail'
   package_installed: boolean
   token_configured: boolean
+  duration_ms?: number | null
   message: string
   next_action: string
   steps: TushareProbeStep[]

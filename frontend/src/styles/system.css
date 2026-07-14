@@ -252,6 +252,16 @@
   line-height: 1.45;
 }
 
+.runtime-probe-meta {
+  align-self: start;
+  background: #f7faf4;
+  border: 1px solid #d8e2d2;
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 800;
+  padding: 3px 8px;
+}
+
 .runtime-probe-steps {
   display: grid;
   gap: 7px;

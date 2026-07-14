@@ -136,6 +136,8 @@ class TushareProbeStep(BaseModel):
     label: str
     status: str = Field(pattern="^(pass|warn|fail|skip)$")
     detail: str
+    duration_ms: int | None = None
+    row_count: int | None = None
 
 
 class TushareProbeResult(BaseModel):
@@ -144,6 +146,7 @@ class TushareProbeResult(BaseModel):
     status: str = Field(pattern="^(pass|warn|fail)$")
     package_installed: bool
     token_configured: bool
+    duration_ms: int | None = None
     message: str
     next_action: str
     steps: list[TushareProbeStep]

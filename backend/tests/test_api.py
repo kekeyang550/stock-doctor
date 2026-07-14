@@ -21,8 +21,10 @@ def test_tushare_probe_endpoint_reports_safe_status():
     payload = response.json()
     assert payload["symbol"] == "600519"
     assert payload["status"] in {"pass", "warn", "fail"}
-    assert {"package_installed", "token_configured", "message", "next_action", "steps"}.issubset(payload.keys())
+    assert {"package_installed", "token_configured", "duration_ms", "message", "next_action", "steps"}.issubset(payload.keys())
+    assert isinstance(payload["duration_ms"], int)
     assert any(step["key"] == "token" for step in payload["steps"])
+    assert all("duration_ms" in step for step in payload["steps"])
     if settings.tushare_token:
         assert settings.tushare_token not in response.text
 

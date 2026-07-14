@@ -97,6 +97,7 @@
    - 本机后端虚拟环境已安装 `real-data` 可选依赖，当前 Tushare 预检已从“缺包”推进到“包可导入，等待 Token”。
    - JSON/HTML/Markdown 研究报告已加入 Tushare 预检上下文；已执行预检时导出状态、步骤和下一步，未执行时明确写“本次导出未执行只读预检”。
    - 新增 `backend/.env.example`，集中记录 eastmoney、通达信、同花顺、Tushare Token、缓存 TTL、请求超时和新鲜度阈值配置模板。
+   - Tushare 预检结果已增加总耗时、步骤耗时和接口返回行数；未配置 Token 时展示包/Token 检查耗时，配置 Token 后可进一步观察各 Tushare 接口是否慢、空数据或权限不足。
 
 ## 本机验证结果
 

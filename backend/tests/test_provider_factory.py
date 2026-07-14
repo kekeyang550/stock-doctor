@@ -199,6 +199,8 @@ def test_tushare_provider_probe_reports_ready_steps(monkeypatch):
     assert result.status == "pass"
     assert result.package_installed is True
     assert result.token_configured is True
+    assert result.duration_ms is not None
+    assert result.duration_ms >= 0
     assert {step.key for step in result.steps} == {
         "package",
         "token",
@@ -209,6 +211,11 @@ def test_tushare_provider_probe_reports_ready_steps(monkeypatch):
         "pro_bar",
     }
     assert all(step.status == "pass" for step in result.steps)
+    assert all(step.duration_ms is not None and step.duration_ms >= 0 for step in result.steps)
+    assert {step.key: step.row_count for step in result.steps}["stock_basic"] == 1
+    assert {step.key: step.row_count for step in result.steps}["daily_basic"] == 1
+    assert {step.key: step.row_count for step in result.steps}["fina_indicator"] == 1
+    assert {step.key: step.row_count for step in result.steps}["pro_bar"] == 3
     assert module.client.token == "test-token"
 
 
@@ -223,6 +230,7 @@ def test_tushare_provider_probe_reports_failures_without_token_leak(monkeypatch)
     assert "secret-token" not in result.model_dump_json()
     assert any(step.key == "stock_basic" and step.status == "fail" for step in result.steps)
     assert any(step.key == "pro_bar" and step.status == "fail" for step in result.steps)
+    assert all(step.duration_ms is not None for step in result.steps)
 
 
 def test_tushare_provider_probe_points_to_real_data_extra_when_package_missing(monkeypatch):
@@ -234,6 +242,7 @@ def test_tushare_provider_probe_points_to_real_data_extra_when_package_missing(m
 
     assert result.status == "fail"
     assert result.package_installed is False
+    assert result.duration_ms is not None
     assert 'pip install -e ".[real-data]"' in result.next_action
 
 

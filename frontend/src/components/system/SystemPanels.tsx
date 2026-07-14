@@ -148,12 +148,14 @@ function TushareProbePanel({ probe }: { probe: TushareProbeResult }) {
       </div>
       <p>{probe.message}</p>
       <small>{probe.next_action}</small>
+      <small className="runtime-probe-meta">总耗时 {formatProbeDuration(probe.duration_ms)}</small>
       <div className="runtime-probe-steps">
         {probe.steps.map((step) => (
           <article key={step.key} className={step.status}>
             <strong>{step.label}</strong>
             <em>{probeStepStatusLabel(step.status)}</em>
             <small>{step.detail}</small>
+            <small>{probeStepMeta(step)}</small>
           </article>
         ))}
       </div>
@@ -174,6 +176,19 @@ function probeStepStatusLabel(status: TushareProbeResult['steps'][number]['statu
   if (status === 'warn') return '提示'
   if (status === 'skip') return '跳过'
   return '失败'
+}
+
+
+function probeStepMeta(step: TushareProbeResult['steps'][number]) {
+  const parts = [`耗时 ${formatProbeDuration(step.duration_ms)}`]
+  if (typeof step.row_count === 'number') parts.push(`返回 ${step.row_count} 行`)
+  return parts.join(' · ')
+}
+
+
+function formatProbeDuration(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
+  return `${Math.max(0, Math.round(value))} ms`
 }
 
 

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from importlib.util import find_spec
+from time import monotonic
 
 from app.config import settings
 from app.schemas.diagnosis import (
@@ -113,6 +114,7 @@ class TushareMarketDataProvider:
         return self._fallback.get_cache_status()
 
     def probe_connectivity(self, symbol: str = "600519") -> TushareProbeResult:
+        started_at = monotonic()
         normalized = symbol.strip().upper() or "600519"
         package_available = self._package_available()
         token_configured = bool(settings.tushare_token.strip())
@@ -122,17 +124,20 @@ class TushareMarketDataProvider:
                 label="tushare 包",
                 status="pass" if package_available else "fail",
                 detail="当前 Python 环境可导入 tushare。" if package_available else "当前 Python 环境未安装 tushare 包。",
+                duration_ms=0,
             ),
             TushareProbeStep(
                 key="token",
                 label="Tushare Token",
                 status="pass" if token_configured else "warn",
                 detail="Token 已通过环境变量配置。" if token_configured else "未配置 STOCK_DOCTOR_TUSHARE_TOKEN。",
+                duration_ms=0,
             ),
         ]
         if not package_available or not token_configured:
-            return self._probe_result(normalized, package_available, token_configured, steps)
+            return self._probe_result(normalized, package_available, token_configured, steps, started_at)
 
+        client_started_at = monotonic()
         client = self._client()
         steps.append(
             TushareProbeStep(
@@ -140,17 +145,18 @@ class TushareMarketDataProvider:
                 label="Pro API 初始化",
                 status="pass" if client is not None else "fail",
                 detail="pro_api 初始化成功。" if client is not None else "pro_api 初始化失败，继续使用安全回退。",
+                duration_ms=self._elapsed_ms(client_started_at),
             )
         )
         if client is None:
-            return self._probe_result(normalized, package_available, token_configured, steps)
+            return self._probe_result(normalized, package_available, token_configured, steps, started_at)
 
         ts_code = self._ts_code(normalized)
         steps.append(self._probe_stock_basic(client, ts_code))
         steps.append(self._probe_daily_basic(client, ts_code))
         steps.append(self._probe_fina_indicator(client, ts_code))
         steps.append(self._probe_pro_bar(ts_code))
-        return self._probe_result(normalized, package_available, token_configured, steps)
+        return self._probe_result(normalized, package_available, token_configured, steps, started_at)
 
     def _is_ready(self) -> bool:
         return self._package_available() and bool(settings.tushare_token.strip())
@@ -181,49 +187,53 @@ class TushareMarketDataProvider:
         return "tushare 包和 Token 均未配置；继续使用 Mock 回退。"
 
     def _probe_stock_basic(self, client: object, ts_code: str) -> TushareProbeStep:
+        started_at = monotonic()
         stock_basic = getattr(client, "stock_basic", None)
         if stock_basic is None:
-            return TushareProbeStep(key="stock_basic", label="基础资料", status="fail", detail="client 缺少 stock_basic 能力。")
+            return TushareProbeStep(key="stock_basic", label="基础资料", status="fail", detail="client 缺少 stock_basic 能力。", duration_ms=self._elapsed_ms(started_at))
         try:
             rows = self._rows(stock_basic(ts_code=ts_code, fields="ts_code,name,industry"))
         except Exception:
-            return TushareProbeStep(key="stock_basic", label="基础资料", status="fail", detail="stock_basic 调用失败。")
-        return self._probe_rows_step("stock_basic", "基础资料", rows)
+            return TushareProbeStep(key="stock_basic", label="基础资料", status="fail", detail="stock_basic 调用失败。", duration_ms=self._elapsed_ms(started_at))
+        return self._probe_rows_step("stock_basic", "基础资料", rows, self._elapsed_ms(started_at))
 
     def _probe_daily_basic(self, client: object, ts_code: str) -> TushareProbeStep:
+        started_at = monotonic()
         try:
             rows = self._rows(client.daily_basic(ts_code=ts_code, fields="ts_code,trade_date,pe_ttm,pb,turnover_rate"))
         except Exception:
-            return TushareProbeStep(key="daily_basic", label="日行情基础指标", status="fail", detail="daily_basic 调用失败。")
-        return self._probe_rows_step("daily_basic", "日行情基础指标", rows)
+            return TushareProbeStep(key="daily_basic", label="日行情基础指标", status="fail", detail="daily_basic 调用失败。", duration_ms=self._elapsed_ms(started_at))
+        return self._probe_rows_step("daily_basic", "日行情基础指标", rows, self._elapsed_ms(started_at))
 
     def _probe_fina_indicator(self, client: object, ts_code: str) -> TushareProbeStep:
+        started_at = monotonic()
         try:
             rows = self._rows(client.fina_indicator(ts_code=ts_code, fields="ts_code,end_date,roe_dt,revenue_yoy,netprofit_yoy"))
         except Exception:
-            return TushareProbeStep(key="fina_indicator", label="财务指标", status="fail", detail="fina_indicator 调用失败。")
-        return self._probe_rows_step("fina_indicator", "财务指标", rows)
+            return TushareProbeStep(key="fina_indicator", label="财务指标", status="fail", detail="fina_indicator 调用失败。", duration_ms=self._elapsed_ms(started_at))
+        return self._probe_rows_step("fina_indicator", "财务指标", rows, self._elapsed_ms(started_at))
 
     def _probe_pro_bar(self, ts_code: str) -> TushareProbeStep:
+        started_at = monotonic()
         module = self._ts_module
         if module is None:
             try:
                 import tushare as module  # type: ignore
             except Exception:
-                return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="tushare 包导入失败。")
+                return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="tushare 包导入失败。", duration_ms=self._elapsed_ms(started_at))
         pro_bar = getattr(module, "pro_bar", None)
         if pro_bar is None:
-            return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="tushare.pro_bar 不可用。")
+            return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="tushare.pro_bar 不可用。", duration_ms=self._elapsed_ms(started_at))
         try:
             rows = self._rows(pro_bar(ts_code=ts_code, adj="qfq", freq="D"))
         except Exception:
-            return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="pro_bar 前复权日线调用失败。")
-        return self._probe_rows_step("pro_bar", "前复权日线", rows)
+            return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="pro_bar 前复权日线调用失败。", duration_ms=self._elapsed_ms(started_at))
+        return self._probe_rows_step("pro_bar", "前复权日线", rows, self._elapsed_ms(started_at))
 
-    def _probe_rows_step(self, key: str, label: str, rows: list[dict]) -> TushareProbeStep:
+    def _probe_rows_step(self, key: str, label: str, rows: list[dict], duration_ms: int) -> TushareProbeStep:
         if rows:
-            return TushareProbeStep(key=key, label=label, status="pass", detail=f"返回 {len(rows)} 行样本。")
-        return TushareProbeStep(key=key, label=label, status="warn", detail="接口可调用但返回空数据。")
+            return TushareProbeStep(key=key, label=label, status="pass", detail=f"返回 {len(rows)} 行样本。", duration_ms=duration_ms, row_count=len(rows))
+        return TushareProbeStep(key=key, label=label, status="warn", detail="接口可调用但返回空数据。", duration_ms=duration_ms, row_count=0)
 
     def _probe_result(
         self,
@@ -231,6 +241,7 @@ class TushareMarketDataProvider:
         package_available: bool,
         token_configured: bool,
         steps: list[TushareProbeStep],
+        started_at: float,
     ) -> TushareProbeResult:
         has_fail = any(step.status == "fail" for step in steps)
         has_warn = any(step.status == "warn" for step in steps)
@@ -253,10 +264,15 @@ class TushareMarketDataProvider:
             status=status,
             package_installed=package_available,
             token_configured=token_configured,
+            duration_ms=self._elapsed_ms(started_at),
             message=message,
             next_action=next_action,
             steps=steps,
         )
+
+    @staticmethod
+    def _elapsed_ms(started_at: float) -> int:
+        return max(0, round((monotonic() - started_at) * 1000))
 
     def _client(self):
         module = self._ts_module

@@ -1526,12 +1526,13 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
     lines.push(`- 状态: ${markdownText(reportProbeStatusLabel(tushareProbe.status))}`)
     lines.push(`- 标的: ${markdownText(tushareProbe.symbol ?? '-')}`)
     lines.push(`- 生成时间: ${markdownText(tushareProbe.generated_at ?? '-')}`)
+    lines.push(`- 总耗时: ${markdownText(reportProbeDuration(tushareProbe.duration_ms))}`)
     lines.push(`- 结论: ${markdownText(tushareProbe.message ?? '-')}`)
     lines.push(`- 下一步: ${markdownText(tushareProbe.next_action ?? '-')}`)
     markdownList(
       lines,
       Array.isArray(tushareProbe.steps) ? tushareProbe.steps : [],
-      (step) => `${step.label} - ${reportProbeStepStatusLabel(step.status)} - ${step.detail}`,
+      (step) => `${step.label} - ${reportProbeStepStatusLabel(step.status)} - ${step.detail} - ${reportProbeStepMetrics(step)}`,
     )
   } else {
     lines.push('- 本次导出未执行只读预检。')
@@ -1910,8 +1911,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       ${runtimeSecrets.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(item.configured ? "已配置" : "未配置")}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(item.configured ? "已通过环境变量配置" : "未配置，相关增强能力暂不可用")}</small></div>`).join("") || "<p>暂无密钥配置</p>"}
       <h3>Tushare 预检</h3>
       ${tushareProbe ? `
-        <div class="row"><strong>${escapeHtml(reportProbeStatusLabel(tushareProbe.status))} · ${escapeHtml(tushareProbe.symbol ?? "-")}</strong><small>${escapeHtml(tushareProbe.message ?? "-")} · 下一步：${escapeHtml(tushareProbe.next_action ?? "-")}</small></div>
-        ${(Array.isArray(tushareProbe.steps) ? tushareProbe.steps : []).map((step: any) => `<div class="row"><strong>${escapeHtml(step.label)} · ${escapeHtml(reportProbeStepStatusLabel(step.status))}</strong><small>${escapeHtml(step.detail ?? "")}</small></div>`).join("")}
+        <div class="row"><strong>${escapeHtml(reportProbeStatusLabel(tushareProbe.status))} · ${escapeHtml(tushareProbe.symbol ?? "-")}</strong><small>${escapeHtml(tushareProbe.message ?? "-")} · 总耗时 ${escapeHtml(reportProbeDuration(tushareProbe.duration_ms))} · 下一步：${escapeHtml(tushareProbe.next_action ?? "-")}</small></div>
+        ${(Array.isArray(tushareProbe.steps) ? tushareProbe.steps : []).map((step: any) => `<div class="row"><strong>${escapeHtml(step.label)} · ${escapeHtml(reportProbeStepStatusLabel(step.status))}</strong><small>${escapeHtml(step.detail ?? "")} · ${escapeHtml(reportProbeStepMetrics(step))}</small></div>`).join("")}
       ` : "<p>本次导出未执行只读预检。</p>"}
       <h3>连接器明细</h3>
       ${connectors.slice(0, 10).map((connector: any) => `<div class="row"><strong>${escapeHtml(connector.name)}${connector.active ? " · 当前启用" : ""}</strong><small>${escapeHtml(reportConnectorStatusLabel(connector.status))} · ${escapeHtml(humanizeConnectorMessage(connector.message ?? connector.role ?? ""))} · 下一步：${escapeHtml(humanizeConnectorMessage(connector.next_action ?? "-"))}</small></div>`).join("") || "<p>暂无连接器明细</p>"}
@@ -2073,6 +2074,20 @@ function reportProbeStepStatusLabel(status: unknown) {
   if (status === 'skip') return '跳过'
   if (status === 'fail') return '失败'
   return '未知'
+}
+
+function reportProbeStepMetrics(step: Record<string, unknown>) {
+  const parts = [`耗时 ${reportProbeDuration(step.duration_ms)}`]
+  if (typeof step.row_count === 'number' && Number.isFinite(step.row_count)) {
+    parts.push(`返回 ${Math.max(0, Math.round(step.row_count))} 行`)
+  }
+  return parts.join(' · ')
+}
+
+function reportProbeDuration(value: unknown) {
+  const duration = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(duration)) return '-'
+  return `${Math.max(0, Math.round(duration))} ms`
 }
 
 function reportRebalanceActionLabel(action: unknown) {
