@@ -79,6 +79,43 @@
   gap: 8px;
 }
 
+.runtime-actions {
+  align-items: center;
+  border: 1px solid #e0e8db;
+  border-radius: 8px;
+  background: #fbfdf9;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+.runtime-actions span {
+  color: #5f7066;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.runtime-actions button {
+  align-items: center;
+  border: 1px solid #bfd0c3;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #26372f;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-weight: 800;
+  gap: 6px;
+  padding: 7px 10px;
+}
+
+.runtime-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .runtime-config-item {
   border: 1px solid #e0e8db;
   border-radius: 8px;
@@ -155,6 +192,95 @@
 
 .runtime-config-note {
   margin: 10px 0 0;
+}
+
+.runtime-probe {
+  border: 1px solid #e0e8db;
+  border-left: 5px solid #809084;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 11px;
+}
+
+.runtime-probe.pass {
+  border-left-color: #2e6b4f;
+}
+
+.runtime-probe.warn {
+  border-left-color: #b6812d;
+}
+
+.runtime-probe.fail,
+.runtime-probe.error {
+  border-left-color: #b94a48;
+}
+
+.runtime-probe-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.runtime-probe-head span {
+  display: grid;
+  gap: 3px;
+}
+
+.runtime-probe-head em,
+.runtime-probe-steps em {
+  border-radius: 6px;
+  background: #f3f7ef;
+  color: #344239;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  padding: 4px 7px;
+}
+
+.runtime-probe p {
+  margin: 0;
+  color: #394a40;
+  line-height: 1.5;
+}
+
+.runtime-probe small {
+  color: #6a7a70;
+  line-height: 1.45;
+}
+
+.runtime-probe-steps {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.runtime-probe-steps article {
+  border: 1px solid #e6ede2;
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 9px;
+}
+
+.runtime-probe-steps article.pass {
+  background: #f3faf5;
+}
+
+.runtime-probe-steps article.warn {
+  background: #fff9ec;
+}
+
+.runtime-probe-steps article.fail {
+  background: #fff4f1;
+}
+
+.runtime-probe-steps small {
+  grid-column: 1 / -1;
 }
 
 .import-preview {

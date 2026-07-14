@@ -77,6 +77,7 @@ import {
   fetchSystemReadiness,
   fetchTimeline,
   fetchTrend,
+  fetchTushareProbe,
   fetchWatchlist,
   fetchWatchlistSummary,
   importStorage,
@@ -139,6 +140,7 @@ import type {
   SystemReadinessCheck,
   TimelineEvent,
   TrendSeries,
+  TushareProbeResult,
   WatchlistSummary,
 } from './lib/types'
 import './styles.css'
@@ -218,6 +220,7 @@ export default function App() {
   const [freshness, setFreshness] = useState<DataFreshnessStatus | null>(null)
   const [refreshJobs, setRefreshJobs] = useState<DataRefreshJob[]>([])
   const [runtimeSettings, setRuntimeSettings] = useState<DataRuntimeSettings | null>(null)
+  const [tushareProbe, setTushareProbe] = useState<TushareProbeResult | null>(null)
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
   const [systemReadiness, setSystemReadiness] = useState<SystemReadiness | null>(null)
   const [storageImportPayload, setStorageImportPayload] = useState<StorageImportPayload | null>(null)
@@ -304,7 +307,9 @@ export default function App() {
   const [priceAlertError, setPriceAlertError] = useState<string | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
   const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [tushareProbeError, setTushareProbeError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [probingTushare, setProbingTushare] = useState(false)
 
   useEffect(() => {
     writeStoredBacktestParameters({
@@ -712,11 +717,12 @@ export default function App() {
           sources: dataSources,
           connector_health: connectorHealth,
           runtime_config: runtimeSettings,
+          tushare_probe: tushareProbe,
           freshness,
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestDiagnosisExitScore, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison])
+  }, [backtestDiagnosisExitScore, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison, tushareProbe])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1060,6 +1066,22 @@ export default function App() {
     }
   }, [loadStocks])
 
+  const probeTushare = useCallback(async () => {
+    setError(null)
+    setTushareProbeError(null)
+    setProbingTushare(true)
+    try {
+      const result = await fetchTushareProbe(selectedSymbol)
+      setTushareProbe(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Tushare 预检失败'
+      setTushareProbeError(message)
+      setError(message)
+    } finally {
+      setProbingTushare(false)
+    }
+  }, [selectedSymbol])
+
   return (
     <main className="app-shell">
       <StockList
@@ -1202,7 +1224,13 @@ export default function App() {
           error={storageError}
         />
 
-        <SystemRuntimeConfigPanel settings={runtimeSettings} />
+        <SystemRuntimeConfigPanel
+          settings={runtimeSettings}
+          probe={tushareProbe}
+          probing={probingTushare}
+          probeError={tushareProbeError}
+          onProbe={probeTushare}
+        />
 
         <SystemReadinessPanel readiness={systemReadiness} />
 
@@ -1352,6 +1380,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const connectorHealth = dataTrust.connector_health ?? {}
   const cacheStatus = connectorHealth.cache_status ?? {}
   const runtimeConfig = dataTrust.runtime_config ?? connectorHealth.runtime_config ?? {}
+  const tushareProbe = dataTrust.tushare_probe ?? null
   const freshness = dataTrust.freshness ?? {}
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
@@ -1492,6 +1521,22 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
     (item) => `${item.label} - ${item.configured ? '已配置' : '未配置'} - ${item.env_var}`,
   )
   lines.push('')
+  lines.push('### Tushare 预检')
+  if (tushareProbe) {
+    lines.push(`- 状态: ${markdownText(reportProbeStatusLabel(tushareProbe.status))}`)
+    lines.push(`- 标的: ${markdownText(tushareProbe.symbol ?? '-')}`)
+    lines.push(`- 生成时间: ${markdownText(tushareProbe.generated_at ?? '-')}`)
+    lines.push(`- 结论: ${markdownText(tushareProbe.message ?? '-')}`)
+    lines.push(`- 下一步: ${markdownText(tushareProbe.next_action ?? '-')}`)
+    markdownList(
+      lines,
+      Array.isArray(tushareProbe.steps) ? tushareProbe.steps : [],
+      (step) => `${step.label} - ${reportProbeStepStatusLabel(step.status)} - ${step.detail}`,
+    )
+  } else {
+    lines.push('- 本次导出未执行只读预检。')
+  }
+  lines.push('')
   lines.push('### 连接器明细')
   markdownList(
     lines,
@@ -1587,6 +1632,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const connectorHealth = dataTrust.connector_health ?? {}
   const cacheStatus = connectorHealth.cache_status ?? {}
   const runtimeConfig = dataTrust.runtime_config ?? connectorHealth.runtime_config ?? {}
+  const tushareProbe = dataTrust.tushare_probe ?? null
   const freshness = dataTrust.freshness ?? {}
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
@@ -1862,6 +1908,11 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       ${runtimePaths.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(reportRuntimePathStatusLabel(item.exists))}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(item.value || "未配置")}</small></div>`).join("") || "<p>暂无本地路径配置</p>"}
       <h3>密钥配置</h3>
       ${runtimeSecrets.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(item.configured ? "已配置" : "未配置")}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(item.configured ? "已通过环境变量配置" : "未配置，相关增强能力暂不可用")}</small></div>`).join("") || "<p>暂无密钥配置</p>"}
+      <h3>Tushare 预检</h3>
+      ${tushareProbe ? `
+        <div class="row"><strong>${escapeHtml(reportProbeStatusLabel(tushareProbe.status))} · ${escapeHtml(tushareProbe.symbol ?? "-")}</strong><small>${escapeHtml(tushareProbe.message ?? "-")} · 下一步：${escapeHtml(tushareProbe.next_action ?? "-")}</small></div>
+        ${(Array.isArray(tushareProbe.steps) ? tushareProbe.steps : []).map((step: any) => `<div class="row"><strong>${escapeHtml(step.label)} · ${escapeHtml(reportProbeStepStatusLabel(step.status))}</strong><small>${escapeHtml(step.detail ?? "")}</small></div>`).join("")}
+      ` : "<p>本次导出未执行只读预检。</p>"}
       <h3>连接器明细</h3>
       ${connectors.slice(0, 10).map((connector: any) => `<div class="row"><strong>${escapeHtml(connector.name)}${connector.active ? " · 当前启用" : ""}</strong><small>${escapeHtml(reportConnectorStatusLabel(connector.status))} · ${escapeHtml(humanizeConnectorMessage(connector.message ?? connector.role ?? ""))} · 下一步：${escapeHtml(humanizeConnectorMessage(connector.next_action ?? "-"))}</small></div>`).join("") || "<p>暂无连接器明细</p>"}
       <h3>缓存桶</h3>
@@ -2006,6 +2057,21 @@ function reportConnectorStatusLabel(status: unknown) {
   if (status === 'missing-package') return '缺少依赖'
   if (status === 'planned') return '规划中'
   if (status === 'error') return '异常'
+  return '未知'
+}
+
+function reportProbeStatusLabel(status: unknown) {
+  if (status === 'pass') return '通过'
+  if (status === 'warn') return '需配置'
+  if (status === 'fail') return '未通过'
+  return '未执行'
+}
+
+function reportProbeStepStatusLabel(status: unknown) {
+  if (status === 'pass') return '通过'
+  if (status === 'warn') return '提示'
+  if (status === 'skip') return '跳过'
+  if (status === 'fail') return '失败'
   return '未知'
 }
 

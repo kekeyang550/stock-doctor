@@ -88,6 +88,24 @@ export type DataRuntimeSettings = {
   restart_required: boolean
 }
 
+export type TushareProbeStep = {
+  key: string
+  label: string
+  status: 'pass' | 'warn' | 'fail' | 'skip'
+  detail: string
+}
+
+export type TushareProbeResult = {
+  symbol: string
+  generated_at: string
+  status: 'pass' | 'warn' | 'fail'
+  package_installed: boolean
+  token_configured: boolean
+  message: string
+  next_action: string
+  steps: TushareProbeStep[]
+}
+
 export type ProviderCacheBucketStatus = {
   key: string
   label: string

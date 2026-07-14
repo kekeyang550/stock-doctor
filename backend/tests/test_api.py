@@ -14,6 +14,19 @@ def test_health_endpoint():
     assert response.json() == {"status": "ok"}
 
 
+def test_tushare_probe_endpoint_reports_safe_status():
+    response = client.get("/api/v1/system/tushare-probe?symbol=600519")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600519"
+    assert payload["status"] in {"pass", "warn", "fail"}
+    assert {"package_installed", "token_configured", "message", "next_action", "steps"}.issubset(payload.keys())
+    assert any(step["key"] == "token" for step in payload["steps"])
+    if settings.tushare_token:
+        assert settings.tushare_token not in response.text
+
+
 def test_stock_diagnosis_endpoint():
     response = client.get("/api/v1/diagnosis/600519")
 

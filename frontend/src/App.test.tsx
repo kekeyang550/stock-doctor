@@ -228,6 +228,20 @@ const runtimeSettings = {
   restart_required: true,
 }
 
+const tushareProbe = {
+  symbol: '600519',
+  generated_at: '2026-07-13T06:00:00Z',
+  status: 'warn',
+  package_installed: true,
+  token_configured: false,
+  message: 'Tushare Pro Token 未配置，当前只能使用其他数据源或 Mock 回退。',
+  next_action: '配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再重新检测。',
+  steps: [
+    { key: 'package', label: 'tushare 包', status: 'pass', detail: '当前 Python 环境可导入 tushare。' },
+    { key: 'token', label: 'Tushare Token', status: 'warn', detail: '未配置 STOCK_DOCTOR_TUSHARE_TOKEN。' },
+  ],
+}
+
 const refreshJobs = [
   {
     id: 'job-1',
@@ -1361,6 +1375,9 @@ describe('App', () => {
       if (url.includes('/system/runtime-config')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(runtimeSettings) })
       }
+      if (url.includes('/system/tushare-probe')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(tushareProbe) })
+      }
       if (url.includes('/system/refresh-jobs')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(refreshJobs) })
       }
@@ -1639,6 +1656,21 @@ describe('App', () => {
     const runtimePanel = screen.getByRole('heading', { name: '运行配置' }).closest('section')!
     expect(within(runtimePanel).getByText('加载中')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('正在读取运行配置...')).toBeInTheDocument()
+  })
+
+  it('runs a read-only Tushare probe from the runtime panel', async () => {
+    render(<App />)
+
+    const runtimePanel = await waitFor(() => screen.getByRole('heading', { name: '运行配置' }).closest('section')!)
+    fireEvent.click(within(runtimePanel).getByRole('button', { name: '检测 Tushare' }))
+
+    await waitFor(() => expect(within(runtimePanel).getByText('Tushare 预检')).toBeInTheDocument())
+    expect(within(runtimePanel).getByText('需配置')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('Tushare Pro Token 未配置，当前只能使用其他数据源或 Mock 回退。')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('tushare 包')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('当前 Python 环境可导入 tushare。')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('未配置 STOCK_DOCTOR_TUSHARE_TOKEN。')).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/system/tushare-probe?symbol=600519'))
   })
 
   it('shows panel-level errors when candidate APIs fail', async () => {
@@ -2780,6 +2812,10 @@ describe('App', () => {
 
     render(<App />)
 
+    const runtimePanel = await waitFor(() => screen.getByRole('heading', { name: '运行配置' }).closest('section')!)
+    fireEvent.click(within(runtimePanel).getByRole('button', { name: '检测 Tushare' }))
+    await waitFor(() => expect(within(runtimePanel).getByText('Tushare 预检')).toBeInTheDocument())
+
     const weightInput = await screen.findByLabelText('模拟仓位 贵州茅台')
     fireEvent.change(weightInput, { target: { value: '80' } })
 
@@ -2833,6 +2869,9 @@ describe('App', () => {
       env_var: 'STOCK_DOCTOR_TUSHARE_TOKEN',
       configured: false,
     })
+    expect(exported.data_trust.tushare_probe.status).toBe('warn')
+    expect(exported.data_trust.tushare_probe.next_action).toContain('STOCK_DOCTOR_TUSHARE_TOKEN')
+    expect(exported.data_trust.tushare_probe.steps.map((item: { key: string }) => item.key)).toEqual(['package', 'token'])
     expect(exported.data_trust.freshness.status).toBe('fresh')
     expect(anchor.download).toBe(`stock-doctor-report-600519-${new Date().toISOString().slice(0, 10)}.json`)
     expect(click).toHaveBeenCalled()
@@ -3103,6 +3142,8 @@ describe('App', () => {
     expect(html).toContain('密钥配置')
     expect(html).toContain('Tushare Pro Token · 未配置')
     expect(html).toContain('STOCK_DOCTOR_TUSHARE_TOKEN')
+    expect(html).toContain('Tushare 预检')
+    expect(html).toContain('本次导出未执行只读预检。')
     expect(html).toContain('连接器明细')
     expect(html).toContain('东方财富')
     expect(html).toContain('东方财富估值详情')
@@ -3245,6 +3286,8 @@ describe('App', () => {
     expect(markdown).toContain('通达信 vipdoc - 未找到 - STOCK_DOCTOR_TDX_VIPDOC_PATH')
     expect(markdown).toContain('### 密钥配置')
     expect(markdown).toContain('Tushare Pro Token - 未配置 - STOCK_DOCTOR_TUSHARE_TOKEN')
+    expect(markdown).toContain('### Tushare 预检')
+    expect(markdown).toContain('本次导出未执行只读预检。')
     expect(markdown).toContain('### 连接器明细')
     expect(markdown).toContain('东方财富估值详情')
     expect(markdown).toContain('新浪资金流兜底')

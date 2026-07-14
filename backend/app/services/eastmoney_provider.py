@@ -326,24 +326,32 @@ class EastmoneyMarketDataProvider:
                 },
             )
         except Exception as exc:
-            self._source_notes.add("tencent-kline")
-            rows = self._call_tencent_history_rows(symbol)
-            if rows:
-                self._tdx.record_reference_check(symbol, rows)
-                self._history_rows_cache[symbol] = (self._now(), rows)
-            else:
-                rows = self._call_tdx_history_rows(symbol)
-                if rows:
-                    self._source_notes.add("tdx-kline")
-                    self._history_rows_cache[symbol] = (self._now(), rows)
-                else:
-                    self._last_error = str(exc)
-            return rows
-        klines = payload.get("data", {}).get("klines", [])
+            return self._fallback_history_rows(symbol, str(exc))
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            return self._fallback_history_rows(symbol, "EastMoney returned empty K-line data")
+        klines = data.get("klines", [])
         rows = [row for raw in klines if isinstance(raw, str) and (row := self._parse_kline(raw)) is not None]
+        if not rows:
+            return self._fallback_history_rows(symbol, "EastMoney returned no usable K-line rows")
         self._tdx.record_reference_check(symbol, rows)
         self._history_rows_cache[symbol] = (self._now(), rows)
         return rows
+
+    def _fallback_history_rows(self, symbol: str, error: str) -> list[dict[str, Any]]:
+        self._source_notes.add("tencent-kline")
+        rows = self._call_tencent_history_rows(symbol)
+        if rows:
+            self._tdx.record_reference_check(symbol, rows)
+            self._history_rows_cache[symbol] = (self._now(), rows)
+            return rows
+        rows = self._call_tdx_history_rows(symbol)
+        if rows:
+            self._source_notes.add("tdx-kline")
+            self._history_rows_cache[symbol] = (self._now(), rows)
+            return rows
+        self._last_error = error
+        return []
 
     def _get_json(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
         response = self._session.get(

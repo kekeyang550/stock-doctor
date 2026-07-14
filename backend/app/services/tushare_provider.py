@@ -1,7 +1,16 @@
+from datetime import datetime, timezone
 from importlib.util import find_spec
 
 from app.config import settings
-from app.schemas.diagnosis import FundamentalSnapshot, HistoricalPriceBar, MarketOverview, StockSnapshot, StockSummary
+from app.schemas.diagnosis import (
+    FundamentalSnapshot,
+    HistoricalPriceBar,
+    MarketOverview,
+    StockSnapshot,
+    StockSummary,
+    TushareProbeResult,
+    TushareProbeStep,
+)
 from app.services.market_data import MockMarketDataProvider
 from app.services.storage import StateStore
 
@@ -103,6 +112,46 @@ class TushareMarketDataProvider:
     def get_cache_status(self) -> dict:
         return self._fallback.get_cache_status()
 
+    def probe_connectivity(self, symbol: str = "600519") -> TushareProbeResult:
+        normalized = symbol.strip().upper() or "600519"
+        package_available = self._package_available()
+        token_configured = bool(settings.tushare_token.strip())
+        steps = [
+            TushareProbeStep(
+                key="package",
+                label="tushare 包",
+                status="pass" if package_available else "fail",
+                detail="当前 Python 环境可导入 tushare。" if package_available else "当前 Python 环境未安装 tushare 包。",
+            ),
+            TushareProbeStep(
+                key="token",
+                label="Tushare Token",
+                status="pass" if token_configured else "warn",
+                detail="Token 已通过环境变量配置。" if token_configured else "未配置 STOCK_DOCTOR_TUSHARE_TOKEN。",
+            ),
+        ]
+        if not package_available or not token_configured:
+            return self._probe_result(normalized, package_available, token_configured, steps)
+
+        client = self._client()
+        steps.append(
+            TushareProbeStep(
+                key="client",
+                label="Pro API 初始化",
+                status="pass" if client is not None else "fail",
+                detail="pro_api 初始化成功。" if client is not None else "pro_api 初始化失败，继续使用安全回退。",
+            )
+        )
+        if client is None:
+            return self._probe_result(normalized, package_available, token_configured, steps)
+
+        ts_code = self._ts_code(normalized)
+        steps.append(self._probe_stock_basic(client, ts_code))
+        steps.append(self._probe_daily_basic(client, ts_code))
+        steps.append(self._probe_fina_indicator(client, ts_code))
+        steps.append(self._probe_pro_bar(ts_code))
+        return self._probe_result(normalized, package_available, token_configured, steps)
+
     def _is_ready(self) -> bool:
         return self._package_available() and bool(settings.tushare_token.strip())
 
@@ -130,6 +179,84 @@ class TushareMarketDataProvider:
         if package_available:
             return "tushare 包已安装，等待 STOCK_DOCTOR_TUSHARE_TOKEN；继续使用 Mock 回退。"
         return "tushare 包和 Token 均未配置；继续使用 Mock 回退。"
+
+    def _probe_stock_basic(self, client: object, ts_code: str) -> TushareProbeStep:
+        stock_basic = getattr(client, "stock_basic", None)
+        if stock_basic is None:
+            return TushareProbeStep(key="stock_basic", label="基础资料", status="fail", detail="client 缺少 stock_basic 能力。")
+        try:
+            rows = self._rows(stock_basic(ts_code=ts_code, fields="ts_code,name,industry"))
+        except Exception:
+            return TushareProbeStep(key="stock_basic", label="基础资料", status="fail", detail="stock_basic 调用失败。")
+        return self._probe_rows_step("stock_basic", "基础资料", rows)
+
+    def _probe_daily_basic(self, client: object, ts_code: str) -> TushareProbeStep:
+        try:
+            rows = self._rows(client.daily_basic(ts_code=ts_code, fields="ts_code,trade_date,pe_ttm,pb,turnover_rate"))
+        except Exception:
+            return TushareProbeStep(key="daily_basic", label="日行情基础指标", status="fail", detail="daily_basic 调用失败。")
+        return self._probe_rows_step("daily_basic", "日行情基础指标", rows)
+
+    def _probe_fina_indicator(self, client: object, ts_code: str) -> TushareProbeStep:
+        try:
+            rows = self._rows(client.fina_indicator(ts_code=ts_code, fields="ts_code,end_date,roe_dt,revenue_yoy,netprofit_yoy"))
+        except Exception:
+            return TushareProbeStep(key="fina_indicator", label="财务指标", status="fail", detail="fina_indicator 调用失败。")
+        return self._probe_rows_step("fina_indicator", "财务指标", rows)
+
+    def _probe_pro_bar(self, ts_code: str) -> TushareProbeStep:
+        module = self._ts_module
+        if module is None:
+            try:
+                import tushare as module  # type: ignore
+            except Exception:
+                return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="tushare 包导入失败。")
+        pro_bar = getattr(module, "pro_bar", None)
+        if pro_bar is None:
+            return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="tushare.pro_bar 不可用。")
+        try:
+            rows = self._rows(pro_bar(ts_code=ts_code, adj="qfq", freq="D"))
+        except Exception:
+            return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="pro_bar 前复权日线调用失败。")
+        return self._probe_rows_step("pro_bar", "前复权日线", rows)
+
+    def _probe_rows_step(self, key: str, label: str, rows: list[dict]) -> TushareProbeStep:
+        if rows:
+            return TushareProbeStep(key=key, label=label, status="pass", detail=f"返回 {len(rows)} 行样本。")
+        return TushareProbeStep(key=key, label=label, status="warn", detail="接口可调用但返回空数据。")
+
+    def _probe_result(
+        self,
+        symbol: str,
+        package_available: bool,
+        token_configured: bool,
+        steps: list[TushareProbeStep],
+    ) -> TushareProbeResult:
+        has_fail = any(step.status == "fail" for step in steps)
+        has_warn = any(step.status == "warn" for step in steps)
+        status = "fail" if has_fail else "warn" if has_warn else "pass"
+        if status == "pass":
+            message = "Tushare Pro 预检通过，基础资料、财务指标和前复权日线均可调用。"
+            next_action = "可以考虑切换 STOCK_DOCTOR_DATA_PROVIDER=tushare 做真实数据增强试运行。"
+        elif not package_available:
+            message = "当前 Python 环境未安装 tushare 包。"
+            next_action = '在 backend 目录执行 pip install -e ".[real-data]" 后重启后端，再重新检测。'
+        elif not token_configured:
+            message = "Tushare Pro Token 未配置，当前只能使用其他数据源或 Mock 回退。"
+            next_action = "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再重新检测。"
+        else:
+            message = "Tushare Pro 预检未完全通过，系统会继续使用安全回退。"
+            next_action = "根据失败步骤检查 token 权限、网络连通性或 Tushare 接口返回。"
+        return TushareProbeResult(
+            symbol=symbol,
+            generated_at=datetime.now(timezone.utc).isoformat(),
+            status=status,
+            package_installed=package_available,
+            token_configured=token_configured,
+            message=message,
+            next_action=next_action,
+            steps=steps,
+        )
 
     def _client(self):
         module = self._ts_module

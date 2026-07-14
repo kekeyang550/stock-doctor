@@ -55,6 +55,7 @@ from app.schemas.diagnosis import (
     SystemReadinessCheck,
     TimelineEvent,
     TrendSeries,
+    TushareProbeResult,
     WatchlistRequest,
     WatchlistSummary,
     IndustryExposure,
@@ -88,6 +89,7 @@ from app.services.strategy_backtest_history import StrategyBacktestHistoryServic
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
 from app.services.timeline import TimelineService
 from app.services.trend import TrendService
+from app.services.tushare_provider import TushareMarketDataProvider
 from app.services.thesis import ThesisService
 
 
@@ -240,6 +242,11 @@ async def system_data_connectors() -> DataConnectorHealth:
 @router.get("/system/runtime-config", response_model=DataRuntimeSettings)
 async def system_runtime_config() -> DataRuntimeSettings:
     return _runtime_settings()
+
+
+@router.get("/system/tushare-probe", response_model=TushareProbeResult)
+async def system_tushare_probe(symbol: str = Query(default="600519", min_length=6, max_length=6)) -> TushareProbeResult:
+    return TushareMarketDataProvider().probe_connectivity(symbol=symbol)
 
 
 def _runtime_settings() -> DataRuntimeSettings:

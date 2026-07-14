@@ -131,6 +131,24 @@ class DataRuntimeSettings(BaseModel):
     restart_required: bool = True
 
 
+class TushareProbeStep(BaseModel):
+    key: str
+    label: str
+    status: str = Field(pattern="^(pass|warn|fail|skip)$")
+    detail: str
+
+
+class TushareProbeResult(BaseModel):
+    symbol: str
+    generated_at: str
+    status: str = Field(pattern="^(pass|warn|fail)$")
+    package_installed: bool
+    token_configured: bool
+    message: str
+    next_action: str
+    steps: list[TushareProbeStep]
+
+
 class DataRefreshJob(BaseModel):
     id: str
     provider: str

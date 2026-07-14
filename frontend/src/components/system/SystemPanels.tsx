@@ -47,11 +47,24 @@ import type {
   SystemReadinessCheck,
   TimelineEvent,
   TrendSeries,
+  TushareProbeResult,
   WatchlistSummary,
 } from '../../lib/types'
 import { formatReportTime } from '../../lib/formatters'
 
-export function SystemRuntimeConfigPanel({ settings }: { settings: DataRuntimeSettings | null }) {
+export function SystemRuntimeConfigPanel({
+  settings,
+  probe,
+  probing,
+  probeError,
+  onProbe,
+}: {
+  settings: DataRuntimeSettings | null
+  probe: TushareProbeResult | null
+  probing: boolean
+  probeError: string | null
+  onProbe: () => void
+}) {
   const providerOptions = settings?.provider_options?.length ? settings.provider_options.join(' / ') : '未返回'
   const paths = settings?.paths ?? []
   const secrets = settings?.secrets ?? []
@@ -67,6 +80,13 @@ export function SystemRuntimeConfigPanel({ settings }: { settings: DataRuntimeSe
       </div>
       {settings ? (
         <>
+          <div className="runtime-actions">
+            <span>只读预检不会切换当前数据源，也不会返回 Token 明文。</span>
+            <button type="button" onClick={onProbe} disabled={probing}>
+              <RefreshCw size={15} className={probing ? 'spin' : undefined} />
+              <span>{probing ? '检测中' : '检测 Tushare'}</span>
+            </button>
+          </div>
           <div className="runtime-config-grid">
             <RuntimeConfigItem label="数据源" value={settings.active_provider} detail={`可选：${providerOptions}`} />
             <RuntimeConfigItem label="请求超时" value={`${settings.request_timeout_seconds} 秒`} detail="真实行情接口单次等待上限" />
@@ -100,12 +120,60 @@ export function SystemRuntimeConfigPanel({ settings }: { settings: DataRuntimeSe
           <p className="runtime-config-note">
             修改这些配置需要更新后端环境变量并重启服务后生效。
           </p>
+          {probeError ? (
+            <div className="runtime-probe error">
+              <strong>Tushare 预检失败</strong>
+              <p>{probeError}</p>
+            </div>
+          ) : null}
+          {probe ? <TushareProbePanel probe={probe} /> : null}
         </>
       ) : (
         <p className="empty-text">正在读取运行配置...</p>
       )}
     </section>
   )
+}
+
+
+function TushareProbePanel({ probe }: { probe: TushareProbeResult }) {
+  return (
+    <div className={`runtime-probe ${probe.status}`}>
+      <div className="runtime-probe-head">
+        <span>
+          <strong>Tushare 预检</strong>
+          <small>{probe.symbol} · {formatReportTime(probe.generated_at)}</small>
+        </span>
+        <em>{probeStatusLabel(probe.status)}</em>
+      </div>
+      <p>{probe.message}</p>
+      <small>{probe.next_action}</small>
+      <div className="runtime-probe-steps">
+        {probe.steps.map((step) => (
+          <article key={step.key} className={step.status}>
+            <strong>{step.label}</strong>
+            <em>{probeStepStatusLabel(step.status)}</em>
+            <small>{step.detail}</small>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+
+function probeStatusLabel(status: TushareProbeResult['status']) {
+  if (status === 'pass') return '通过'
+  if (status === 'warn') return '需配置'
+  return '未通过'
+}
+
+
+function probeStepStatusLabel(status: TushareProbeResult['steps'][number]['status']) {
+  if (status === 'pass') return '通过'
+  if (status === 'warn') return '提示'
+  if (status === 'skip') return '跳过'
+  return '失败'
 }
 
 

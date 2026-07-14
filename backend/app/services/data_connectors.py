@@ -293,7 +293,7 @@ class DataConnectorHealthService:
         if active_provider == "eastmoney":
             return "如需回到 AKShare 聚合链路，可设置 STOCK_DOCTOR_DATA_PROVIDER=akshare 后重启后端。"
         if not installed:
-            return "在后端环境执行 pip install akshare 后，再设置 STOCK_DOCTOR_DATA_PROVIDER=akshare。"
+            return '在 backend 目录执行 pip install -e ".[real-data]" 后，再设置 STOCK_DOCTOR_DATA_PROVIDER=akshare。'
         if active_provider != "akshare":
             return "设置 STOCK_DOCTOR_DATA_PROVIDER=akshare 后重启后端进行真实数据试运行。"
         return "继续补齐股票列表、行情快照和板块资金流字段映射。"
@@ -341,7 +341,7 @@ class DataConnectorHealthService:
             return "继续扩展 Tushare 更多财报字段，并做 token 实盘连通性校验。"
         token_configured = bool(settings.tushare_token.strip())
         if not installed:
-            return "在后端环境执行 pip install tushare，并配置 STOCK_DOCTOR_TUSHARE_TOKEN。"
+            return '在 backend 目录执行 pip install -e ".[real-data]"，并配置 STOCK_DOCTOR_TUSHARE_TOKEN。'
         if not token_configured:
             return "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再验证财务和前复权日线增强。"
         return "继续实现 Tushare 更多财报字段归一化后，再扩大 provider 切换范围。"

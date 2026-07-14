@@ -8,6 +8,7 @@ from app.services.market_data import MockMarketDataProvider
 from app.services.provider_factory import create_market_data_provider
 from app.services.storage import JsonStateStore
 from app.services.tdx_local_provider import TdxLocalHistoryProvider
+import app.services.tushare_provider as tushare_provider
 from app.services.tushare_provider import TushareMarketDataProvider
 from app.config import settings
 
@@ -186,6 +187,54 @@ def test_tushare_provider_returns_adjusted_price_history(monkeypatch):
     tushare = next(source for source in sources if source["name"] == "Tushare Pro")
     assert tushare["status"] == "online"
     assert "前复权日线" in tushare["role"]
+
+
+def test_tushare_provider_probe_reports_ready_steps(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "test-token")
+    module = FakeTushareModule()
+    provider = TushareMarketDataProvider(ts_module=module)
+
+    result = provider.probe_connectivity("600519")
+
+    assert result.status == "pass"
+    assert result.package_installed is True
+    assert result.token_configured is True
+    assert {step.key for step in result.steps} == {
+        "package",
+        "token",
+        "client",
+        "stock_basic",
+        "daily_basic",
+        "fina_indicator",
+        "pro_bar",
+    }
+    assert all(step.status == "pass" for step in result.steps)
+    assert module.client.token == "test-token"
+
+
+def test_tushare_provider_probe_reports_failures_without_token_leak(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "secret-token")
+    provider = TushareMarketDataProvider(ts_module=FailingTushareModule())
+
+    result = provider.probe_connectivity("600519")
+
+    assert result.status == "fail"
+    assert result.token_configured is True
+    assert "secret-token" not in result.model_dump_json()
+    assert any(step.key == "stock_basic" and step.status == "fail" for step in result.steps)
+    assert any(step.key == "pro_bar" and step.status == "fail" for step in result.steps)
+
+
+def test_tushare_provider_probe_points_to_real_data_extra_when_package_missing(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "")
+    monkeypatch.setattr(tushare_provider, "find_spec", lambda package: None)
+    provider = TushareMarketDataProvider()
+
+    result = provider.probe_connectivity("600519")
+
+    assert result.status == "fail"
+    assert result.package_installed is False
+    assert 'pip install -e ".[real-data]"' in result.next_action
 
 
 def test_tushare_provider_reports_api_failures_without_breaking_fallback(monkeypatch):
@@ -445,6 +494,13 @@ class FailingEastmoneyFundFlowSession(FakeEastmoneySession):
     def get(self, url, params=None, timeout=None, headers=None):
         if "stock/fflow/daykline/get" in url:
             raise RuntimeError("eastmoney fund flow unavailable")
+        return super().get(url, params=params, timeout=timeout, headers=headers)
+
+
+class EmptyEastmoneyKlineSession(FakeEastmoneySession):
+    def get(self, url, params=None, timeout=None, headers=None):
+        if url == EastmoneyMarketDataProvider._KLINE_URL:
+            return FakeResponse({"data": None})
         return super().get(url, params=params, timeout=timeout, headers=headers)
 
 
@@ -1056,3 +1112,35 @@ def test_eastmoney_provider_reports_tdx_reference_source(tmp_path):
     tdx = next(source for source in sources if source["name"] == "通达信本地日线")
     assert tdx["status"] == "online"
     assert "最近校验" in tdx["role"]
+
+
+def test_eastmoney_provider_falls_back_to_tdx_when_kline_payload_is_empty(tmp_path):
+    write_tdx_day_file(
+        tmp_path,
+        "600519",
+        [
+            (
+                int((date(2026, 6, 1) + timedelta(days=index)).strftime("%Y%m%d")),
+                20 + index * 0.1,
+                20.4 + index * 0.1,
+                19.8 + index * 0.1,
+                20.2 + index * 0.1,
+                1_000_000.0 + index,
+                1000 + index,
+            )
+            for index in range(30)
+        ],
+    )
+    provider = EastmoneyMarketDataProvider(
+        session=EmptyEastmoneyKlineSession(),
+        tdx_provider=TdxLocalHistoryProvider(vipdoc_path=tmp_path),
+    )
+
+    snapshot = provider.get_snapshot("600519")
+    bars = provider.get_price_history("600519", days=2)
+    sources = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert bars[-1].date == "2026-06-30"
+    assert bars[-1].close == 23.1
+    assert "tdx-kline" in sources[0]["role"]

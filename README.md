@@ -14,6 +14,7 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .
+Copy-Item .env.example .env
 python -m pytest
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```
@@ -81,12 +82,12 @@ To trial AKShare after installing the package:
 
 ```powershell
 cd backend
-pip install akshare
+pip install -e ".[real-data]"
 $env:STOCK_DOCTOR_DATA_PROVIDER = "akshare"
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```
 
-The AKShare adapter remains available as an optional aggregation path and keeps the mock provider as a fallback while real A-share fields are normalized.
+The AKShare adapter remains available as an optional aggregation path and keeps the mock provider as a fallback while real A-share fields are normalized. If you only need this adapter, `pip install akshare` is still enough.
 
 Tushare Pro is available as an optional finance/basic-info enhancement. The app reports whether the package/token prerequisites are ready without exposing the token value:
 
@@ -95,6 +96,7 @@ $env:STOCK_DOCTOR_TUSHARE_TOKEN = "<your-token>"
 ```
 
 Install `tushare` in the backend environment when you are ready to connect the finance/basic-info normalization layer. `STOCK_DOCTOR_DATA_PROVIDER=tushare` is accepted and safe to start today; the adapter can enrich stock name/industry, PE/PB/ROE/revenue growth/profit growth/EPS/gross margin/net margin/debt-to-assets, operating cash flow per share, cash-flow-to-profit, current ratio, quick ratio, asset turnover, and adjusted daily price history from Tushare Pro when package and token are present. Stock lists, quotes, and any failed Tushare calls continue to use the Mock fallback, and connector health reports the latest failed probe step without returning token values.
+The runtime configuration panel includes a read-only "检测 Tushare" probe. It checks package import, token presence, Pro API initialization, `stock_basic`, `daily_basic`, `fina_indicator`, and `pro_bar` without switching the active provider or returning token values.
 
 The workspace also includes a manual refresh job panel. Refresh jobs record provider, scope, status, duration, and covered stock counts so the same history can later back scheduled real-data updates.
 
@@ -115,3 +117,4 @@ $env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "E:\new_tdx64\vipdoc"
 These values are returned by `/api/v1/system/data-connectors` and `/api/v1/system/runtime-config`, then displayed in the data trust/runtime panels so the current real-data operating assumptions are visible before diagnosis or backtest decisions.
 
 JSON, HTML, and Markdown research exports include connector health, cache telemetry, stock-level data quality checks, runtime settings, and local path status so reports remain auditable outside the app. HTML and Markdown exports also include a conclusion page and fixed risk disclosure; the HTML export includes a printable cover and page-break styles, and the app toolbar can open the printable report directly for browser "print to PDF" workflows. Saved report history entries can also be exported as JSON, HTML, or Markdown archives with the saved diagnosis and data-quality snapshot, or opened directly for browser PDF output.
+If the Tushare read-only probe has been run in the runtime panel, JSON/HTML/Markdown exports also include the probe status, failed or warning steps, and the recommended next action. If it has not been run, exports explicitly say that the probe was not executed for this report.

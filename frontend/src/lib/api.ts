@@ -43,6 +43,7 @@ import type {
   SystemReadiness,
   TimelineEvent,
   TrendSeries,
+  TushareProbeResult,
   WatchlistSummary,
 } from './types'
 
@@ -125,6 +126,10 @@ export function fetchDataConnectorHealth(): Promise<DataConnectorHealth> {
 
 export function fetchDataRuntimeSettings(): Promise<DataRuntimeSettings> {
   return getJson<DataRuntimeSettings>('/api/v1/system/runtime-config')
+}
+
+export function fetchTushareProbe(symbol = '600519'): Promise<TushareProbeResult> {
+  return getJson<TushareProbeResult>(`/api/v1/system/tushare-probe?symbol=${encodeURIComponent(symbol)}`)
 }
 
 export function fetchRefreshJobs(): Promise<DataRefreshJob[]> {
