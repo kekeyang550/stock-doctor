@@ -172,7 +172,7 @@ class TushareMarketDataProvider:
                         "ts_code,end_date,roe_dt,roe,q_roe,revenue_yoy,netprofit_yoy,"
                         "eps,basic_eps,grossprofit_margin,gross_margin,debt_to_assets,"
                         "ocfps,ocf_to_profit,cashflow_ratio,current_ratio,quick_ratio,"
-                        "netprofit_margin,net_profit_margin,assets_turn,asset_turnover"
+                        "netprofit_margin,assets_turn"
                     ),
                 )
             )
