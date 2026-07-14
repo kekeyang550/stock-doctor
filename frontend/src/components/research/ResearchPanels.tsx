@@ -235,7 +235,7 @@ export function ReportHistory({
   deletingReportId,
 }: {
   reports: ReportRecord[]
-  onSelect: (symbol: string) => void
+  onSelect: (report: ReportRecord) => void
   onExport: (report: ReportRecord, format: 'json' | 'html' | 'markdown') => void
   onDelete: (reportId: string) => void
   deletingReportId: string | null
@@ -254,7 +254,7 @@ export function ReportHistory({
             const deleting = deletingReportId === report.id
             return (
               <article key={report.id} className="history-row">
-                <button type="button" onClick={() => onSelect(report.diagnosis.symbol)}>
+                <button type="button" onClick={() => onSelect(report)}>
                   <strong>{report.diagnosis.name}</strong>
                   <span>{report.diagnosis.symbol} · {report.diagnosis.rating} · {report.diagnosis.score.total} 分</span>
                   {report.data_quality ? (

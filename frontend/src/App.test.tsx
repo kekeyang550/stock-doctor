@@ -566,7 +566,7 @@ const systemReadiness = {
 }
 
 const reports = [
-  { id: 'r1', generated_at: '2026-07-10T03:00:00Z', diagnosis, data_quality: dataQuality },
+  { id: 'r1', generated_at: '2026-07-10T03:00:00Z', diagnosis: { ...diagnosis, horizon: 'position' }, data_quality: dataQuality },
 ]
 
 const notes = [
@@ -1560,6 +1560,8 @@ describe('App', () => {
     expect(within(history).getByText(/强势关注/)).toBeInTheDocument()
     expect(within(history).getByText(/86 分/)).toBeInTheDocument()
     expect(within(history).getByText('数据质量 90 分 · 需核验')).toBeInTheDocument()
+    fireEvent.click(within(history).getByRole('button', { name: /600519/ }))
+    expect(screen.getByRole('button', { name: '中线' })).toHaveClass('selected')
   })
 
   it('keeps diagnosis change panel visible when legacy change data omits enhanced fields', async () => {
@@ -2834,7 +2836,7 @@ describe('App', () => {
     expect(exported.version).toBe('stock-doctor-saved-report-v1')
     expect(exported.report_id).toBe('r1')
     expect(exported.symbol).toBe('600519')
-    expect(exported.horizon).toBe('swing')
+    expect(exported.horizon).toBe('position')
     expect(exported.diagnosis.symbol).toBe('600519')
     expect(exported.data_quality.score).toBe(90)
     expect(reportBlobOptions?.type).toBe('application/json')

@@ -789,6 +789,13 @@ export default function App() {
     }
   }, [])
 
+  const selectSavedReport = useCallback((report: ReportRecord) => {
+    setSelectedSymbol(report.diagnosis.symbol)
+    if (horizonOptions.some((option) => option.value === report.diagnosis.horizon)) {
+      setHorizon(report.diagnosis.horizon)
+    }
+  }, [])
+
   const removeReport = useCallback(async (reportId: string) => {
     setError(null)
     setDeletingReportId(reportId)
@@ -1286,7 +1293,7 @@ export default function App() {
           deletingNoteId={deletingNoteId}
           error={noteError}
         />
-        <ReportHistory reports={reports} onSelect={setSelectedSymbol} onExport={exportSavedReport} onDelete={removeReport} deletingReportId={deletingReportId} />
+        <ReportHistory reports={reports} onSelect={selectSavedReport} onExport={exportSavedReport} onDelete={removeReport} deletingReportId={deletingReportId} />
       </section>
     </main>
   )
