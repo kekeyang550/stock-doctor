@@ -723,13 +723,11 @@ export default function App() {
     setError(null)
     setExportingReportPackage(true)
     try {
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.json`
-      anchor.click()
-      URL.revokeObjectURL(url)
+      downloadTextFile(
+        JSON.stringify(payload, null, 2),
+        'application/json',
+        `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.json`,
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : '研究报告导出失败')
     } finally {
@@ -743,14 +741,11 @@ export default function App() {
     setError(null)
     setExportingReportPackage(true)
     try {
-      const html = buildResearchReportHtml(payload)
-      const blob = new Blob([html], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.html`
-      anchor.click()
-      URL.revokeObjectURL(url)
+      downloadTextFile(
+        buildResearchReportHtml(payload),
+        'text/html',
+        `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.html`,
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'HTML 报告导出失败')
     } finally {
@@ -764,14 +759,11 @@ export default function App() {
     setError(null)
     setExportingReportPackage(true)
     try {
-      const markdown = buildResearchReportMarkdown(payload)
-      const blob = new Blob([markdown], { type: 'text/markdown' })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.md`
-      anchor.click()
-      URL.revokeObjectURL(url)
+      downloadTextFile(
+        buildResearchReportMarkdown(payload),
+        'text/markdown',
+        `stock-doctor-report-${selectedSymbol}-${payload.exported_at.slice(0, 10)}.md`,
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Markdown 报告导出失败')
     } finally {
