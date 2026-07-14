@@ -3464,6 +3464,13 @@ describe('App', () => {
 
     await waitFor(() => expect(within(storagePanel).getByText('backup.json')).toBeInTheDocument())
     expect(previewBodies[0]).toMatchObject({ strategy_backtests: [{ id: 'bt1', symbol: '600519', holding_days: 10 }] })
+    fireEvent.click(within(storagePanel).getByRole('button', { name: '取消' }))
+    expect(within(storagePanel).queryByText('backup.json')).not.toBeInTheDocument()
+    expect(within(storagePanel).queryByRole('button', { name: '导入' })).not.toBeInTheDocument()
+
+    fireEvent.change(importInput, { target: { files: [file] } })
+    await waitFor(() => expect(within(storagePanel).getByText('backup.json')).toBeInTheDocument())
+    expect(previewBodies[1]).toMatchObject({ strategy_backtests: [{ id: 'bt1', symbol: '600519', holding_days: 10 }] })
     const importButton = within(storagePanel).getByRole('button', { name: '导入' })
     fireEvent.click(importButton)
 

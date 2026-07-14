@@ -979,6 +979,13 @@ export default function App() {
     }
   }, [])
 
+  const clearStorageImportPreview = useCallback(() => {
+    setStorageError(null)
+    setStorageImportPayload(null)
+    setStorageImportPreview(null)
+    setStorageImportName('')
+  }, [])
+
   const applyStorageImport = useCallback(async () => {
     if (!storageImportPayload) return
     setError(null)
@@ -1160,6 +1167,7 @@ export default function App() {
           onExport={exportStorage}
           onPreviewImport={previewStorageFile}
           onApplyImport={applyStorageImport}
+          onClearImportPreview={clearStorageImportPreview}
           exporting={exportingStorage}
           previewingImport={previewingImport}
           applyingImport={applyingImport}

@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload, XCircle } from 'lucide-react'
 import { connectorTelemetry, humanizeConnectorMessage } from '../../lib/sourceLabels'
 import type {
   AlertItem,
@@ -141,6 +141,7 @@ export function SystemStoragePanel({
   onExport,
   onPreviewImport,
   onApplyImport,
+  onClearImportPreview,
   exporting,
   previewingImport,
   applyingImport,
@@ -152,6 +153,7 @@ export function SystemStoragePanel({
   onExport: () => void
   onPreviewImport: (file: File) => void
   onApplyImport: () => void
+  onClearImportPreview: () => void
   exporting: boolean
   previewingImport: boolean
   applyingImport: boolean
@@ -219,10 +221,16 @@ export function SystemStoragePanel({
                   <strong>{importFileName}</strong>
                   <small>{importPreview.total_records} 条记录 · 跳过 {importPreview.skipped_records}</small>
                 </span>
-                <button type="button" onClick={onApplyImport} disabled={!importPreview.can_import || applyingImport}>
-                  <Upload size={15} />
-                  <span>{applyingImport ? '导入中' : '导入'}</span>
-                </button>
+                <span className="inline-actions">
+                  <button type="button" className="secondary-action" onClick={onClearImportPreview} disabled={applyingImport}>
+                    <XCircle size={15} />
+                    <span>取消</span>
+                  </button>
+                  <button type="button" onClick={onApplyImport} disabled={!importPreview.can_import || applyingImport}>
+                    <Upload size={15} />
+                    <span>{applyingImport ? '导入中' : '导入'}</span>
+                  </button>
+                </span>
               </div>
               <div className="storage-grid compact">
                 {importPreview.collections.map((item) => (

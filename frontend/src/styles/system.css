@@ -178,6 +178,12 @@
   min-width: 0;
 }
 
+.import-preview-head .inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .import-preview-head strong,
 .import-preview-head small {
   overflow-wrap: anywhere;
@@ -190,6 +196,11 @@
 .import-preview-head button {
   background: #26372f;
   color: #ffffff;
+}
+
+.import-preview-head button.secondary-action {
+  background: #eef3ea;
+  color: #26372f;
 }
 
 .import-warnings {
