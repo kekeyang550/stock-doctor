@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, Printer, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { StockList } from './components/StockList'
 import { humanizeConnectorMessage } from './lib/sourceLabels'
@@ -754,6 +754,20 @@ export default function App() {
     }
   }, [buildCurrentResearchReportPayload, selectedSymbol])
 
+  const printCurrentResearchReport = useCallback(() => {
+    const payload = buildCurrentResearchReportPayload()
+    if (!payload) return
+    setError(null)
+    setExportingReportPackage(true)
+    try {
+      printHtmlReport(buildResearchReportHtml(payload), `Stock Doctor ${selectedSymbol} ${payload.exported_at.slice(0, 10)}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '打印/PDF 报告失败')
+    } finally {
+      setExportingReportPackage(false)
+    }
+  }, [buildCurrentResearchReportPayload, selectedSymbol])
+
   const exportCurrentResearchReportMarkdown = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
     if (!payload) return
@@ -1076,6 +1090,10 @@ export default function App() {
             <button className="watch-button" type="button" onClick={exportCurrentResearchReportHtml} disabled={!diagnosis || exportingReportPackage}>
               <FileText size={16} />
               <span>{exportingReportPackage ? '导出中' : '导出HTML'}</span>
+            </button>
+            <button className="watch-button" type="button" onClick={printCurrentResearchReport} disabled={!diagnosis || exportingReportPackage}>
+              <Printer size={16} />
+              <span>{exportingReportPackage ? '处理中' : '打印/PDF'}</span>
             </button>
             <button className="watch-button" type="button" onClick={exportCurrentResearchReportMarkdown} disabled={!diagnosis || exportingReportPackage}>
               <FileText size={16} />
@@ -1520,6 +1538,19 @@ function markdownList(lines: string[], items: any[], render: (item: any) => stri
   for (const item of items) {
     lines.push(`- ${markdownText(render(item))}`)
   }
+}
+
+function printHtmlReport(content: string, title: string) {
+  const reportWindow = window.open('', '_blank', 'noopener,noreferrer')
+  if (!reportWindow) {
+    throw new Error('浏览器阻止了打印窗口，请允许弹出窗口后重试')
+  }
+  reportWindow.document.open()
+  reportWindow.document.write(content)
+  reportWindow.document.close()
+  reportWindow.document.title = title
+  reportWindow.focus()
+  reportWindow.print()
 }
 
 function markdownText(value: unknown) {

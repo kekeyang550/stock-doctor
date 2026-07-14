@@ -3060,6 +3060,59 @@ describe('App', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-html-report')
   })
 
+  it('opens the printable HTML research report for browser PDF output', async () => {
+    const printedDocument = {
+      open: vi.fn(),
+      write: vi.fn(),
+      close: vi.fn(),
+      title: '',
+    }
+    const printWindow = {
+      document: printedDocument,
+      focus: vi.fn(),
+      print: vi.fn(),
+    }
+    const open = vi.fn(() => printWindow)
+    vi.stubGlobal('open', open)
+
+    render(<App />)
+
+    const toolbar = await waitFor(() => {
+      const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
+      expect(node).not.toBeNull()
+      return node as HTMLElement
+    })
+    fireEvent.click(within(toolbar).getByRole('button', { name: '打印/PDF' }))
+
+    expect(open).toHaveBeenCalledWith('', '_blank', 'noopener,noreferrer')
+    expect(printedDocument.open).toHaveBeenCalled()
+    expect(printedDocument.write).toHaveBeenCalled()
+    const html = String(printedDocument.write.mock.calls[0][0])
+    expect(html).toContain('<!doctype html>')
+    expect(html).toContain('贵州茅台')
+    expect(html).toContain('@media print')
+    expect(html).toContain('固定风险提示')
+    expect(printedDocument.close).toHaveBeenCalled()
+    expect(printedDocument.title).toMatch(/Stock Doctor 600519/)
+    expect(printWindow.focus).toHaveBeenCalled()
+    expect(printWindow.print).toHaveBeenCalled()
+  })
+
+  it('shows local feedback when printable PDF output is blocked by the browser', async () => {
+    vi.stubGlobal('open', vi.fn(() => null))
+
+    render(<App />)
+
+    const toolbar = await waitFor(() => {
+      const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
+      expect(node).not.toBeNull()
+      return node as HTMLElement
+    })
+    fireEvent.click(within(toolbar).getByRole('button', { name: '打印/PDF' }))
+
+    expect(await screen.findByText('浏览器阻止了打印窗口，请允许弹出窗口后重试')).toBeInTheDocument()
+  })
+
   it('exports a readable Markdown research report from the current v2 payload', async () => {
     const NativeBlob = Blob
     let reportBlobParts: BlobPart[] = []
