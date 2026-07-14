@@ -1,5 +1,7 @@
 from app.schemas.diagnosis import (
     CapitalSnapshot,
+    DataQualityReport,
+    DataQualityCheck,
     DiagnosisResponse,
     FundamentalSnapshot,
     RiskSnapshot,
@@ -30,12 +32,33 @@ def make_diagnosis() -> DiagnosisResponse:
 
 def test_report_service_saves_lists_and_deletes_reports(tmp_path):
     service = ReportService(JsonStateStore(tmp_path / "state.json"))
-    record = service.save_report(make_diagnosis())
+    quality = DataQualityReport(
+        symbol="600519",
+        name="贵州茅台",
+        as_of="2026-07-10",
+        status="pass",
+        score=100,
+        coverage_pct=100,
+        issue_count=0,
+        summary="数据质量可用。",
+        checks=[
+            DataQualityCheck(
+                key="market",
+                label="行情",
+                status="pass",
+                detail="行情字段完整。",
+                impact="影响诊断。",
+            )
+        ],
+    )
+    record = service.save_report(make_diagnosis(), data_quality=quality)
 
     reports = service.list_reports()
 
     assert reports[0].id == record.id
     assert reports[0].diagnosis.symbol == "600519"
+    assert reports[0].data_quality is not None
+    assert reports[0].data_quality.score == 100
     assert service.delete_report(record.id) is True
     assert service.list_reports() == []
 

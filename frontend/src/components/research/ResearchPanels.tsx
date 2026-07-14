@@ -251,6 +251,9 @@ export function ReportHistory({
               <button type="button" onClick={() => onSelect(report.diagnosis.symbol)}>
                 <strong>{report.diagnosis.name}</strong>
                 <span>{report.diagnosis.symbol} · {report.diagnosis.rating} · {report.diagnosis.score.total} 分</span>
+                {report.data_quality ? (
+                  <span>数据质量 {report.data_quality.score} 分 · {qualityStatusLabel(report.data_quality.status)}</span>
+                ) : null}
                 <small>{formatReportTime(report.generated_at)}</small>
               </button>
               <button type="button" className="delete-button" onClick={() => onDelete(report.id)} aria-label={`删除 ${report.diagnosis.name} 报告`}>
@@ -262,4 +265,11 @@ export function ReportHistory({
       )}
     </section>
   )
+}
+
+function qualityStatusLabel(status: DataQualityReport['status']) {
+  if (status === 'pass') return '可用'
+  if (status === 'warn') return '需核验'
+  if (status === 'fail') return '异常'
+  return '未知'
 }

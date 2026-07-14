@@ -560,7 +560,7 @@ const systemReadiness = {
 }
 
 const reports = [
-  { id: 'r1', generated_at: '2026-07-10T03:00:00Z', diagnosis },
+  { id: 'r1', generated_at: '2026-07-10T03:00:00Z', diagnosis, data_quality: dataQuality },
 ]
 
 const notes = [
@@ -1551,6 +1551,7 @@ describe('App', () => {
     expect(within(history).getByText(/600519/)).toBeInTheDocument()
     expect(within(history).getByText(/强势关注/)).toBeInTheDocument()
     expect(within(history).getByText(/86 分/)).toBeInTheDocument()
+    expect(within(history).getByText('数据质量 90 分 · 需核验')).toBeInTheDocument()
   })
 
   it('keeps diagnosis change panel visible when legacy change data omits enhanced fields', async () => {

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from app.schemas.diagnosis import ChecklistItem, DiagnosisResponse, ReportRecord
+from app.schemas.diagnosis import ChecklistItem, DataQualityReport, DiagnosisResponse, ReportRecord
 from app.services.storage import StateStore, create_state_store
 
 
@@ -14,11 +14,12 @@ class ReportService:
         reports = [ReportRecord.model_validate(self._migrate_report(item)) for item in self._state_store.load_reports()]
         return sorted(reports, key=lambda item: item.generated_at, reverse=True)[:limit]
 
-    def save_report(self, diagnosis: DiagnosisResponse) -> ReportRecord:
+    def save_report(self, diagnosis: DiagnosisResponse, data_quality: DataQualityReport | None = None) -> ReportRecord:
         record = ReportRecord(
             id=uuid4().hex,
             generated_at=datetime.now(timezone.utc).isoformat(),
             diagnosis=diagnosis,
+            data_quality=data_quality,
         )
         reports = self._state_store.load_reports()
         reports.insert(0, record.model_dump(mode="json"))

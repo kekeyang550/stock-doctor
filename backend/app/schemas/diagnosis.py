@@ -452,6 +452,7 @@ class ReportRecord(BaseModel):
     id: str
     generated_at: str
     diagnosis: DiagnosisResponse
+    data_quality: DataQualityReport | None = None
 
 
 class ResearchNote(BaseModel):

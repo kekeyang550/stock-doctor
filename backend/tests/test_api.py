@@ -347,6 +347,8 @@ def test_report_create_list_and_delete():
     assert create_response.status_code == 201
     report = create_response.json()
     assert report["diagnosis"]["symbol"] == "600519"
+    assert report["data_quality"]["score"] > 0
+    assert report["data_quality"]["status"] in {"pass", "warn", "fail"}
 
     list_response = client.get("/api/v1/reports")
 

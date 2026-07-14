@@ -438,7 +438,11 @@ async def create_report(request: ReportRequest) -> ReportRecord:
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
     diagnosis = diagnosis_engine.diagnose(snapshot=snapshot, horizon=request.horizon)
-    return report_service.save_report(diagnosis)
+    data_quality = data_quality_service.build_report(
+        snapshot=snapshot,
+        connector_health=data_connector_health_service.build_health(data_provider),
+    )
+    return report_service.save_report(diagnosis, data_quality=data_quality)
 
 
 @router.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)

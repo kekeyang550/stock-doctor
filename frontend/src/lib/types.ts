@@ -416,6 +416,7 @@ export type ReportRecord = {
   id: string
   generated_at: string
   diagnosis: Diagnosis
+  data_quality?: DataQualityReport | null
 }
 
 export type ResearchNote = {
