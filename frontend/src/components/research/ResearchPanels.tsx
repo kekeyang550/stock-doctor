@@ -258,16 +258,16 @@ export function ReportHistory({
                 ) : null}
                 <small>{formatReportTime(report.generated_at)}</small>
               </button>
-              <button type="button" className="archive-button" onClick={() => onExport(report, 'json')} aria-label={`导出 ${report.diagnosis.name} 归档 JSON`}>
+              <button type="button" className="archive-button" onClick={() => onExport(report, 'json')} aria-label={`导出 ${report.diagnosis.name} 归档 JSON`} title="导出 JSON">
                 <FileJson size={16} />
               </button>
-              <button type="button" className="archive-button" onClick={() => onExport(report, 'html')} aria-label={`导出 ${report.diagnosis.name} 归档 HTML`}>
+              <button type="button" className="archive-button" onClick={() => onExport(report, 'html')} aria-label={`导出 ${report.diagnosis.name} 归档 HTML`} title="导出 HTML">
                 <FileCode size={16} />
               </button>
-              <button type="button" className="archive-button" onClick={() => onExport(report, 'markdown')} aria-label={`导出 ${report.diagnosis.name} 归档 Markdown`}>
+              <button type="button" className="archive-button" onClick={() => onExport(report, 'markdown')} aria-label={`导出 ${report.diagnosis.name} 归档 Markdown`} title="导出 Markdown">
                 <Download size={16} />
               </button>
-              <button type="button" className="delete-button" onClick={() => onDelete(report.id)} aria-label={`删除 ${report.diagnosis.name} 报告`}>
+              <button type="button" className="delete-button" onClick={() => onDelete(report.id)} aria-label={`删除 ${report.diagnosis.name} 报告`} title="删除报告">
                 <Trash2 size={16} />
               </button>
             </article>

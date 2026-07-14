@@ -52,6 +52,16 @@
   color: #7a3d3d;
 }
 
+@media (max-width: 520px) {
+  .history-row {
+    grid-template-columns: repeat(4, 38px) minmax(0, 1fr);
+  }
+
+  .history-row > button:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 
 .price-alert-panel .split-title small {
   color: #6a7a70;
