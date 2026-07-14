@@ -1558,6 +1558,7 @@ describe('App', () => {
     const history = screen.getByRole('heading', { name: '报告历史' }).closest('section')!
     expect(within(history).getByText(/600519/)).toBeInTheDocument()
     expect(within(history).getByText(/强势关注/)).toBeInTheDocument()
+    expect(within(history).getByText(/周期 中线/)).toBeInTheDocument()
     expect(within(history).getByText(/86 分/)).toBeInTheDocument()
     expect(within(history).getByText('数据质量 90 分 · 需核验')).toBeInTheDocument()
     fireEvent.click(within(history).getByRole('button', { name: /600519/ }))

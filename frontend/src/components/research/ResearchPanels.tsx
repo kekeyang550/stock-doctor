@@ -256,7 +256,7 @@ export function ReportHistory({
               <article key={report.id} className="history-row">
                 <button type="button" onClick={() => onSelect(report)}>
                   <strong>{report.diagnosis.name}</strong>
-                  <span>{report.diagnosis.symbol} · {report.diagnosis.rating} · {report.diagnosis.score.total} 分</span>
+                  <span>{report.diagnosis.symbol} · 周期 {horizonLabel(report.diagnosis.horizon)} · {report.diagnosis.rating} · {report.diagnosis.score.total} 分</span>
                   {report.data_quality ? (
                     <span>数据质量 {report.data_quality.score} 分 · {qualityStatusLabel(report.data_quality.status)}</span>
                   ) : null}
@@ -295,4 +295,10 @@ function qualityStatusLabel(status: DataQualityReport['status']) {
   if (status === 'warn') return '需核验'
   if (status === 'fail') return '异常'
   return '未知'
+}
+
+function horizonLabel(horizon: ReportRecord['diagnosis']['horizon']) {
+  if (horizon === 'intraday') return '短线'
+  if (horizon === 'position') return '中线'
+  return '波段'
 }
