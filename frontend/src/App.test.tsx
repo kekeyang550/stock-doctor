@@ -2693,6 +2693,39 @@ describe('App', () => {
     )
   })
 
+  it('disables the save report button until diagnosis data is ready', async () => {
+    let resolveDiagnosis: () => void = () => {
+      throw new Error('diagnosis resolver was not initialized')
+    }
+    const diagnosisRequest = new Promise<void>((resolve) => {
+      resolveDiagnosis = resolve
+    })
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/api/v1/diagnosis/600519')) {
+        return diagnosisRequest.then(() => ({
+          ok: true,
+          json: () => Promise.resolve(diagnosis),
+        } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const toolbar = await waitFor(() => {
+      const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
+      expect(node).not.toBeNull()
+      return node as HTMLElement
+    })
+    expect(within(toolbar).getByRole('button', { name: '存报告' })).toBeDisabled()
+
+    resolveDiagnosis()
+
+    await waitFor(() => expect(within(toolbar).getByRole('button', { name: '存报告' })).toBeEnabled())
+  })
+
   it('disables only the current report delete button while deleting a saved report', async () => {
     let resolveDelete: () => void = () => {
       throw new Error('delete resolver was not initialized')

@@ -1089,7 +1089,7 @@ export default function App() {
               <Star size={16} />
               <span>{updatingWatchlist ? '更新中' : (isInWatchlist ? '已自选' : '加自选')}</span>
             </button>
-            <button className="watch-button" type="button" onClick={saveCurrentReport} disabled={savingReport}>
+            <button className="watch-button" type="button" onClick={saveCurrentReport} disabled={!diagnosis || savingReport}>
               <Save size={16} />
               <span>{savingReport ? '保存中' : '存报告'}</span>
             </button>
