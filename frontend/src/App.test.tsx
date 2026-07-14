@@ -2690,6 +2690,36 @@ describe('App', () => {
     )
   })
 
+  it('disables only the current report delete button while deleting a saved report', async () => {
+    let resolveDelete: () => void = () => {
+      throw new Error('delete resolver was not initialized')
+    }
+    const deleteRequest = new Promise<void>((resolve) => {
+      resolveDelete = resolve
+    })
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.includes('/reports/r1') && options?.method === 'DELETE') {
+        return deleteRequest.then(() => ({ ok: true } as Response))
+      }
+      return defaultFetch(url, options)
+    })
+
+    render(<App />)
+
+    const history = await screen.findByRole('heading', { name: '报告历史' })
+    const historyPanel = history.closest('section')!
+    fireEvent.click(within(historyPanel).getByRole('button', { name: '删除 贵州茅台 报告' }))
+
+    expect(within(historyPanel).getByRole('button', { name: '删除中 贵州茅台 报告' })).toBeDisabled()
+
+    resolveDelete()
+
+    await waitFor(() => expect(within(historyPanel).queryByText('贵州茅台')).not.toBeInTheDocument())
+    expect(fetch).toHaveBeenCalledWith('/api/v1/reports/r1', { method: 'DELETE' })
+  })
+
   it('exports the current research report with diagnosis, portfolio risk, strategy backtest, and data trust context', async () => {
     const NativeBlob = Blob
     let reportBlobParts: BlobPart[] = []

@@ -232,11 +232,13 @@ export function ReportHistory({
   onSelect,
   onExport,
   onDelete,
+  deletingReportId,
 }: {
   reports: ReportRecord[]
   onSelect: (symbol: string) => void
   onExport: (report: ReportRecord, format: 'json' | 'html' | 'markdown') => void
   onDelete: (reportId: string) => void
+  deletingReportId: string | null
 }) {
   return (
     <section className="panel history-panel">
@@ -248,30 +250,40 @@ export function ReportHistory({
         <p className="empty-text">暂无已保存报告</p>
       ) : (
         <div className="history-list">
-          {reports.map((report) => (
-            <article key={report.id} className="history-row">
-              <button type="button" onClick={() => onSelect(report.diagnosis.symbol)}>
-                <strong>{report.diagnosis.name}</strong>
-                <span>{report.diagnosis.symbol} · {report.diagnosis.rating} · {report.diagnosis.score.total} 分</span>
-                {report.data_quality ? (
-                  <span>数据质量 {report.data_quality.score} 分 · {qualityStatusLabel(report.data_quality.status)}</span>
-                ) : null}
-                <small>{formatReportTime(report.generated_at)}</small>
-              </button>
-              <button type="button" className="archive-button" onClick={() => onExport(report, 'json')} aria-label={`导出 ${report.diagnosis.name} 归档 JSON`} title="导出 JSON">
-                <FileJson size={16} />
-              </button>
-              <button type="button" className="archive-button" onClick={() => onExport(report, 'html')} aria-label={`导出 ${report.diagnosis.name} 归档 HTML`} title="导出 HTML">
-                <FileCode size={16} />
-              </button>
-              <button type="button" className="archive-button" onClick={() => onExport(report, 'markdown')} aria-label={`导出 ${report.diagnosis.name} 归档 Markdown`} title="导出 Markdown">
-                <Download size={16} />
-              </button>
-              <button type="button" className="delete-button" onClick={() => onDelete(report.id)} aria-label={`删除 ${report.diagnosis.name} 报告`} title="删除报告">
-                <Trash2 size={16} />
-              </button>
-            </article>
-          ))}
+          {reports.map((report) => {
+            const deleting = deletingReportId === report.id
+            return (
+              <article key={report.id} className="history-row">
+                <button type="button" onClick={() => onSelect(report.diagnosis.symbol)}>
+                  <strong>{report.diagnosis.name}</strong>
+                  <span>{report.diagnosis.symbol} · {report.diagnosis.rating} · {report.diagnosis.score.total} 分</span>
+                  {report.data_quality ? (
+                    <span>数据质量 {report.data_quality.score} 分 · {qualityStatusLabel(report.data_quality.status)}</span>
+                  ) : null}
+                  <small>{formatReportTime(report.generated_at)}</small>
+                </button>
+                <button type="button" className="archive-button" onClick={() => onExport(report, 'json')} aria-label={`导出 ${report.diagnosis.name} 归档 JSON`} title="导出 JSON">
+                  <FileJson size={16} />
+                </button>
+                <button type="button" className="archive-button" onClick={() => onExport(report, 'html')} aria-label={`导出 ${report.diagnosis.name} 归档 HTML`} title="导出 HTML">
+                  <FileCode size={16} />
+                </button>
+                <button type="button" className="archive-button" onClick={() => onExport(report, 'markdown')} aria-label={`导出 ${report.diagnosis.name} 归档 Markdown`} title="导出 Markdown">
+                  <Download size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="delete-button"
+                  onClick={() => onDelete(report.id)}
+                  disabled={deleting}
+                  aria-label={deleting ? `删除中 ${report.diagnosis.name} 报告` : `删除 ${report.diagnosis.name} 报告`}
+                  title={deleting ? '删除中' : '删除报告'}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </article>
+            )
+          })}
         </div>
       )}
     </section>

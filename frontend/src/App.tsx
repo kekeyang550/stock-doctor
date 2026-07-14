@@ -287,6 +287,7 @@ export default function App() {
   const [refreshingScope, setRefreshingScope] = useState<'all' | 'watchlist' | null>(null)
   const [updatingWatchlist, setUpdatingWatchlist] = useState(false)
   const [savingReport, setSavingReport] = useState(false)
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null)
   const [exportingReportPackage, setExportingReportPackage] = useState(false)
   const [updatingReviewActionId, setUpdatingReviewActionId] = useState<string | null>(null)
   const [updatingHotspotActionId, setUpdatingHotspotActionId] = useState<string | null>(null)
@@ -790,11 +791,14 @@ export default function App() {
 
   const removeReport = useCallback(async (reportId: string) => {
     setError(null)
+    setDeletingReportId(reportId)
     try {
       await deleteReport(reportId)
       setReports((items) => items.filter((item) => item.id !== reportId))
     } catch (err) {
       setError(err instanceof Error ? err.message : '报告删除失败')
+    } finally {
+      setDeletingReportId(null)
     }
   }, [])
 
@@ -1284,7 +1288,7 @@ export default function App() {
           deletingNoteId={deletingNoteId}
           error={noteError}
         />
-        <ReportHistory reports={reports} onSelect={setSelectedSymbol} onExport={exportSavedReport} onDelete={removeReport} />
+        <ReportHistory reports={reports} onSelect={setSelectedSymbol} onExport={exportSavedReport} onDelete={removeReport} deletingReportId={deletingReportId} />
       </section>
     </main>
   )
