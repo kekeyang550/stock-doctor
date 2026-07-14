@@ -52,6 +52,8 @@ def test_optional_financial_fields_surface_in_evidence():
             cashflow_to_profit=95,
             current_ratio=1.8,
             quick_ratio=1.1,
+            net_margin=18.5,
+            asset_turnover=0.72,
         )
     )
 
@@ -62,6 +64,8 @@ def test_optional_financial_fields_surface_in_evidence():
     assert any(item.label == "每股经营现金流" and item.polarity == "positive" for item in result.evidence)
     assert any(item.label == "现金流利润比" and item.polarity == "positive" for item in result.evidence)
     assert any(item.label == "流动比率" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "净利率" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "总资产周转率" and item.polarity == "positive" for item in result.evidence)
 
 
 def test_risk_events_reduce_score_and_surface_warning():

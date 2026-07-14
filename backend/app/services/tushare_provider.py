@@ -171,7 +171,8 @@ class TushareMarketDataProvider:
                     fields=(
                         "ts_code,end_date,roe_dt,roe,q_roe,revenue_yoy,netprofit_yoy,"
                         "eps,basic_eps,grossprofit_margin,gross_margin,debt_to_assets,"
-                        "ocfps,ocf_to_profit,cashflow_ratio,current_ratio,quick_ratio"
+                        "ocfps,ocf_to_profit,cashflow_ratio,current_ratio,quick_ratio,"
+                        "netprofit_margin,net_profit_margin,assets_turn,asset_turnover"
                     ),
                 )
             )
@@ -192,6 +193,8 @@ class TushareMarketDataProvider:
         cashflow_to_profit = self._first_optional_float(fina, "ocf_to_profit", "cashflow_ratio")
         current_ratio = self._first_optional_float(fina, "current_ratio")
         quick_ratio = self._first_optional_float(fina, "quick_ratio")
+        net_margin = self._first_optional_float(fina, "netprofit_margin", "net_profit_margin")
+        asset_turnover = self._first_optional_float(fina, "assets_turn", "asset_turnover", "total_assets_turnover")
         if pe_ttm <= 0 and pb <= 0 and roe == 0 and revenue_growth == 0 and profit_growth == 0:
             self._last_error = self._last_error or "财务指标返回空数据"
             return None
@@ -210,6 +213,8 @@ class TushareMarketDataProvider:
             cashflow_to_profit=cashflow_to_profit,
             current_ratio=current_ratio,
             quick_ratio=quick_ratio,
+            net_margin=net_margin,
+            asset_turnover=asset_turnover,
         )
 
     def _basic_info_from_tushare(self, symbol: str) -> dict[str, str] | None:

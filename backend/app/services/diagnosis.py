@@ -119,6 +119,20 @@ class DiagnosisEngine:
             elif base.gross_margin < 15:
                 score -= 5
                 evidence.append(EvidenceItem(label="毛利率", value=f"{base.gross_margin:.1f}%", interpretation="毛利空间偏窄", polarity="negative"))
+        if base.net_margin is not None:
+            if base.net_margin >= 15:
+                score += 4
+                evidence.append(EvidenceItem(label="净利率", value=f"{base.net_margin:.1f}%", interpretation="净利润留存能力较好", polarity="positive"))
+            elif base.net_margin < 3:
+                score -= 4
+                evidence.append(EvidenceItem(label="净利率", value=f"{base.net_margin:.1f}%", interpretation="净利空间偏薄，需关注费用和减值压力", polarity="negative"))
+        if base.asset_turnover is not None:
+            if base.asset_turnover >= 0.6:
+                score += 3
+                evidence.append(EvidenceItem(label="总资产周转率", value=f"{base.asset_turnover:.2f}", interpretation="资产使用效率较好", polarity="positive"))
+            elif base.asset_turnover < 0.2:
+                score -= 3
+                evidence.append(EvidenceItem(label="总资产周转率", value=f"{base.asset_turnover:.2f}", interpretation="资产周转效率偏低", polarity="negative"))
         if base.debt_to_assets is not None:
             if base.debt_to_assets >= 70:
                 score -= 6

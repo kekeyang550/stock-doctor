@@ -61,6 +61,8 @@ class FakeTushareClient:
                 "ocf_to_profit": "92.5",
                 "current_ratio": "1.86",
                 "quick_ratio": "1.22",
+                "netprofit_margin": "18.6",
+                "assets_turn": "0.72",
             }
         ]
 
@@ -155,6 +157,8 @@ def test_tushare_provider_enriches_fundamental_snapshot(monkeypatch):
     assert snapshot.fundamental.cashflow_to_profit == 92.5
     assert snapshot.fundamental.current_ratio == 1.86
     assert snapshot.fundamental.quick_ratio == 1.22
+    assert snapshot.fundamental.net_margin == 18.6
+    assert snapshot.fundamental.asset_turnover == 0.72
     assert snapshot.name == "茅台测试"
     assert snapshot.industry == "食品饮料"
     assert "tushare-daily-basic" in snapshot.data_sources

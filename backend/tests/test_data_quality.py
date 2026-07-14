@@ -83,6 +83,8 @@ def test_data_quality_report_flags_invalid_optional_financial_ratios():
                 cashflow_to_profit=800,
                 current_ratio=28,
                 quick_ratio=24,
+                net_margin=130,
+                asset_turnover=28,
             ),
         }
     )
@@ -96,6 +98,8 @@ def test_data_quality_report_flags_invalid_optional_financial_ratios():
     assert "现金流利润比超出常规区间" in fundamental_check.detail
     assert "流动比率超出常规区间" in fundamental_check.detail
     assert "速动比率超出常规区间" in fundamental_check.detail
+    assert "净利率超出常规区间" in fundamental_check.detail
+    assert "总资产周转率超出常规区间" in fundamental_check.detail
 
 
 def test_data_quality_report_warns_for_conservative_real_data_fields():

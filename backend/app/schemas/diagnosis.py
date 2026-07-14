@@ -233,6 +233,8 @@ class FundamentalSnapshot(BaseModel):
     cashflow_to_profit: float | None = None
     current_ratio: float | None = None
     quick_ratio: float | None = None
+    net_margin: float | None = None
+    asset_turnover: float | None = None
 
 
 class CapitalSnapshot(BaseModel):

@@ -142,6 +142,10 @@ class DataQualityService:
             problems.append("ROE 超出常规区间")
         if base.gross_margin is not None and not -100 <= base.gross_margin <= 100:
             problems.append("毛利率超出常规区间")
+        if base.net_margin is not None and not -100 <= base.net_margin <= 100:
+            problems.append("净利率超出常规区间")
+        if base.asset_turnover is not None and not 0 <= base.asset_turnover <= 20:
+            problems.append("总资产周转率超出常规区间")
         if base.debt_to_assets is not None and not 0 <= base.debt_to_assets <= 100:
             problems.append("资产负债率超出 0-100")
         if base.cashflow_to_profit is not None and not -500 <= base.cashflow_to_profit <= 500:
