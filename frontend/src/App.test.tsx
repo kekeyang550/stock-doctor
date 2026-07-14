@@ -2893,6 +2893,39 @@ describe('App', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-saved-report-readable')
   })
 
+  it('opens a saved report archive for browser PDF output', async () => {
+    const printedDocument = {
+      open: vi.fn(),
+      write: vi.fn(),
+      close: vi.fn(),
+      title: '',
+    }
+    const printWindow = {
+      document: printedDocument,
+      focus: vi.fn(),
+      print: vi.fn(),
+    }
+    vi.stubGlobal('open', vi.fn(() => printWindow))
+
+    render(<App />)
+
+    const history = await screen.findByRole('heading', { name: '报告历史' })
+    const historyPanel = history.closest('section')!
+    fireEvent.click(within(historyPanel).getByRole('button', { name: '打印 贵州茅台 归档 PDF' }))
+
+    expect(printedDocument.open).toHaveBeenCalled()
+    expect(printedDocument.write).toHaveBeenCalled()
+    const html = String(printedDocument.write.mock.calls[0][0])
+    expect(html).toContain('<!doctype html>')
+    expect(html).toContain('stock-doctor-saved-report-v1')
+    expect(html).toContain('生成 2026-07-10T03:00:00Z')
+    expect(html).toContain('数据可信度')
+    expect(printedDocument.close).toHaveBeenCalled()
+    expect(printedDocument.title).toBe('Stock Doctor 600519 2026-07-10')
+    expect(printWindow.focus).toHaveBeenCalled()
+    expect(printWindow.print).toHaveBeenCalled()
+  })
+
   it('exports a readable HTML research report from the current v2 payload', async () => {
     const NativeBlob = Blob
     let reportBlobParts: BlobPart[] = []

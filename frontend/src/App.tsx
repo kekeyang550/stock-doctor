@@ -803,6 +803,16 @@ export default function App() {
     }
   }, [])
 
+  const printSavedReport = useCallback((report: ReportRecord) => {
+    setError(null)
+    try {
+      const payload = buildSavedReportPayload(report)
+      printHtmlReport(buildResearchReportHtml(payload), `Stock Doctor ${report.diagnosis.symbol} ${report.generated_at.slice(0, 10)}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '归档报告打印/PDF 失败')
+    }
+  }, [])
+
   const selectSavedReport = useCallback((report: ReportRecord) => {
     setSelectedSymbol(report.diagnosis.symbol)
     if (horizonOptions.some((option) => option.value === report.diagnosis.horizon)) {
@@ -1319,7 +1329,7 @@ export default function App() {
           deletingNoteId={deletingNoteId}
           error={noteError}
         />
-        <ReportHistory reports={reports} onSelect={selectSavedReport} onExport={exportSavedReport} onDelete={removeReport} deletingReportId={deletingReportId} />
+        <ReportHistory reports={reports} onSelect={selectSavedReport} onExport={exportSavedReport} onPrint={printSavedReport} onDelete={removeReport} deletingReportId={deletingReportId} />
       </section>
     </main>
   )
