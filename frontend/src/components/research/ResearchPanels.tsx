@@ -230,10 +230,12 @@ export function ResearchNotesPanel({
 export function ReportHistory({
   reports,
   onSelect,
+  onExport,
   onDelete,
 }: {
   reports: ReportRecord[]
   onSelect: (symbol: string) => void
+  onExport: (report: ReportRecord) => void
   onDelete: (reportId: string) => void
 }) {
   return (
@@ -255,6 +257,9 @@ export function ReportHistory({
                   <span>数据质量 {report.data_quality.score} 分 · {qualityStatusLabel(report.data_quality.status)}</span>
                 ) : null}
                 <small>{formatReportTime(report.generated_at)}</small>
+              </button>
+              <button type="button" className="archive-button" onClick={() => onExport(report)} aria-label={`导出 ${report.diagnosis.name} 归档报告`}>
+                <Download size={16} />
               </button>
               <button type="button" className="delete-button" onClick={() => onDelete(report.id)} aria-label={`删除 ${report.diagnosis.name} 报告`}>
                 <Trash2 size={16} />

@@ -10,7 +10,7 @@
 
 .history-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
+  grid-template-columns: minmax(0, 1fr) 38px 38px;
   gap: 8px;
   align-items: stretch;
   border: 1px solid #e0e8db;
@@ -35,13 +35,21 @@
   font-size: 13px;
 }
 
+.archive-button,
 .delete-button {
   border: 1px solid #e0e8db;
   border-radius: 6px;
   background: #ffffff;
-  color: #7a3d3d;
   display: grid;
   place-items: center;
+}
+
+.archive-button {
+  color: #2f624c;
+}
+
+.delete-button {
+  color: #7a3d3d;
 }
 
 
@@ -230,4 +238,3 @@
   display: grid;
   gap: 4px;
 }
-

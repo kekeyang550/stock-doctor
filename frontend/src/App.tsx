@@ -779,6 +779,32 @@ export default function App() {
     }
   }, [buildCurrentResearchReportPayload, selectedSymbol])
 
+  const exportSavedReport = useCallback((report: ReportRecord) => {
+    setError(null)
+    try {
+      const exportedAt = new Date().toISOString()
+      const payload = {
+        version: 'stock-doctor-saved-report-v1',
+        exported_at: exportedAt,
+        report_id: report.id,
+        generated_at: report.generated_at,
+        symbol: report.diagnosis.symbol,
+        horizon: report.diagnosis.horizon,
+        diagnosis: report.diagnosis,
+        data_quality: report.data_quality ?? null,
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `stock-doctor-saved-report-${report.diagnosis.symbol}-${report.generated_at.slice(0, 10)}.json`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '归档报告导出失败')
+    }
+  }, [])
+
   const removeReport = useCallback(async (reportId: string) => {
     setError(null)
     try {
@@ -1275,7 +1301,7 @@ export default function App() {
           deletingNoteId={deletingNoteId}
           error={noteError}
         />
-        <ReportHistory reports={reports} onSelect={setSelectedSymbol} onDelete={removeReport} />
+        <ReportHistory reports={reports} onSelect={setSelectedSymbol} onExport={exportSavedReport} onDelete={removeReport} />
       </section>
     </main>
   )

@@ -2765,6 +2765,43 @@ describe('App', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-report')
   })
 
+  it('exports a saved report archive from report history', async () => {
+    const NativeBlob = Blob
+    let reportBlobParts: BlobPart[] = []
+    vi.stubGlobal('Blob', vi.fn(function (parts?: BlobPart[], options?: BlobPropertyBag) {
+      reportBlobParts = parts ?? []
+      return new NativeBlob(parts, options)
+    }))
+    const createObjectURL = vi.fn(() => 'blob:stock-doctor-saved-report')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }))
+
+    const anchor = Document.prototype.createElement.call(document, 'a') as HTMLAnchorElement
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+      if (tagName === 'a') return anchor
+      return Document.prototype.createElement.call(document, tagName, options)
+    })
+
+    render(<App />)
+
+    const history = await screen.findByRole('heading', { name: '报告历史' })
+    const historyPanel = history.closest('section')!
+    fireEvent.click(within(historyPanel).getByRole('button', { name: '导出 贵州茅台 归档报告' }))
+
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+    const exported = JSON.parse(String(reportBlobParts[0]))
+    expect(exported.version).toBe('stock-doctor-saved-report-v1')
+    expect(exported.report_id).toBe('r1')
+    expect(exported.symbol).toBe('600519')
+    expect(exported.horizon).toBe('swing')
+    expect(exported.diagnosis.symbol).toBe('600519')
+    expect(exported.data_quality.score).toBe(90)
+    expect(anchor.download).toBe('stock-doctor-saved-report-600519-2026-07-10.json')
+    expect(click).toHaveBeenCalled()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-saved-report')
+  })
+
   it('exports a readable HTML research report from the current v2 payload', async () => {
     const NativeBlob = Blob
     let reportBlobParts: BlobPart[] = []
