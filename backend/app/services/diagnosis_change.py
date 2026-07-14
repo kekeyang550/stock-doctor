@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from app.schemas.diagnosis import (
+    DataQualityReport,
     DiagnosisChangeDriver,
     DiagnosisChangeItem,
     DiagnosisChangeReport,
@@ -19,10 +20,11 @@ class DiagnosisChangeService:
         current: DiagnosisResponse,
         previous: ReportRecord | None,
         recent_reports: list[ReportRecord] | None = None,
+        current_quality: DataQualityReport | None = None,
     ) -> DiagnosisChangeReport:
         if previous is None:
             generated_at = datetime.now(timezone.utc).isoformat()
-            score_trend = [self._trend_point("本次", generated_at, current)]
+            score_trend = [self._trend_point("本次", generated_at, current, current_quality)]
             return DiagnosisChangeReport(
                 symbol=current.symbol,
                 name=current.name,
@@ -97,7 +99,13 @@ class DiagnosisChangeService:
             )
         status = self._status(score_delta, risk_delta, rating_changed)
         generated_at = datetime.now(timezone.utc).isoformat()
-        score_trend = self._score_trend(current=current, generated_at=generated_at, previous=previous, recent_reports=recent_reports)
+        score_trend = self._score_trend(
+            current=current,
+            generated_at=generated_at,
+            previous=previous,
+            recent_reports=recent_reports,
+            current_quality=current_quality,
+        )
         return DiagnosisChangeReport(
             symbol=current.symbol,
             name=current.name,
@@ -157,7 +165,13 @@ class DiagnosisChangeService:
             detail = f"{label}与上次持平。"
         return DiagnosisChangeItem(key=key, label=label, direction=direction, detail=detail)
 
-    def _trend_point(self, label: str, generated_at: str, diagnosis: DiagnosisResponse) -> DiagnosisScoreTrendPoint:
+    def _trend_point(
+        self,
+        label: str,
+        generated_at: str,
+        diagnosis: DiagnosisResponse,
+        quality: DataQualityReport | None = None,
+    ) -> DiagnosisScoreTrendPoint:
         return DiagnosisScoreTrendPoint(
             label=label,
             generated_at=generated_at,
@@ -167,6 +181,8 @@ class DiagnosisChangeService:
             capital=diagnosis.score.capital,
             risk=diagnosis.score.risk,
             rating=diagnosis.rating,
+            quality_score=quality.score if quality else None,
+            quality_status=quality.status if quality else None,
         )
 
     def _score_trend(
@@ -175,6 +191,7 @@ class DiagnosisChangeService:
         generated_at: str,
         previous: ReportRecord,
         recent_reports: list[ReportRecord] | None,
+        current_quality: DataQualityReport | None,
     ) -> list[DiagnosisScoreTrendPoint]:
         records = list(recent_reports or [])
         if all(record.id != previous.id for record in records):
@@ -191,8 +208,8 @@ class DiagnosisChangeService:
         points: list[DiagnosisScoreTrendPoint] = []
         for index, record in enumerate(selected):
             label = "上次" if index == len(selected) - 1 else f"历史{index + 1}"
-            points.append(self._trend_point(label, record.generated_at, record.diagnosis))
-        points.append(self._trend_point("本次", generated_at, current))
+            points.append(self._trend_point(label, record.generated_at, record.diagnosis, record.data_quality))
+        points.append(self._trend_point("本次", generated_at, current, current_quality))
         return points
 
     def _trend_insight(self, points: list[DiagnosisScoreTrendPoint]) -> DiagnosisTrendInsight:

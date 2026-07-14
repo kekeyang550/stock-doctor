@@ -310,6 +310,8 @@ class DiagnosisScoreTrendPoint(BaseModel):
     capital: int
     risk: int
     rating: str
+    quality_score: int | None = None
+    quality_status: str | None = Field(default=None, pattern="^(pass|warn|fail)$")
 
 
 class DiagnosisRatingTransition(BaseModel):

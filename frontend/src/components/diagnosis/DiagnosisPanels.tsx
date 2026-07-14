@@ -451,6 +451,9 @@ function DiagnosisChangePanel({ report }: { report: DiagnosisChangeReport | null
                 <article key={`${point.label}-${point.generated_at}`}>
                   <strong>{point.label} · {point.rating}</strong>
                   <span>综合 {point.total} / 风险 {point.risk}</span>
+                  {typeof point.quality_score === 'number' && point.quality_status ? (
+                    <span>质量 {point.quality_score} · {qualityStatusLabel(point.quality_status)}</span>
+                  ) : null}
                   <small>{formatReportTime(point.generated_at)}</small>
                 </article>
                 ))}

@@ -278,6 +278,8 @@ export type DiagnosisScoreTrendPoint = {
   capital: number
   risk: number
   rating: string
+  quality_score?: number | null
+  quality_status?: DataQualityReport['status'] | null
 }
 
 export type DiagnosisRatingTransition = {

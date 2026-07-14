@@ -1191,10 +1191,19 @@ async def diagnosis_change(
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
     current = diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon)
+    quality = data_quality_service.build_report(
+        snapshot=snapshot,
+        connector_health=data_connector_health_service.build_health(data_provider),
+    )
     reports = report_service.list_reports(limit=100)
     previous = diagnosis_change_service.latest_for_symbol(reports, snapshot.symbol)
     recent = diagnosis_change_service.recent_for_symbol(reports, snapshot.symbol, limit=4)
-    return diagnosis_change_service.build_change(current=current, previous=previous, recent_reports=recent)
+    return diagnosis_change_service.build_change(
+        current=current,
+        previous=previous,
+        recent_reports=recent,
+        current_quality=quality,
+    )
 
 
 @router.get("/thesis/{symbol}", response_model=DiagnosisThesis)
@@ -1276,7 +1285,12 @@ def _build_review_action_plan(snapshot: StockSnapshot, horizon: str) -> ReviewAc
     reports = report_service.list_reports(limit=100)
     previous = diagnosis_change_service.latest_for_symbol(reports, snapshot.symbol)
     recent = diagnosis_change_service.recent_for_symbol(reports, snapshot.symbol, limit=4)
-    change = diagnosis_change_service.build_change(current=diagnosis, previous=previous, recent_reports=recent)
+    change = diagnosis_change_service.build_change(
+        current=diagnosis,
+        previous=previous,
+        recent_reports=recent,
+        current_quality=quality,
+    )
     alerts = alert_engine.build_alerts(snapshot, diagnosis)
     plan = review_action_service.build_plan(
         diagnosis=diagnosis,

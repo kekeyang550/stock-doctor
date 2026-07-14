@@ -387,6 +387,8 @@ const diagnosisChange = {
       capital: 71,
       risk: 73,
       rating: '谨慎观望',
+      quality_score: 82,
+      quality_status: 'warn',
     },
     {
       label: '上次',
@@ -397,6 +399,8 @@ const diagnosisChange = {
       capital: 80,
       risk: 78,
       rating: '稳健观察',
+      quality_score: 90,
+      quality_status: 'warn',
     },
     {
       label: '本次',
@@ -407,6 +411,8 @@ const diagnosisChange = {
       capital: 88,
       risk: 82,
       rating: '强势关注',
+      quality_score: 93,
+      quality_status: 'pass',
     },
   ],
   trend_insight: {
@@ -1544,6 +1550,8 @@ describe('App', () => {
     expect(within(thesisPanel).getByText('空头假设')).toBeInTheDocument()
     expect(within(thesisPanel).getByText('均线结构')).toBeInTheDocument()
     expect(screen.getByText(/当前标的/)).toBeInTheDocument()
+    expect(screen.getByText('质量 90 · 需核验')).toBeInTheDocument()
+    expect(screen.getByText('质量 93 · 可靠')).toBeInTheDocument()
     expect(screen.getAllByText('临近解禁窗口').length).toBeGreaterThan(0)
     const alertsPanel = screen.getByRole('heading', { name: '预警中心' }).closest('section')!
     expect(within(alertsPanel).getByText('临近解禁窗口')).toBeInTheDocument()

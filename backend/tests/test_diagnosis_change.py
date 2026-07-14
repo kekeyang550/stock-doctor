@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.schemas.diagnosis import CapitalSnapshot, FundamentalSnapshot, RiskSnapshot, StockSnapshot, TechnicalSnapshot
+from app.schemas.diagnosis import CapitalSnapshot, DataQualityReport, FundamentalSnapshot, RiskSnapshot, StockSnapshot, TechnicalSnapshot
 from app.schemas.diagnosis import ReportRecord
 from app.services.diagnosis import DiagnosisEngine
 from app.services.diagnosis_change import DiagnosisChangeService
@@ -22,10 +22,25 @@ def make_diagnosis():
     return DiagnosisEngine().diagnose(snapshot, horizon="swing")
 
 
+def make_quality(score: int = 90, status: str = "warn") -> DataQualityReport:
+    return DataQualityReport(
+        symbol="600519",
+        name="贵州茅台",
+        as_of="2026-07-10",
+        status=status,
+        score=score,
+        coverage_pct=88,
+        issue_count=1,
+        summary="数据质量需核验。",
+        checks=[],
+    )
+
+
 def test_change_report_returns_baseline_without_previous_report():
     current = make_diagnosis()
+    quality = make_quality(score=91, status="warn")
 
-    report = DiagnosisChangeService().build_change(current=current, previous=None)
+    report = DiagnosisChangeService().build_change(current=current, previous=None, current_quality=quality)
 
     assert report.status == "baseline"
     assert report.previous_generated_at is None
@@ -33,6 +48,8 @@ def test_change_report_returns_baseline_without_previous_report():
     assert report.changes[0].key == "baseline"
     assert len(report.score_trend) == 1
     assert report.score_trend[0].label == "本次"
+    assert report.score_trend[0].quality_score == 91
+    assert report.score_trend[0].quality_status == "warn"
     assert report.rating_transition.previous is None
     assert report.rating_transition.current == current.rating
     assert report.rating_transition.changed is False
@@ -52,9 +69,14 @@ def test_change_report_compares_against_previous_report():
         id="previous",
         generated_at=datetime.now(timezone.utc).isoformat(),
         diagnosis=previous_diagnosis,
+        data_quality=make_quality(score=84, status="warn"),
     )
 
-    report = DiagnosisChangeService().build_change(current=current, previous=previous)
+    report = DiagnosisChangeService().build_change(
+        current=current,
+        previous=previous,
+        current_quality=make_quality(score=95, status="pass"),
+    )
 
     assert report.status == "improved"
     assert report.score_delta == 8
@@ -63,7 +85,11 @@ def test_change_report_compares_against_previous_report():
     assert any(item.key == "rating" for item in report.changes)
     assert [point.label for point in report.score_trend] == ["上次", "本次"]
     assert report.score_trend[0].total == previous_diagnosis.score.total
+    assert report.score_trend[0].quality_score == 84
+    assert report.score_trend[0].quality_status == "warn"
     assert report.score_trend[1].total == current.score.total
+    assert report.score_trend[1].quality_score == 95
+    assert report.score_trend[1].quality_status == "pass"
     assert report.rating_transition.previous == "稳健观察"
     assert report.rating_transition.current == current.rating
     assert report.rating_transition.changed is True
