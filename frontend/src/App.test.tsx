@@ -2776,8 +2776,10 @@ describe('App', () => {
   it('exports a saved report archive from report history', async () => {
     const NativeBlob = Blob
     let reportBlobParts: BlobPart[] = []
+    let reportBlobOptions: BlobPropertyBag | undefined
     vi.stubGlobal('Blob', vi.fn(function (parts?: BlobPart[], options?: BlobPropertyBag) {
       reportBlobParts = parts ?? []
+      reportBlobOptions = options
       return new NativeBlob(parts, options)
     }))
     const createObjectURL = vi.fn(() => 'blob:stock-doctor-saved-report')
@@ -2795,7 +2797,7 @@ describe('App', () => {
 
     const history = await screen.findByRole('heading', { name: '报告历史' })
     const historyPanel = history.closest('section')!
-    fireEvent.click(within(historyPanel).getByRole('button', { name: '导出 贵州茅台 归档报告' }))
+    fireEvent.click(within(historyPanel).getByRole('button', { name: '导出 贵州茅台 归档 JSON' }))
 
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
     const exported = JSON.parse(String(reportBlobParts[0]))
@@ -2805,9 +2807,55 @@ describe('App', () => {
     expect(exported.horizon).toBe('swing')
     expect(exported.diagnosis.symbol).toBe('600519')
     expect(exported.data_quality.score).toBe(90)
+    expect(reportBlobOptions?.type).toBe('application/json')
     expect(anchor.download).toBe('stock-doctor-saved-report-600519-2026-07-10.json')
     expect(click).toHaveBeenCalled()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-saved-report')
+  })
+
+  it('exports saved report archives as HTML and Markdown', async () => {
+    const NativeBlob = Blob
+    const exports: Array<{ parts: BlobPart[], options?: BlobPropertyBag }> = []
+    vi.stubGlobal('Blob', vi.fn(function (parts?: BlobPart[], options?: BlobPropertyBag) {
+      exports.push({ parts: parts ?? [], options })
+      return new NativeBlob(parts, options)
+    }))
+    const createObjectURL = vi.fn(() => 'blob:stock-doctor-saved-report-readable')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }))
+
+    const anchor = Document.prototype.createElement.call(document, 'a') as HTMLAnchorElement
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+      if (tagName === 'a') return anchor
+      return Document.prototype.createElement.call(document, tagName, options)
+    })
+
+    render(<App />)
+
+    const history = await screen.findByRole('heading', { name: '报告历史' })
+    const historyPanel = history.closest('section')!
+    fireEvent.click(within(historyPanel).getByRole('button', { name: '导出 贵州茅台 归档 HTML' }))
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1))
+
+    const html = String(exports[0].parts[0])
+    expect(exports[0].options?.type).toBe('text/html')
+    expect(html).toContain('<!doctype html>')
+    expect(html).toContain('stock-doctor-saved-report-v1')
+    expect(html).toContain('贵州茅台')
+    expect(html).toContain('数据可信度')
+    expect(anchor.download).toBe('stock-doctor-saved-report-600519-2026-07-10.html')
+
+    fireEvent.click(within(historyPanel).getByRole('button', { name: '导出 贵州茅台 归档 Markdown' }))
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(2))
+
+    const markdown = String(exports[1].parts[0])
+    expect(exports[1].options?.type).toBe('text/markdown')
+    expect(markdown).toContain('# 贵州茅台 研究报告')
+    expect(markdown).toContain('- 代码: 600519')
+    expect(markdown).toContain('## 数据可信度')
+    expect(anchor.download).toBe('stock-doctor-saved-report-600519-2026-07-10.md')
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-saved-report-readable')
   })
 
   it('exports a readable HTML research report from the current v2 payload', async () => {

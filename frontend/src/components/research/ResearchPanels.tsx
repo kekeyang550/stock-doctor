@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Database, Download, FileCode, FileJson, FileText, ListChecks, RefreshCw, Save, ShieldAlert, Star, Trash2, Upload } from 'lucide-react'
 import type {
   AlertItem,
   ChecklistItem,
@@ -235,7 +235,7 @@ export function ReportHistory({
 }: {
   reports: ReportRecord[]
   onSelect: (symbol: string) => void
-  onExport: (report: ReportRecord) => void
+  onExport: (report: ReportRecord, format: 'json' | 'html' | 'markdown') => void
   onDelete: (reportId: string) => void
 }) {
   return (
@@ -258,7 +258,13 @@ export function ReportHistory({
                 ) : null}
                 <small>{formatReportTime(report.generated_at)}</small>
               </button>
-              <button type="button" className="archive-button" onClick={() => onExport(report)} aria-label={`导出 ${report.diagnosis.name} 归档报告`}>
+              <button type="button" className="archive-button" onClick={() => onExport(report, 'json')} aria-label={`导出 ${report.diagnosis.name} 归档 JSON`}>
+                <FileJson size={16} />
+              </button>
+              <button type="button" className="archive-button" onClick={() => onExport(report, 'html')} aria-label={`导出 ${report.diagnosis.name} 归档 HTML`}>
+                <FileCode size={16} />
+              </button>
+              <button type="button" className="archive-button" onClick={() => onExport(report, 'markdown')} aria-label={`导出 ${report.diagnosis.name} 归档 Markdown`}>
                 <Download size={16} />
               </button>
               <button type="button" className="delete-button" onClick={() => onDelete(report.id)} aria-label={`删除 ${report.diagnosis.name} 报告`}>

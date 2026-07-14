@@ -779,27 +779,18 @@ export default function App() {
     }
   }, [buildCurrentResearchReportPayload, selectedSymbol])
 
-  const exportSavedReport = useCallback((report: ReportRecord) => {
+  const exportSavedReport = useCallback((report: ReportRecord, format: 'json' | 'html' | 'markdown') => {
     setError(null)
     try {
-      const exportedAt = new Date().toISOString()
-      const payload = {
-        version: 'stock-doctor-saved-report-v1',
-        exported_at: exportedAt,
-        report_id: report.id,
-        generated_at: report.generated_at,
-        symbol: report.diagnosis.symbol,
-        horizon: report.diagnosis.horizon,
-        diagnosis: report.diagnosis,
-        data_quality: report.data_quality ?? null,
+      const payload = buildSavedReportPayload(report)
+      const basename = `stock-doctor-saved-report-${report.diagnosis.symbol}-${report.generated_at.slice(0, 10)}`
+      if (format === 'html') {
+        downloadTextFile(buildResearchReportHtml(payload), 'text/html', `${basename}.html`)
+      } else if (format === 'markdown') {
+        downloadTextFile(buildResearchReportMarkdown(payload), 'text/markdown', `${basename}.md`)
+      } else {
+        downloadTextFile(JSON.stringify(payload, null, 2), 'application/json', `${basename}.json`)
       }
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `stock-doctor-saved-report-${report.diagnosis.symbol}-${report.generated_at.slice(0, 10)}.json`
-      anchor.click()
-      URL.revokeObjectURL(url)
     } catch (err) {
       setError(err instanceof Error ? err.message : '归档报告导出失败')
     }
@@ -1484,6 +1475,29 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push('')
 
   return `${lines.join('\n').trim()}\n`
+}
+
+function buildSavedReportPayload(report: ReportRecord) {
+  return {
+    version: 'stock-doctor-saved-report-v1',
+    exported_at: new Date().toISOString(),
+    report_id: report.id,
+    generated_at: report.generated_at,
+    symbol: report.diagnosis.symbol,
+    horizon: report.diagnosis.horizon,
+    diagnosis: report.diagnosis,
+    data_quality: report.data_quality ?? null,
+  }
+}
+
+function downloadTextFile(content: string, type: string, filename: string) {
+  const blob = new Blob([content], { type })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
 }
 
 function markdownList(lines: string[], items: any[], render: (item: any) => string) {
