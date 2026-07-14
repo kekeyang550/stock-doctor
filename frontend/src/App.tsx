@@ -1536,7 +1536,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   markdownList(
     lines,
     runtimePaths,
-    (item) => `${item.label} - ${reportRuntimePathStatusLabel(item.exists)} - ${item.env_var} - ${item.value || '未配置'}`,
+    (item) => `${item.label} - ${reportRuntimePathStatusLabel(item.exists, item.resolution_note)} - ${item.env_var} - ${reportRuntimePathDetail(item)}`,
   )
   lines.push('')
   lines.push('### 密钥配置')
@@ -1931,7 +1931,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>当前数据源</span><strong>${escapeHtml(runtimeConfig.active_provider ?? connectorHealth.active_provider ?? "-")}</strong></div>
         <div class="metric"><span>可选数据源</span><strong>${escapeHtml(Array.isArray(runtimeConfig.provider_options) ? runtimeConfig.provider_options.join(" / ") : "-")}</strong></div>
       </div>
-      ${runtimePaths.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(reportRuntimePathStatusLabel(item.exists))}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(item.value || "未配置")}</small></div>`).join("") || "<p>暂无本地路径配置</p>"}
+      ${runtimePaths.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(reportRuntimePathStatusLabel(item.exists, item.resolution_note))}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(reportRuntimePathDetail(item))}</small></div>`).join("") || "<p>暂无本地路径配置</p>"}
       <h3>密钥配置</h3>
       ${runtimeSecrets.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(item.configured ? "已配置" : "未配置")}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(item.configured ? "已通过环境变量配置" : "未配置，相关增强能力暂不可用")}</small></div>`).join("") || "<p>暂无密钥配置</p>"}
       <h3>Tushare 预检</h3>
@@ -2064,10 +2064,22 @@ function reportQualityStatusLabel(status: unknown) {
   return '未评估'
 }
 
-function reportRuntimePathStatusLabel(exists: unknown) {
+function reportRuntimePathStatusLabel(exists: unknown, note?: unknown) {
+  if (typeof note === 'string' && note.includes('过期')) return '已过期'
   if (exists === true) return '可用'
   if (exists === false) return '未找到'
   return '未配置'
+}
+
+function reportRuntimePathDetail(item: any) {
+  const parts = [item?.value || '未配置']
+  if (item?.resolved_value && item.resolved_value !== item.value) {
+    parts.push(`实际使用 ${item.resolved_value}`)
+  }
+  if (item?.resolution_note) {
+    parts.push(item.resolution_note)
+  }
+  return parts.join('；')
 }
 
 function reportCacheStatusLabel(status: unknown) {
