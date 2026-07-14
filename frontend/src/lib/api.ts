@@ -43,6 +43,7 @@ import type {
   SystemReadiness,
   TimelineEvent,
   TrendSeries,
+  TdxProbeResult,
   TushareProbeResult,
   WatchlistSummary,
 } from './types'
@@ -130,6 +131,10 @@ export function fetchDataRuntimeSettings(): Promise<DataRuntimeSettings> {
 
 export function fetchTushareProbe(symbol = '600519'): Promise<TushareProbeResult> {
   return getJson<TushareProbeResult>(`/api/v1/system/tushare-probe?symbol=${encodeURIComponent(symbol)}`)
+}
+
+export function fetchTdxProbe(): Promise<TdxProbeResult> {
+  return getJson<TdxProbeResult>('/api/v1/system/tdx-probe')
 }
 
 export function fetchRefreshJobs(): Promise<DataRefreshJob[]> {

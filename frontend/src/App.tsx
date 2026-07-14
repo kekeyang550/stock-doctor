@@ -77,6 +77,7 @@ import {
   fetchSystemReadiness,
   fetchTimeline,
   fetchTrend,
+  fetchTdxProbe,
   fetchTushareProbe,
   fetchWatchlist,
   fetchWatchlistSummary,
@@ -140,6 +141,7 @@ import type {
   SystemReadinessCheck,
   TimelineEvent,
   TrendSeries,
+  TdxProbeResult,
   TushareProbeResult,
   WatchlistSummary,
 } from './lib/types'
@@ -220,6 +222,7 @@ export default function App() {
   const [freshness, setFreshness] = useState<DataFreshnessStatus | null>(null)
   const [refreshJobs, setRefreshJobs] = useState<DataRefreshJob[]>([])
   const [runtimeSettings, setRuntimeSettings] = useState<DataRuntimeSettings | null>(null)
+  const [tdxProbe, setTdxProbe] = useState<TdxProbeResult | null>(null)
   const [tushareProbe, setTushareProbe] = useState<TushareProbeResult | null>(null)
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null)
   const [systemReadiness, setSystemReadiness] = useState<SystemReadiness | null>(null)
@@ -308,8 +311,10 @@ export default function App() {
   const [storageError, setStorageError] = useState<string | null>(null)
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const [tushareProbeError, setTushareProbeError] = useState<string | null>(null)
+  const [tdxProbeError, setTdxProbeError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [probingTushare, setProbingTushare] = useState(false)
+  const [probingTdx, setProbingTdx] = useState(false)
 
   useEffect(() => {
     writeStoredBacktestParameters({
@@ -1082,6 +1087,22 @@ export default function App() {
     }
   }, [selectedSymbol])
 
+  const probeTdx = useCallback(async () => {
+    setError(null)
+    setTdxProbeError(null)
+    setProbingTdx(true)
+    try {
+      const result = await fetchTdxProbe()
+      setTdxProbe(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '通达信检测失败'
+      setTdxProbeError(message)
+      setError(message)
+    } finally {
+      setProbingTdx(false)
+    }
+  }, [])
+
   return (
     <main className="app-shell">
       <StockList
@@ -1226,10 +1247,14 @@ export default function App() {
 
         <SystemRuntimeConfigPanel
           settings={runtimeSettings}
+          tdxProbe={tdxProbe}
           probe={tushareProbe}
           probing={probingTushare}
+          probingTdx={probingTdx}
           probeError={tushareProbeError}
+          tdxProbeError={tdxProbeError}
           onProbe={probeTushare}
+          onProbeTdx={probeTdx}
         />
 
         <SystemReadinessPanel readiness={systemReadiness} />

@@ -97,6 +97,13 @@
   line-height: 1.4;
 }
 
+.runtime-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .runtime-actions button {
   align-items: center;
   border: 1px solid #bfd0c3;

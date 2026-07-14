@@ -1205,6 +1205,28 @@ def test_tdx_local_history_provider_does_not_use_stale_history(tmp_path):
     assert "已过期" in source["role"]
 
 
+def test_tdx_local_history_provider_probe_lists_candidates(tmp_path, monkeypatch):
+    discovered = tmp_path / "stocks" / "vipdoc"
+    write_tdx_day_file(
+        discovered,
+        "600519",
+        [(20260710, 15.60, 15.80, 15.50, 15.80, 1000.0, 1580)],
+    )
+    monkeypatch.setattr(TdxLocalHistoryProvider, "_COMMON_ROOTS", (tmp_path / "stocks",))
+    monkeypatch.setattr(TdxLocalHistoryProvider, "_DISCOVERY_CACHE", None)
+    monkeypatch.setattr(TdxLocalHistoryProvider, "_DISCOVERY_DONE", False)
+    provider = TdxLocalHistoryProvider(vipdoc_path=tmp_path / "missing")
+
+    probe = provider.probe_vipdoc()
+
+    assert probe.status == "pass"
+    assert probe.resolved_path == str(discovered)
+    selected = next(candidate for candidate in probe.candidates if candidate.selected)
+    assert selected.path == str(discovered)
+    assert selected.sample_count == 1
+    assert selected.stale is False
+
+
 def test_eastmoney_provider_reports_tdx_reference_source(tmp_path):
     write_tdx_day_file(
         tmp_path,

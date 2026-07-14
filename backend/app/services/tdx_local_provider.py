@@ -1,10 +1,10 @@
 import struct
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from app.config import settings
-from app.schemas.diagnosis import HistoricalPriceBar
+from app.schemas.diagnosis import HistoricalPriceBar, TdxProbeCandidate, TdxProbeResult
 
 
 class TdxLocalHistoryProvider:
@@ -147,6 +147,37 @@ class TdxLocalHistoryProvider:
             "role": f"本地历史 K 线参考/兜底；{detail}",
         }
 
+    def probe_vipdoc(self) -> TdxProbeResult:
+        candidates = self._probe_candidates()
+        selected = next((candidate for candidate in candidates if candidate.selected), None)
+        usable = [candidate for candidate in candidates if candidate.exists and not candidate.stale and candidate.sample_count > 0]
+        stale = [candidate for candidate in candidates if candidate.exists and candidate.stale and candidate.sample_count > 0]
+        if selected is not None and selected in usable:
+            status = "pass"
+            message = "通达信 vipdoc 可用，可作为本地历史 K 线参考与兜底。"
+            next_action = "继续定期在通达信客户端补全日线，保持最新交易日接近当前日期。"
+        elif usable:
+            status = "warn"
+            message = "发现可用 vipdoc，但当前配置未指向最优路径。"
+            next_action = f"建议将 STOCK_DOCTOR_TDX_VIPDOC_PATH 设置为 {usable[0].path} 后重启后端。"
+        elif stale:
+            status = "warn"
+            message = "发现 vipdoc，但样本日线已经过期，当前不会用于诊断或回测兜底。"
+            next_action = "请在通达信客户端重新下载日线，或确认最新 vipdoc 目录后更新 STOCK_DOCTOR_TDX_VIPDOC_PATH。"
+        else:
+            status = "fail"
+            message = "未发现可读的通达信 vipdoc 日线目录。"
+            next_action = "请确认通达信安装位置，并在下载日线后配置 STOCK_DOCTOR_TDX_VIPDOC_PATH。"
+        return TdxProbeResult(
+            configured_path=str(self._configured_vipdoc_path),
+            resolved_path=str(self._vipdoc_path),
+            generated_at=datetime.now(timezone.utc).isoformat(),
+            status=status,
+            message=message,
+            next_action=next_action,
+            candidates=candidates,
+        )
+
     @classmethod
     def resolve_vipdoc_path(cls, configured_path: str | Path | None = None) -> Path:
         configured = Path(configured_path or settings.tdx_vipdoc_path)
@@ -159,15 +190,7 @@ class TdxLocalHistoryProvider:
     def discover_vipdoc_path(cls) -> Path | None:
         if cls._DISCOVERY_DONE:
             return cls._DISCOVERY_CACHE
-        candidates: list[Path] = []
-        for root in cls._COMMON_ROOTS:
-            if not root.exists():
-                continue
-            candidates.extend(cls._direct_vipdoc_candidates(root))
-            try:
-                candidates.extend(path for path in root.rglob("vipdoc") if path.is_dir())
-            except OSError:
-                continue
+        candidates = cls._discover_candidate_paths()
         scored = [
             (cls._candidate_score(candidate), candidate)
             for candidate in cls._dedupe_paths(candidates)
@@ -182,6 +205,51 @@ class TdxLocalHistoryProvider:
         cls._DISCOVERY_CACHE = usable[0][1]
         cls._DISCOVERY_DONE = True
         return cls._DISCOVERY_CACHE
+
+    def _probe_candidates(self) -> list[TdxProbeCandidate]:
+        paths = [self._configured_vipdoc_path]
+        paths.extend(self._discover_candidate_paths())
+        candidates = []
+        for path in self._dedupe_paths(paths):
+            latest, coverage, rows = self._candidate_score(path)
+            latest_date = self._format_yyyymmdd(latest)
+            exists = self._is_vipdoc_shape(path)
+            stale = self._is_stale(latest_date) if latest_date else True
+            if not exists:
+                note = "未找到 sh/lday 或 sz/lday 目录。"
+            elif coverage <= 0:
+                note = "目录形态正确，但样本股票日线缺失。"
+            elif stale:
+                note = f"样本最新交易日 {latest_date}，已过期。"
+            else:
+                note = f"样本最新交易日 {latest_date}，可用于本地 K 线参考。"
+            candidates.append(
+                TdxProbeCandidate(
+                    path=str(path),
+                    selected=self._normalize(path) == self._normalize(self._vipdoc_path),
+                    exists=exists,
+                    sample_count=coverage,
+                    row_count=rows,
+                    latest_date=latest_date,
+                    stale=stale,
+                    note=note,
+                )
+            )
+        candidates.sort(key=lambda item: (item.selected, not item.stale, item.latest_date or "", item.sample_count, item.row_count), reverse=True)
+        return candidates
+
+    @classmethod
+    def _discover_candidate_paths(cls) -> list[Path]:
+        candidates: list[Path] = []
+        for root in cls._COMMON_ROOTS:
+            if not root.exists():
+                continue
+            candidates.extend(cls._direct_vipdoc_candidates(root))
+            try:
+                candidates.extend(path for path in root.rglob("vipdoc") if path.is_dir())
+            except OSError:
+                continue
+        return candidates
 
     def _day_file(self, symbol: str) -> Path:
         normalized = symbol.strip().upper()
@@ -289,3 +357,10 @@ class TdxLocalHistoryProvider:
         except ValueError:
             return True
         return (date.today() - latest).days > cls._MAX_STALE_DAYS
+
+    @staticmethod
+    def _format_yyyymmdd(value: int) -> str | None:
+        text = str(value)
+        if len(text) != 8:
+            return None
+        return f"{text[:4]}-{text[4:6]}-{text[6:]}"

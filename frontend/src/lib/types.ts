@@ -111,6 +111,27 @@ export type TushareProbeResult = {
   steps: TushareProbeStep[]
 }
 
+export type TdxProbeCandidate = {
+  path: string
+  selected: boolean
+  exists: boolean
+  sample_count: number
+  row_count: number
+  latest_date: string | null
+  stale: boolean
+  note: string
+}
+
+export type TdxProbeResult = {
+  configured_path: string
+  resolved_path: string
+  generated_at: string
+  status: 'pass' | 'warn' | 'fail'
+  message: string
+  next_action: string
+  candidates: TdxProbeCandidate[]
+}
+
 export type ProviderCacheBucketStatus = {
   key: string
   label: string

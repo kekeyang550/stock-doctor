@@ -250,6 +250,17 @@ def test_system_storage_endpoint_returns_persistence_status():
     }
 
 
+def test_system_tdx_probe_endpoint_returns_candidates():
+    response = client.get("/api/v1/system/tdx-probe")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["configured_path"]
+    assert payload["resolved_path"]
+    assert payload["status"] in {"pass", "warn", "fail"}
+    assert isinstance(payload["candidates"], list)
+
+
 def test_system_readiness_endpoint_returns_operational_checks():
     response = client.get("/api/v1/system/readiness")
 

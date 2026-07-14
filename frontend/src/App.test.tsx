@@ -243,6 +243,27 @@ const tushareProbe = {
   ],
 }
 
+const tdxProbe = {
+  configured_path: 'E:\\new_tdx64\\vipdoc',
+  resolved_path: 'E:\\股票\\渤海证券行情加交易\\new_bhzq_v6\\Vipdoc',
+  generated_at: '2026-07-13T06:00:00Z',
+  status: 'warn',
+  message: '发现 vipdoc，但样本日线已经过期，当前不会用于诊断或回测兜底。',
+  next_action: '请在通达信客户端重新下载日线，或确认最新 vipdoc 目录后更新 STOCK_DOCTOR_TDX_VIPDOC_PATH。',
+  candidates: [
+    {
+      path: 'E:\\股票\\渤海证券行情加交易\\new_bhzq_v6\\Vipdoc',
+      selected: true,
+      exists: true,
+      sample_count: 3,
+      row_count: 3712,
+      latest_date: '2013-03-21',
+      stale: true,
+      note: '样本最新交易日 2013-03-21，已过期。',
+    },
+  ],
+}
+
 const refreshJobs = [
   {
     id: 'job-1',
@@ -1379,6 +1400,9 @@ describe('App', () => {
       if (url.includes('/system/tushare-probe')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(tushareProbe) })
       }
+      if (url.includes('/system/tdx-probe')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(tdxProbe) })
+      }
       if (url.includes('/system/refresh-jobs')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(refreshJobs) })
       }
@@ -1666,7 +1690,7 @@ describe('App', () => {
     fireEvent.click(within(runtimePanel).getByRole('button', { name: '检测 Tushare' }))
 
     await waitFor(() => expect(within(runtimePanel).getByText('Tushare 预检')).toBeInTheDocument())
-    expect(within(runtimePanel).getByText('需配置')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('需处理')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('Tushare Pro Token 未配置，当前只能使用其他数据源或 Mock 回退。')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('tushare 包')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('当前 Python 环境可导入 tushare。')).toBeInTheDocument()
@@ -1674,6 +1698,20 @@ describe('App', () => {
     expect(within(runtimePanel).getByText('总耗时 12 ms')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('耗时 0 ms · 返回 0 行')).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/system/tushare-probe?symbol=600519'))
+  })
+
+  it('runs a read-only TDX probe from the runtime panel', async () => {
+    render(<App />)
+
+    const runtimePanel = await waitFor(() => screen.getByRole('heading', { name: '运行配置' }).closest('section')!)
+    fireEvent.click(within(runtimePanel).getByRole('button', { name: '检测通达信' }))
+
+    await waitFor(() => expect(within(runtimePanel).getByText('通达信检测')).toBeInTheDocument())
+    expect(within(runtimePanel).getByText('发现 vipdoc，但样本日线已经过期，当前不会用于诊断或回测兜底。')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('当前使用')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('已过期')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('样本最新交易日 2013-03-21，已过期。')).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith('/api/v1/system/tdx-probe')
   })
 
   it('shows panel-level errors when candidate APIs fail', async () => {

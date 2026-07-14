@@ -154,6 +154,27 @@ class TushareProbeResult(BaseModel):
     steps: list[TushareProbeStep]
 
 
+class TdxProbeCandidate(BaseModel):
+    path: str
+    selected: bool = False
+    exists: bool
+    sample_count: int = Field(ge=0)
+    row_count: int = Field(ge=0)
+    latest_date: str | None = None
+    stale: bool
+    note: str
+
+
+class TdxProbeResult(BaseModel):
+    configured_path: str
+    resolved_path: str
+    generated_at: str
+    status: str = Field(pattern="^(pass|warn|fail)$")
+    message: str
+    next_action: str
+    candidates: list[TdxProbeCandidate]
+
+
 class DataRefreshJob(BaseModel):
     id: str
     provider: str

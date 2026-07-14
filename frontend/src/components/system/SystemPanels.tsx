@@ -47,6 +47,7 @@ import type {
   SystemReadinessCheck,
   TimelineEvent,
   TrendSeries,
+  TdxProbeResult,
   TushareProbeResult,
   WatchlistSummary,
 } from '../../lib/types'
@@ -54,16 +55,24 @@ import { formatReportTime } from '../../lib/formatters'
 
 export function SystemRuntimeConfigPanel({
   settings,
+  tdxProbe,
   probe,
   probing,
+  probingTdx,
   probeError,
+  tdxProbeError,
   onProbe,
+  onProbeTdx,
 }: {
   settings: DataRuntimeSettings | null
+  tdxProbe: TdxProbeResult | null
   probe: TushareProbeResult | null
   probing: boolean
+  probingTdx: boolean
   probeError: string | null
+  tdxProbeError: string | null
   onProbe: () => void
+  onProbeTdx: () => void
 }) {
   const providerOptions = settings?.provider_options?.length ? settings.provider_options.join(' / ') : '未返回'
   const paths = settings?.paths ?? []
@@ -82,10 +91,16 @@ export function SystemRuntimeConfigPanel({
         <>
           <div className="runtime-actions">
             <span>只读预检不会切换当前数据源，也不会返回 Token 明文。</span>
-            <button type="button" onClick={onProbe} disabled={probing}>
-              <RefreshCw size={15} className={probing ? 'spin' : undefined} />
-              <span>{probing ? '检测中' : '检测 Tushare'}</span>
-            </button>
+            <div className="runtime-action-buttons">
+              <button type="button" onClick={onProbeTdx} disabled={probingTdx}>
+                <RefreshCw size={15} className={probingTdx ? 'spin' : undefined} />
+                <span>{probingTdx ? '检测中' : '检测通达信'}</span>
+              </button>
+              <button type="button" onClick={onProbe} disabled={probing}>
+                <RefreshCw size={15} className={probing ? 'spin' : undefined} />
+                <span>{probing ? '检测中' : '检测 Tushare'}</span>
+              </button>
+            </div>
           </div>
           <div className="runtime-config-grid">
             <RuntimeConfigItem label="数据源" value={settings.active_provider} detail={`可选：${providerOptions}`} />
@@ -130,12 +145,47 @@ export function SystemRuntimeConfigPanel({
               <p>{probeError}</p>
             </div>
           ) : null}
+          {tdxProbeError ? (
+            <div className="runtime-probe error">
+              <strong>通达信检测失败</strong>
+              <p>{tdxProbeError}</p>
+            </div>
+          ) : null}
+          {tdxProbe ? <TdxProbePanel probe={tdxProbe} /> : null}
           {probe ? <TushareProbePanel probe={probe} /> : null}
         </>
       ) : (
         <p className="empty-text">正在读取运行配置...</p>
       )}
     </section>
+  )
+}
+
+
+function TdxProbePanel({ probe }: { probe: TdxProbeResult }) {
+  return (
+    <div className={`runtime-probe ${probe.status}`}>
+      <div className="runtime-probe-head">
+        <span>
+          <strong>通达信检测</strong>
+          <small>{formatReportTime(probe.generated_at)}</small>
+        </span>
+        <em>{probeStatusLabel(probe.status)}</em>
+      </div>
+      <p>{probe.message}</p>
+      <small>{probe.next_action}</small>
+      <div className="runtime-probe-steps">
+        {probe.candidates.map((candidate) => (
+          <article key={candidate.path} className={candidate.stale || !candidate.exists ? 'warn' : 'pass'}>
+            <strong>{candidate.selected ? '当前使用' : '候选路径'}</strong>
+            <em>{candidate.exists ? candidate.stale ? '已过期' : '可用' : '未找到'}</em>
+            <small>{candidate.path}</small>
+            <small>{candidate.note}</small>
+            <small>样本 {candidate.sample_count} 只 · 行数 {candidate.row_count} · 最新 {candidate.latest_date ?? '-'}</small>
+          </article>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -170,7 +220,7 @@ function TushareProbePanel({ probe }: { probe: TushareProbeResult }) {
 
 function probeStatusLabel(status: TushareProbeResult['status']) {
   if (status === 'pass') return '通过'
-  if (status === 'warn') return '需配置'
+  if (status === 'warn') return '需处理'
   return '未通过'
 }
 

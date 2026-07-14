@@ -55,6 +55,7 @@ from app.schemas.diagnosis import (
     SystemReadinessCheck,
     TimelineEvent,
     TrendSeries,
+    TdxProbeResult,
     TushareProbeResult,
     WatchlistRequest,
     WatchlistSummary,
@@ -248,6 +249,11 @@ async def system_runtime_config() -> DataRuntimeSettings:
 @router.get("/system/tushare-probe", response_model=TushareProbeResult)
 async def system_tushare_probe(symbol: str = Query(default="600519", min_length=6, max_length=6)) -> TushareProbeResult:
     return TushareMarketDataProvider().probe_connectivity(symbol=symbol)
+
+
+@router.get("/system/tdx-probe", response_model=TdxProbeResult)
+async def system_tdx_probe() -> TdxProbeResult:
+    return TdxLocalHistoryProvider().probe_vipdoc()
 
 
 def _runtime_settings() -> DataRuntimeSettings:
