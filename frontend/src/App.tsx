@@ -938,13 +938,11 @@ export default function App() {
     setExportingStorage(true)
     try {
       const snapshot = await fetchStorageExport()
-      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `stock-doctor-state-${new Date().toISOString().slice(0, 10)}.json`
-      anchor.click()
-      URL.revokeObjectURL(url)
+      downloadTextFile(
+        JSON.stringify(snapshot, null, 2),
+        'application/json',
+        `stock-doctor-state-${new Date().toISOString().slice(0, 10)}.json`,
+      )
     } catch (err) {
       const message = err instanceof Error ? err.message : '数据导出失败'
       setStorageError(message)
