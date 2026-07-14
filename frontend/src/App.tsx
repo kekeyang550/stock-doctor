@@ -1375,7 +1375,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`# ${markdownText(diagnosis.name ?? payload.symbol)} 研究报告`)
   lines.push('')
   lines.push(`- 代码: ${markdownText(payload.symbol)}`)
-  lines.push(`- 周期: ${markdownText(payload.horizon)}`)
+  lines.push(`- 周期: ${markdownText(reportHorizonLabel(payload.horizon))}`)
   if (payload.generated_at) {
     lines.push(`- 报告生成时间: ${markdownText(payload.generated_at)}`)
   }
@@ -1661,7 +1661,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <span>${escapeHtml(payload.version)}</span>
         ${payload.generated_at ? `<span>生成 ${escapeHtml(payload.generated_at)}</span>` : ""}
         <span>${escapeHtml(payload.exported_at)}</span>
-        <span>${escapeHtml(payload.horizon ?? "-")}</span>
+        <span>${escapeHtml(reportHorizonLabel(payload.horizon))}</span>
       </div>
       <div class="cover-title">
         <h1>${escapeHtml(diagnosis.name ?? "")}<small>${escapeHtml(payload.symbol)}</small></h1>
@@ -1878,7 +1878,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>观察中</span><strong>${escapeHtml(reviewActions.watching_count ?? 0)}</strong></div>
         <div class="metric"><span>已完成</span><strong>${escapeHtml(reviewActions.done_count ?? 0)}</strong></div>
       </div>
-      <p>${escapeHtml(reviewActions.name ?? diagnosis.name ?? "")} · ${escapeHtml(reviewActions.horizon ?? payload.horizon ?? "")} · ${escapeHtml(reviewActions.generated_at ?? "")}</p>
+      <p>${escapeHtml(reviewActions.name ?? diagnosis.name ?? "")} · ${escapeHtml(reportHorizonLabel(reviewActions.horizon ?? payload.horizon))} · ${escapeHtml(reviewActions.generated_at ?? "")}</p>
       ${reviewActionItems.map((item: any) => `<div class="row"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(reviewActionPriorityLabel(item.priority))} · ${escapeHtml(reviewActionStatusLabel(item.status))} · ${escapeHtml(item.category)} · ${escapeHtml(item.detail)} · 来源 ${escapeHtml(item.source)}</small></div>`).join("") || "<p>暂无复盘行动</p>"}
     </section>
 
@@ -2013,6 +2013,13 @@ function reportRebalanceActionLabel(action: unknown) {
   if (action === 'reduce') return '降权'
   if (action === 'increase') return '补强'
   return '保持'
+}
+
+function reportHorizonLabel(horizon: unknown) {
+  if (horizon === 'intraday') return '短线'
+  if (horizon === 'position') return '中线'
+  if (horizon === 'swing') return '波段'
+  return String(horizon ?? '-')
 }
 
 function reportScoreDirectionLabel(direction: unknown) {
