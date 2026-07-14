@@ -170,7 +170,8 @@ class TushareMarketDataProvider:
                     ts_code=ts_code,
                     fields=(
                         "ts_code,end_date,roe_dt,roe,q_roe,revenue_yoy,netprofit_yoy,"
-                        "eps,basic_eps,grossprofit_margin,gross_margin,debt_to_assets"
+                        "eps,basic_eps,grossprofit_margin,gross_margin,debt_to_assets,"
+                        "ocfps,ocf_to_profit,cashflow_ratio,current_ratio,quick_ratio"
                     ),
                 )
             )
@@ -187,6 +188,10 @@ class TushareMarketDataProvider:
         eps = self._first_optional_float(fina, "eps", "basic_eps")
         gross_margin = self._first_optional_float(fina, "grossprofit_margin", "gross_margin")
         debt_to_assets = self._first_optional_float(fina, "debt_to_assets")
+        operating_cashflow_per_share = self._first_optional_float(fina, "ocfps")
+        cashflow_to_profit = self._first_optional_float(fina, "ocf_to_profit", "cashflow_ratio")
+        current_ratio = self._first_optional_float(fina, "current_ratio")
+        quick_ratio = self._first_optional_float(fina, "quick_ratio")
         if pe_ttm <= 0 and pb <= 0 and roe == 0 and revenue_growth == 0 and profit_growth == 0:
             self._last_error = self._last_error or "财务指标返回空数据"
             return None
@@ -201,6 +206,10 @@ class TushareMarketDataProvider:
             eps=eps,
             gross_margin=gross_margin,
             debt_to_assets=debt_to_assets,
+            operating_cashflow_per_share=operating_cashflow_per_share,
+            cashflow_to_profit=cashflow_to_profit,
+            current_ratio=current_ratio,
+            quick_ratio=quick_ratio,
         )
 
     def _basic_info_from_tushare(self, symbol: str) -> dict[str, str] | None:

@@ -144,6 +144,12 @@ class DataQualityService:
             problems.append("毛利率超出常规区间")
         if base.debt_to_assets is not None and not 0 <= base.debt_to_assets <= 100:
             problems.append("资产负债率超出 0-100")
+        if base.cashflow_to_profit is not None and not -500 <= base.cashflow_to_profit <= 500:
+            problems.append("现金流利润比超出常规区间")
+        if base.current_ratio is not None and not 0 <= base.current_ratio <= 20:
+            problems.append("流动比率超出常规区间")
+        if base.quick_ratio is not None and not 0 <= base.quick_ratio <= 20:
+            problems.append("速动比率超出常规区间")
         return self._check(
             key="fundamental",
             label="估值财务",

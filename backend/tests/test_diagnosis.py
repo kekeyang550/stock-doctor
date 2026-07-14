@@ -48,6 +48,10 @@ def test_optional_financial_fields_surface_in_evidence():
             eps=2.5,
             gross_margin=42,
             debt_to_assets=28,
+            operating_cashflow_per_share=3.1,
+            cashflow_to_profit=95,
+            current_ratio=1.8,
+            quick_ratio=1.1,
         )
     )
 
@@ -55,6 +59,9 @@ def test_optional_financial_fields_surface_in_evidence():
 
     assert any(item.label == "毛利率" and item.polarity == "positive" for item in result.evidence)
     assert any(item.label == "资产负债率" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "每股经营现金流" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "现金流利润比" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "流动比率" and item.polarity == "positive" for item in result.evidence)
 
 
 def test_risk_events_reduce_score_and_surface_warning():

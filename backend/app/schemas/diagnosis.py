@@ -229,6 +229,10 @@ class FundamentalSnapshot(BaseModel):
     eps: float | None = None
     gross_margin: float | None = None
     debt_to_assets: float | None = None
+    operating_cashflow_per_share: float | None = None
+    cashflow_to_profit: float | None = None
+    current_ratio: float | None = None
+    quick_ratio: float | None = None
 
 
 class CapitalSnapshot(BaseModel):

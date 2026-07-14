@@ -80,6 +80,9 @@ def test_data_quality_report_flags_invalid_optional_financial_ratios():
                 industry_pe_percentile=31,
                 gross_margin=128,
                 debt_to_assets=135,
+                cashflow_to_profit=800,
+                current_ratio=28,
+                quick_ratio=24,
             ),
         }
     )
@@ -90,6 +93,9 @@ def test_data_quality_report_flags_invalid_optional_financial_ratios():
     assert fundamental_check.status == "fail"
     assert "毛利率超出常规区间" in fundamental_check.detail
     assert "资产负债率超出 0-100" in fundamental_check.detail
+    assert "现金流利润比超出常规区间" in fundamental_check.detail
+    assert "流动比率超出常规区间" in fundamental_check.detail
+    assert "速动比率超出常规区间" in fundamental_check.detail
 
 
 def test_data_quality_report_warns_for_conservative_real_data_fields():

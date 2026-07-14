@@ -94,7 +94,7 @@ Tushare Pro is available as an optional finance/basic-info enhancement. The app 
 $env:STOCK_DOCTOR_TUSHARE_TOKEN = "<your-token>"
 ```
 
-Install `tushare` in the backend environment when you are ready to connect the finance/basic-info normalization layer. `STOCK_DOCTOR_DATA_PROVIDER=tushare` is accepted and safe to start today; the adapter can enrich stock name/industry, PE/PB/ROE/revenue growth/profit growth/EPS/gross margin/debt-to-assets, and adjusted daily price history from Tushare Pro when package and token are present. Stock lists, quotes, and any failed Tushare calls continue to use the Mock fallback, and connector health reports the latest failed probe step without returning token values.
+Install `tushare` in the backend environment when you are ready to connect the finance/basic-info normalization layer. `STOCK_DOCTOR_DATA_PROVIDER=tushare` is accepted and safe to start today; the adapter can enrich stock name/industry, PE/PB/ROE/revenue growth/profit growth/EPS/gross margin/debt-to-assets, operating cash flow per share, cash-flow-to-profit, current ratio, quick ratio, and adjusted daily price history from Tushare Pro when package and token are present. Stock lists, quotes, and any failed Tushare calls continue to use the Mock fallback, and connector health reports the latest failed probe step without returning token values.
 
 The workspace also includes a manual refresh job panel. Refresh jobs record provider, scope, status, duration, and covered stock counts so the same history can later back scheduled real-data updates.
 

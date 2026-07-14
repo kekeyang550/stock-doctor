@@ -129,6 +129,30 @@ class DiagnosisEngine:
         if base.eps is not None and base.eps <= 0:
             score -= 4
             evidence.append(EvidenceItem(label="每股收益", value=f"{base.eps:.2f}", interpretation="每股收益为非正，需复核盈利质量", polarity="negative"))
+        if base.operating_cashflow_per_share is not None:
+            if base.operating_cashflow_per_share > 0:
+                score += 3
+                evidence.append(EvidenceItem(label="每股经营现金流", value=f"{base.operating_cashflow_per_share:.2f}", interpretation="经营现金流为正", polarity="positive"))
+            else:
+                score -= 5
+                evidence.append(EvidenceItem(label="每股经营现金流", value=f"{base.operating_cashflow_per_share:.2f}", interpretation="经营现金流为非正，需复核利润质量", polarity="negative"))
+        if base.cashflow_to_profit is not None:
+            if base.cashflow_to_profit >= 80:
+                score += 4
+                evidence.append(EvidenceItem(label="现金流利润比", value=f"{base.cashflow_to_profit:.1f}%", interpretation="利润现金含量较好", polarity="positive"))
+            elif base.cashflow_to_profit < 50:
+                score -= 5
+                evidence.append(EvidenceItem(label="现金流利润比", value=f"{base.cashflow_to_profit:.1f}%", interpretation="利润现金含量偏弱", polarity="negative"))
+        if base.current_ratio is not None:
+            if base.current_ratio >= 1.5:
+                score += 3
+                evidence.append(EvidenceItem(label="流动比率", value=f"{base.current_ratio:.2f}", interpretation="短期偿债缓冲较足", polarity="positive"))
+            elif base.current_ratio < 1:
+                score -= 5
+                evidence.append(EvidenceItem(label="流动比率", value=f"{base.current_ratio:.2f}", interpretation="短期偿债压力需关注", polarity="negative"))
+        if base.quick_ratio is not None and base.quick_ratio < 0.8:
+            score -= 3
+            evidence.append(EvidenceItem(label="速动比率", value=f"{base.quick_ratio:.2f}", interpretation="速动资产覆盖偏弱", polarity="negative"))
 
         return self._clamp(score), evidence
 
