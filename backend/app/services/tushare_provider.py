@@ -1,5 +1,7 @@
+from contextlib import redirect_stdout
 from datetime import datetime, timezone
 from importlib.util import find_spec
+from io import StringIO
 from time import monotonic
 
 from app.config import settings
@@ -30,6 +32,7 @@ class TushareMarketDataProvider:
         self._last_basic_enriched = False
         self._last_finance_enriched = False
         self._last_history_enriched = False
+        self._last_history_adjusted = False
         self._last_error: str | None = None
 
     def list_stocks(self) -> list[StockSummary]:
@@ -155,7 +158,7 @@ class TushareMarketDataProvider:
         steps.append(self._probe_stock_basic(client, ts_code))
         steps.append(self._probe_daily_basic(client, ts_code))
         steps.append(self._probe_fina_indicator(client, ts_code))
-        steps.append(self._probe_pro_bar(ts_code))
+        steps.append(self._probe_pro_bar(client, ts_code))
         return self._probe_result(normalized, package_available, token_configured, steps, started_at)
 
     def _is_ready(self) -> bool:
@@ -173,7 +176,7 @@ class TushareMarketDataProvider:
         if self._last_finance_enriched:
             enriched_parts.append("财务基础指标")
         if self._last_history_enriched:
-            enriched_parts.append("前复权日线")
+            enriched_parts.append("前复权日线" if self._last_history_adjusted else "日线")
         if enriched_parts:
             return f"{'、'.join(enriched_parts)}已从 Tushare Pro 增强。"
         if self._last_error:
@@ -193,27 +196,45 @@ class TushareMarketDataProvider:
             return TushareProbeStep(key="stock_basic", label="基础资料", status="fail", detail="client 缺少 stock_basic 能力。", duration_ms=self._elapsed_ms(started_at))
         try:
             rows = self._rows(stock_basic(ts_code=ts_code, fields="ts_code,name,industry"))
-        except Exception:
-            return TushareProbeStep(key="stock_basic", label="基础资料", status="fail", detail="stock_basic 调用失败。", duration_ms=self._elapsed_ms(started_at))
+        except Exception as exc:
+            return TushareProbeStep(
+                key="stock_basic",
+                label="基础资料",
+                status=self._probe_error_status(exc),
+                detail=f"stock_basic 调用失败：{self._safe_error_detail(exc)}",
+                duration_ms=self._elapsed_ms(started_at),
+            )
         return self._probe_rows_step("stock_basic", "基础资料", rows, self._elapsed_ms(started_at))
 
     def _probe_daily_basic(self, client: object, ts_code: str) -> TushareProbeStep:
         started_at = monotonic()
         try:
             rows = self._rows(client.daily_basic(ts_code=ts_code, fields="ts_code,trade_date,pe_ttm,pb,turnover_rate"))
-        except Exception:
-            return TushareProbeStep(key="daily_basic", label="日行情基础指标", status="fail", detail="daily_basic 调用失败。", duration_ms=self._elapsed_ms(started_at))
+        except Exception as exc:
+            return TushareProbeStep(
+                key="daily_basic",
+                label="日行情基础指标",
+                status=self._probe_error_status(exc),
+                detail=f"daily_basic 调用失败：{self._safe_error_detail(exc)}",
+                duration_ms=self._elapsed_ms(started_at),
+            )
         return self._probe_rows_step("daily_basic", "日行情基础指标", rows, self._elapsed_ms(started_at))
 
     def _probe_fina_indicator(self, client: object, ts_code: str) -> TushareProbeStep:
         started_at = monotonic()
         try:
             rows = self._rows(client.fina_indicator(ts_code=ts_code, fields="ts_code,end_date,roe_dt,revenue_yoy,netprofit_yoy"))
-        except Exception:
-            return TushareProbeStep(key="fina_indicator", label="财务指标", status="fail", detail="fina_indicator 调用失败。", duration_ms=self._elapsed_ms(started_at))
+        except Exception as exc:
+            return TushareProbeStep(
+                key="fina_indicator",
+                label="财务指标",
+                status=self._probe_error_status(exc, optional=True),
+                detail=f"fina_indicator 调用失败：{self._safe_error_detail(exc)}",
+                duration_ms=self._elapsed_ms(started_at),
+            )
         return self._probe_rows_step("fina_indicator", "财务指标", rows, self._elapsed_ms(started_at))
 
-    def _probe_pro_bar(self, ts_code: str) -> TushareProbeStep:
+    def _probe_pro_bar(self, client: object, ts_code: str) -> TushareProbeStep:
         started_at = monotonic()
         module = self._ts_module
         if module is None:
@@ -225,10 +246,62 @@ class TushareMarketDataProvider:
         if pro_bar is None:
             return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="tushare.pro_bar 不可用。", duration_ms=self._elapsed_ms(started_at))
         try:
-            rows = self._rows(pro_bar(ts_code=ts_code, adj="qfq", freq="D"))
-        except Exception:
-            return TushareProbeStep(key="pro_bar", label="前复权日线", status="fail", detail="pro_bar 前复权日线调用失败。", duration_ms=self._elapsed_ms(started_at))
+            self._set_module_token(module)
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                rows = self._rows(pro_bar(ts_code=ts_code, adj="qfq", freq="D"))
+        except Exception as exc:
+            pro_bar_error = self._safe_error_detail(exc, stdout.getvalue())
+            fallback_step = self._probe_daily_history(client, ts_code, started_at, pro_bar_error)
+            if fallback_step is not None:
+                return fallback_step
+            return TushareProbeStep(
+                key="pro_bar",
+                label="前复权日线",
+                status=self._probe_error_status(exc),
+                detail=f"pro_bar 前复权日线调用失败：{pro_bar_error}",
+                duration_ms=self._elapsed_ms(started_at),
+            )
         return self._probe_rows_step("pro_bar", "前复权日线", rows, self._elapsed_ms(started_at))
+
+    def _probe_daily_history(
+        self,
+        client: object,
+        ts_code: str,
+        started_at: float,
+        pro_bar_error: str,
+    ) -> TushareProbeStep | None:
+        daily = getattr(client, "daily", None)
+        if daily is None:
+            return None
+        try:
+            rows = self._rows(daily(ts_code=ts_code))
+        except Exception as exc:
+            detail = self._safe_error_detail(exc)
+            return TushareProbeStep(
+                key="pro_bar",
+                label="前复权日线",
+                status="fail",
+                detail=f"前复权日线不可用，未复权 daily 日线也调用失败：{detail}；前复权失败原因：{pro_bar_error}",
+                duration_ms=self._elapsed_ms(started_at),
+            )
+        if rows:
+            return TushareProbeStep(
+                key="pro_bar",
+                label="前复权日线",
+                status="warn",
+                detail=f"前复权日线不可用，已用未复权 daily 日线验证通过。前复权失败原因：{pro_bar_error}",
+                duration_ms=self._elapsed_ms(started_at),
+                row_count=len(rows),
+            )
+        return TushareProbeStep(
+            key="pro_bar",
+            label="前复权日线",
+            status="warn",
+            detail=f"前复权日线不可用，未复权 daily 日线可调用但返回空数据。前复权失败原因：{pro_bar_error}",
+            duration_ms=self._elapsed_ms(started_at),
+            row_count=0,
+        )
 
     def _probe_rows_step(self, key: str, label: str, rows: list[dict], duration_ms: int) -> TushareProbeStep:
         if rows:
@@ -255,6 +328,9 @@ class TushareMarketDataProvider:
         elif not token_configured:
             message = "Tushare Pro Token 未配置，当前只能使用其他数据源或 Mock 回退。"
             next_action = "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再重新检测。"
+        elif status == "warn":
+            message = "Tushare Pro 预检部分通过，部分真实数据可用，但存在频率、权限或空数据限制。"
+            next_action = "可继续用东方财富主源；如需 Tushare 财务指标或复权日线，请等待频控恢复或提升账号权限后再检测。"
         else:
             message = "Tushare Pro 预检未完全通过，系统会继续使用安全回退。"
             next_action = "根据失败步骤检查 token 权限、网络连通性或 Tushare 接口返回。"
@@ -287,6 +363,7 @@ class TushareMarketDataProvider:
             self._last_error = "tushare.pro_api 不可用"
             return None
         try:
+            self._set_module_token(module)
             return pro_api(settings.tushare_token.strip())
         except Exception:
             self._last_error = "pro_api 初始化失败"
@@ -304,9 +381,9 @@ class TushareMarketDataProvider:
                     fields="ts_code,trade_date,pe_ttm,pb,turnover_rate",
                 )
             )
-        except Exception:
+        except Exception as exc:
             daily_rows = []
-            self._last_error = "daily_basic 调用失败"
+            self._last_error = f"daily_basic 调用失败：{self._safe_error_detail(exc)}"
         try:
             fina_rows = self._rows(
                 client.fina_indicator(
@@ -319,9 +396,9 @@ class TushareMarketDataProvider:
                     ),
                 )
             )
-        except Exception:
+        except Exception as exc:
             fina_rows = []
-            self._last_error = "fina_indicator 调用失败"
+            self._last_error = f"fina_indicator 调用失败：{self._safe_error_detail(exc)}"
         daily = daily_rows[0] if daily_rows else {}
         fina = fina_rows[0] if fina_rows else {}
         pe_ttm = self._first_float(daily, "pe_ttm", "pe", default=0)
@@ -372,8 +449,8 @@ class TushareMarketDataProvider:
                     fields="ts_code,name,industry,area,market,list_date",
                 )
             )
-        except Exception:
-            self._last_error = "stock_basic 调用失败"
+        except Exception as exc:
+            self._last_error = f"stock_basic 调用失败：{self._safe_error_detail(exc)}"
             return None
         if not rows:
             self._last_error = self._last_error or "基础资料返回空数据"
@@ -399,16 +476,44 @@ class TushareMarketDataProvider:
         if pro_bar is None:
             return []
         try:
-            rows = self._rows(
-                pro_bar(
+            self._set_module_token(module)
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                payload = pro_bar(
                     ts_code=self._ts_code(symbol),
                     adj="qfq",
                     freq="D",
                 )
-            )
-        except Exception:
-            self._last_error = "pro_bar 前复权日线调用失败"
+            rows = self._rows(payload)
+        except Exception as exc:
+            pro_bar_error = self._safe_error_detail(exc, stdout.getvalue())
+            daily_rows = self._daily_history_rows(symbol)
+            if not daily_rows:
+                self._last_error = f"pro_bar 前复权日线调用失败：{pro_bar_error}"
+                return []
+            self._last_history_adjusted = False
+            self._last_error = None
+            return self._history_bars_from_rows(daily_rows, days)
+        bars = self._history_bars_from_rows(rows, days)
+        if not bars:
+            self._last_error = self._last_error or "前复权日线返回空数据"
             return []
+        self._last_history_adjusted = True
+        self._last_error = None
+        return bars
+
+    def _daily_history_rows(self, symbol: str) -> list[dict]:
+        client = self._client()
+        daily = getattr(client, "daily", None) if client is not None else None
+        if daily is None:
+            return []
+        try:
+            return self._rows(daily(ts_code=self._ts_code(symbol)))
+        except Exception as exc:
+            self._last_error = f"daily 日线调用失败：{self._safe_error_detail(exc)}"
+            return []
+
+    def _history_bars_from_rows(self, rows: list[dict], days: int) -> list[HistoricalPriceBar]:
         bars: list[HistoricalPriceBar] = []
         for row in rows:
             close = self._first_float(row, "close", default=0)
@@ -423,9 +528,7 @@ class TushareMarketDataProvider:
                 )
             )
         if not bars:
-            self._last_error = self._last_error or "前复权日线返回空数据"
             return []
-        self._last_error = None
         return sorted(bars, key=lambda bar: bar.date)[-max(1, days):]
 
     def _rows(self, payload: object) -> list[dict]:
@@ -442,6 +545,43 @@ class TushareMarketDataProvider:
             except Exception:
                 return []
         return []
+
+    def _set_module_token(self, module: object) -> None:
+        token = settings.tushare_token.strip()
+        if not token:
+            return
+        set_token = getattr(module, "set_token", None)
+        if not callable(set_token):
+            return
+        try:
+            set_token(token)
+        except Exception:
+            return
+
+    def _probe_error_status(self, exc: Exception, optional: bool = False) -> str:
+        detail = str(exc)
+        if "频率超限" in detail:
+            return "warn"
+        if optional and ("没有接口" in detail or "权限" in detail):
+            return "warn"
+        return "fail"
+
+    def _safe_error_detail(self, exc: Exception, stdout_text: str = "") -> str:
+        parts: list[str] = []
+        for line in stdout_text.splitlines():
+            clean = line.strip()
+            if clean and clean not in parts:
+                parts.append(clean)
+        exc_detail = str(exc).strip() or exc.__class__.__name__
+        if exc_detail and exc_detail not in parts:
+            parts.append(exc_detail)
+        detail = "；".join(parts)
+        token = settings.tushare_token.strip()
+        if token:
+            detail = detail.replace(token, "<TOKEN>")
+        if len(detail) > 240:
+            detail = f"{detail[:237]}..."
+        return detail
 
     def _first_float(self, row: dict, *keys: str, default: float = 0) -> float:
         for key in keys:

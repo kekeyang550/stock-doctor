@@ -17,10 +17,14 @@ class FakeTushareModule:
     def __init__(self):
         self.client = FakeTushareClient()
         self.pro_bar_calls = []
+        self.tokens = []
 
     def pro_api(self, token: str):
         self.client.token = token
         return self.client
+
+    def set_token(self, token: str):
+        self.tokens.append(token)
 
     def pro_bar(self, ts_code: str, adj: str, freq: str):
         self.pro_bar_calls.append({"ts_code": ts_code, "adj": adj, "freq": freq})
@@ -45,6 +49,13 @@ class FakeTushareClient:
                 "pb": "2.3",
                 "turnover_rate": "0.8",
             }
+        ]
+
+    def daily(self, ts_code: str):
+        return [
+            {"trade_date": "20260712", "close": "19.2", "vol": "1000"},
+            {"trade_date": "20260710", "close": "18.1", "vol": "900"},
+            {"trade_date": "20260711", "close": "18.8", "vol": "950"},
         ]
 
     def fina_indicator(self, ts_code: str, fields: str):
@@ -102,6 +113,11 @@ class FailingTushareClient:
 
     def stock_basic(self, ts_code: str, fields: str):
         raise RuntimeError("stock_basic unavailable")
+
+
+class QfqFailingTushareModule(FakeTushareModule):
+    def pro_bar(self, ts_code: str, adj: str, freq: str):
+        raise OSError("ERROR.")
 
 
 def test_akshare_provider_falls_back_without_package():
@@ -184,6 +200,7 @@ def test_tushare_provider_returns_adjusted_price_history(monkeypatch):
     assert [bar.date for bar in bars] == ["2026-07-11", "2026-07-12"]
     assert [bar.close for bar in bars] == [19.1, 19.8]
     assert [bar.volume for bar in bars] == [950, 1000]
+    assert module.tokens == ["test-token"]
     tushare = next(source for source in sources if source["name"] == "Tushare Pro")
     assert tushare["status"] == "online"
     assert "前复权日线" in tushare["role"]
@@ -217,6 +234,35 @@ def test_tushare_provider_probe_reports_ready_steps(monkeypatch):
     assert {step.key: step.row_count for step in result.steps}["fina_indicator"] == 1
     assert {step.key: step.row_count for step in result.steps}["pro_bar"] == 3
     assert module.client.token == "test-token"
+    assert module.tokens == ["test-token", "test-token"]
+
+
+def test_tushare_provider_probe_uses_daily_history_when_qfq_is_limited(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "test-token")
+    provider = TushareMarketDataProvider(ts_module=QfqFailingTushareModule())
+
+    result = provider.probe_connectivity("600519")
+
+    pro_bar_step = next(step for step in result.steps if step.key == "pro_bar")
+    assert result.status == "warn"
+    assert pro_bar_step.status == "warn"
+    assert pro_bar_step.row_count == 3
+    assert "未复权 daily 日线验证通过" in pro_bar_step.detail
+
+
+def test_tushare_provider_uses_daily_history_when_qfq_history_fails(monkeypatch):
+    monkeypatch.setattr(settings, "tushare_token", "test-token")
+    module = QfqFailingTushareModule()
+    provider = TushareMarketDataProvider(ts_module=module)
+
+    bars = provider.get_price_history("600519", days=2)
+    sources = provider.get_data_sources()
+
+    assert [bar.date for bar in bars] == ["2026-07-11", "2026-07-12"]
+    assert [bar.close for bar in bars] == [18.8, 19.2]
+    tushare = next(source for source in sources if source["name"] == "Tushare Pro")
+    assert tushare["status"] == "online"
+    assert "日线" in tushare["role"]
 
 
 def test_tushare_provider_probe_reports_failures_without_token_leak(monkeypatch):
