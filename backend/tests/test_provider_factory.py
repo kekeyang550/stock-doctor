@@ -1146,13 +1146,72 @@ def test_tdx_local_history_provider_reads_day_file(tmp_path):
     assert "2026-07-10" in source["role"]
 
 
+def test_tdx_local_history_provider_auto_discovers_vipdoc_when_configured_path_is_missing(tmp_path, monkeypatch):
+    discovered = tmp_path / "股票" / "新建文件夹" / "vipdoc"
+    write_tdx_day_file(
+        discovered,
+        "600519",
+        [
+            (20260708, 1188.77, 1200.98, 1177.00, 1199.30, 3_071_933_440.0, 2_577_602),
+            (20260709, 1191.00, 1191.99, 1178.00, 1182.19, 4_035_216_896.0, 3_409_634),
+            (20260710, 1182.20, 1204.98, 1170.28, 1204.98, 6_223_343_616.0, 5_221_255),
+        ],
+    )
+    monkeypatch.setattr(TdxLocalHistoryProvider, "_COMMON_ROOTS", (tmp_path / "股票",))
+    monkeypatch.setattr(TdxLocalHistoryProvider, "_DISCOVERY_CACHE", None)
+    monkeypatch.setattr(TdxLocalHistoryProvider, "_DISCOVERY_DONE", False)
+
+    provider = TdxLocalHistoryProvider(vipdoc_path=tmp_path / "missing" / "vipdoc")
+    bars = provider.get_price_history("600519", days=1)
+    status = provider.describe(["600519"])
+    source = provider.get_data_source(["600519"])
+
+    assert bars[-1].date == "2026-07-10"
+    assert status["auto_discovered"] is True
+    assert status["path"] == str(discovered)
+    assert "已自动使用" in source["role"]
+
+
+def test_tdx_local_history_provider_reads_uppercase_day_filename(tmp_path):
+    path = write_tdx_day_file(
+        tmp_path,
+        "600519",
+        [(20260710, 1182.20, 1204.98, 1170.28, 1204.98, 6_223_343_616.0, 5_221_255)],
+    )
+    uppercase_path = path.with_name(path.name.upper())
+    path.rename(uppercase_path)
+
+    provider = TdxLocalHistoryProvider(vipdoc_path=tmp_path)
+
+    assert provider.get_price_history("600519", days=1)[-1].close == 1204.98
+
+
+def test_tdx_local_history_provider_does_not_use_stale_history(tmp_path):
+    write_tdx_day_file(
+        tmp_path,
+        "600519",
+        [(20130321, 15.60, 15.80, 15.50, 15.80, 1000.0, 1580)],
+    )
+    provider = TdxLocalHistoryProvider(vipdoc_path=tmp_path)
+
+    bars = provider.get_price_history("600519", days=1)
+    status = provider.describe(["600519"])
+    source = provider.get_data_source(["600519"])
+
+    assert bars == []
+    assert status["usable_count"] == 0
+    assert status["stale_count"] == 1
+    assert source["status"] == "fallback"
+    assert "已过期" in source["role"]
+
+
 def test_eastmoney_provider_reports_tdx_reference_source(tmp_path):
     write_tdx_day_file(
         tmp_path,
         "600519",
         [
-            (20260529, 15.60, 15.80, 15.50, 15.80, 1000.0, 1580),
-            (20260530, 15.80, 16.00, 15.70, 15.90, 1000.0, 1590),
+            (20260709, 15.60, 15.80, 15.50, 15.80, 1000.0, 1580),
+            (20260710, 15.80, 16.00, 15.70, 15.90, 1000.0, 1590),
         ],
     )
     provider = EastmoneyMarketDataProvider(

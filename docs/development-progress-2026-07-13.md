@@ -101,13 +101,17 @@
    - 本机已完成 Tushare Token 本地 `.env` 配置验证；接口不返回 token 明文，Git 不跟踪该配置文件。
    - 当前 Tushare 真实预检为“部分通过”：包、Token、Pro API 初始化正常；未复权 `daily` 日线可返回 5960 行样本；`stock_basic`、`daily_basic` 和 `adj_factor` 受账号频控限制，`fina_indicator` 当前账号无访问权限。
    - `pro_bar` 已补充 `set_token` 调用，并在前复权因子受限时自动降级到未复权 `daily` 日线；数据可信度面板会以 warn 展示“部分真实数据可用”，而不是误判为整体失败。
+   - 通达信本地日线适配器已支持自动发现常见目录下的 `vipdoc`，兼容 `sh600519.day` 和 `SH600519.day` 文件名。
+   - 若配置路径不存在但发现其他 `vipdoc`，运行配置会显示“实际使用”路径；若样本日线过期，会标记为 fallback/已过期，并禁止用旧 K 线参与诊断或回测兜底。
+   - 本机当前可发现 `E:\股票\渤海证券行情加交易\new_bhzq_v6\Vipdoc`，但样本最新交易日为 2013-03-21，已判定过期；需要在通达信客户端确认最新下载位置或重新补全日线。
 
 ## 本机验证结果
 
-- 后端全量测试：`175 passed, 1 warning`（测试时临时使用 `STOCK_DOCTOR_DATA_PROVIDER=mock`，避免本机真实 provider 网络波动影响单元测试）
+- 后端全量测试：`178 passed, 1 warning`（测试时临时使用 `STOCK_DOCTOR_DATA_PROVIDER=mock`，避免本机真实 provider 网络波动影响单元测试）
 - 前端测试：`54 passed`
 - 前端生产构建：通过
 - 接口验证：`/api/v1/system/tushare-probe?symbol=600519` 返回 `warn`；Token 已配置，未复权日线可用，财务指标权限和频控限制已在步骤详情中展示。
+- 接口验证：`/api/v1/system/runtime-config` 可返回通达信配置路径、自动发现路径和过期说明；`/api/v1/system/data-connectors` 对过期通达信日线返回 fallback。
 
 ## 本地运行配置
 

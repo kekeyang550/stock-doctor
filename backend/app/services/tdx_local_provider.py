@@ -1,4 +1,5 @@
 import struct
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -10,13 +11,34 @@ class TdxLocalHistoryProvider:
     """Read local TongDaXin vipdoc daily K-line files."""
 
     _RECORD_SIZE = 32
+    _SAMPLE_SYMBOLS = ("600519", "300750", "002594", "000001")
+    _COMMON_ROOTS = (
+        Path("E:/股票"),
+        Path("E:/证券"),
+        Path("E:/聚富财经论坛专用炒股软件"),
+        Path("E:/操盘手2012"),
+        Path("E:/Program Files"),
+        Path("E:/Program Files (x86)"),
+        Path("D:/同花顺软件"),
+        Path("D:/股票"),
+        Path("D:/证券"),
+    )
+    _DISCOVERY_CACHE: Path | None = None
+    _DISCOVERY_DONE = False
+    _MAX_STALE_DAYS = 30
 
     def __init__(self, vipdoc_path: str | Path | None = None) -> None:
-        self._vipdoc_path = Path(vipdoc_path or settings.tdx_vipdoc_path)
+        configured = Path(vipdoc_path or settings.tdx_vipdoc_path)
+        self._configured_vipdoc_path = configured
+        self._vipdoc_path = self.resolve_vipdoc_path(configured)
+        self._auto_discovered = self._normalize(configured) != self._normalize(self._vipdoc_path)
         self._last_error: str | None = None
         self._last_reference: dict[str, Any] | None = None
 
     def get_price_history(self, symbol: str, days: int = 240) -> list[HistoricalPriceBar]:
+        return self._read_price_history(symbol, days=days, allow_stale=False)
+
+    def _read_price_history(self, symbol: str, days: int = 240, allow_stale: bool = False) -> list[HistoricalPriceBar]:
         path = self._day_file(symbol)
         if not path.exists():
             self._last_error = f"未找到通达信日线文件：{path}"
@@ -26,6 +48,9 @@ class TdxLocalHistoryProvider:
             bars = self._parse_day_bytes(data)
         except Exception as exc:
             self._last_error = str(exc)
+            return []
+        if bars and not allow_stale and self._is_stale(bars[-1].date):
+            self._last_error = f"通达信日线已过期：{bars[-1].date}"
             return []
         self._last_error = None
         days = max(2, min(days, 240))
@@ -39,7 +64,7 @@ class TdxLocalHistoryProvider:
             if not path.exists():
                 reports.append({"symbol": symbol, "exists": False, "rows": 0, "last_date": None})
                 continue
-            bars = self.get_price_history(symbol, days=240)
+            bars = self._read_price_history(symbol, days=240, allow_stale=True)
             reports.append(
                 {
                     "symbol": symbol,
@@ -47,17 +72,23 @@ class TdxLocalHistoryProvider:
                     "rows": len(bars),
                     "last_date": bars[-1].date if bars else None,
                     "last_close": bars[-1].close if bars else None,
+                    "stale": self._is_stale(bars[-1].date) if bars else True,
                     "path": str(path),
                 }
             )
-        usable = [item for item in reports if item["exists"] and item["rows"] > 0]
+        usable = [item for item in reports if item["exists"] and item["rows"] > 0 and not item.get("stale")]
+        stale = [item for item in reports if item["exists"] and item["rows"] > 0 and item.get("stale")]
         latest_dates = [item["last_date"] for item in usable if item["last_date"]]
+        all_latest_dates = [item["last_date"] for item in reports if item.get("last_date")]
         return {
+            "configured_path": str(self._configured_vipdoc_path),
             "path": str(self._vipdoc_path),
+            "auto_discovered": self._auto_discovered,
             "exists": self._vipdoc_path.exists(),
             "checked_symbols": reports,
             "usable_count": len(usable),
-            "latest_date": max(latest_dates) if latest_dates else None,
+            "stale_count": len(stale),
+            "latest_date": max(latest_dates) if latest_dates else max(all_latest_dates) if all_latest_dates else None,
             "last_error": self._last_error,
             "last_reference": self._last_reference,
         }
@@ -87,15 +118,23 @@ class TdxLocalHistoryProvider:
             return {
                 "name": "通达信本地日线",
                 "status": "missing-package",
-                "role": f"未找到 vipdoc 目录：{status['path']}",
+                "role": f"未找到 vipdoc 目录：{status['configured_path']}",
             }
         if status["usable_count"] <= 0:
+            if status["stale_count"] > 0:
+                return {
+                    "name": "通达信本地日线",
+                    "status": "fallback",
+                    "role": f"vipdoc 可访问但样本日线已过期，最新交易日 {status['latest_date']}；路径 {status['path']}",
+                }
             return {
                 "name": "通达信本地日线",
                 "status": "fallback",
                 "role": f"vipdoc 可访问，但样本股票日线不可用；路径 {status['path']}",
             }
         detail = f"本地日线可读，样本 {status['usable_count']} 只，最新交易日 {status['latest_date']}。"
+        if status["auto_discovered"]:
+            detail = f"{detail} 已自动使用 {status['path']}。"
         reference = status.get("last_reference")
         if reference:
             detail = (
@@ -108,10 +147,49 @@ class TdxLocalHistoryProvider:
             "role": f"本地历史 K 线参考/兜底；{detail}",
         }
 
+    @classmethod
+    def resolve_vipdoc_path(cls, configured_path: str | Path | None = None) -> Path:
+        configured = Path(configured_path or settings.tdx_vipdoc_path)
+        if cls._is_usable_vipdoc(configured):
+            return configured
+        discovered = cls.discover_vipdoc_path()
+        return discovered or configured
+
+    @classmethod
+    def discover_vipdoc_path(cls) -> Path | None:
+        if cls._DISCOVERY_DONE:
+            return cls._DISCOVERY_CACHE
+        candidates: list[Path] = []
+        for root in cls._COMMON_ROOTS:
+            if not root.exists():
+                continue
+            candidates.extend(cls._direct_vipdoc_candidates(root))
+            try:
+                candidates.extend(path for path in root.rglob("vipdoc") if path.is_dir())
+            except OSError:
+                continue
+        scored = [
+            (cls._candidate_score(candidate), candidate)
+            for candidate in cls._dedupe_paths(candidates)
+            if cls._is_vipdoc_shape(candidate)
+        ]
+        usable = [(score, path) for score, path in scored if score[2] > 0]
+        if not usable:
+            cls._DISCOVERY_CACHE = None
+            cls._DISCOVERY_DONE = True
+            return None
+        usable.sort(key=lambda item: item[0], reverse=True)
+        cls._DISCOVERY_CACHE = usable[0][1]
+        cls._DISCOVERY_DONE = True
+        return cls._DISCOVERY_CACHE
+
     def _day_file(self, symbol: str) -> Path:
         normalized = symbol.strip().upper()
         market = "sh" if normalized.startswith(("5", "6", "9")) or normalized == "000300" else "sz"
-        return self._vipdoc_path / market / "lday" / f"{market}{normalized}.day"
+        folder = self._vipdoc_path / market / "lday"
+        lower = folder / f"{market}{normalized}.day"
+        upper = folder / f"{market.upper()}{normalized}.day"
+        return lower if lower.exists() or not upper.exists() else upper
 
     def _parse_day_bytes(self, data: bytes) -> list[HistoricalPriceBar]:
         bars = []
@@ -134,3 +212,80 @@ class TdxLocalHistoryProvider:
                 )
             )
         return bars
+
+    @classmethod
+    def _direct_vipdoc_candidates(cls, root: Path) -> list[Path]:
+        names = ("vipdoc", "Vipdoc", "VIPDOC")
+        return [root / name for name in names if (root / name).is_dir()]
+
+    @classmethod
+    def _is_vipdoc_shape(cls, path: Path) -> bool:
+        return (path / "sh" / "lday").is_dir() or (path / "sz" / "lday").is_dir()
+
+    @classmethod
+    def _is_usable_vipdoc(cls, path: Path) -> bool:
+        _latest, _coverage, rows = cls._candidate_score(path)
+        return rows > 0
+
+    @classmethod
+    def _candidate_score(cls, path: Path) -> tuple[int, int, int]:
+        if not cls._is_vipdoc_shape(path):
+            return (0, 0, 0)
+        rows = 0
+        coverage = 0
+        latest = 0
+        for symbol in cls._SAMPLE_SYMBOLS:
+            market = "sh" if symbol.startswith(("5", "6", "9")) or symbol == "000300" else "sz"
+            folder = path / market / "lday"
+            for filename in (f"{market}{symbol}.day", f"{market.upper()}{symbol}.day"):
+                day_file = folder / filename
+                if not day_file.exists():
+                    continue
+                coverage += 1
+                rows += max(1, day_file.stat().st_size // cls._RECORD_SIZE)
+                date_hint = cls._latest_date_hint(day_file)
+                if date_hint > latest:
+                    latest = date_hint
+                break
+        return (latest, coverage, rows)
+
+    @classmethod
+    def _latest_date_hint(cls, path: Path) -> int:
+        try:
+            size = path.stat().st_size
+            if size < cls._RECORD_SIZE:
+                return 0
+            with path.open("rb") as handle:
+                handle.seek(size - cls._RECORD_SIZE)
+                raw = handle.read(cls._RECORD_SIZE)
+            trade_date = struct.unpack("<I", raw[:4])[0]
+            text = str(trade_date)
+            return trade_date if len(text) == 8 else 0
+        except OSError:
+            return 0
+
+    @classmethod
+    def _dedupe_paths(cls, paths: list[Path]) -> list[Path]:
+        seen: set[str] = set()
+        deduped: list[Path] = []
+        for path in paths:
+            key = cls._normalize(path)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(path)
+        return deduped
+
+    @staticmethod
+    def _normalize(path: Path) -> str:
+        return str(path).rstrip("\\/").lower()
+
+    @classmethod
+    def _is_stale(cls, date_text: str | None) -> bool:
+        if not date_text:
+            return True
+        try:
+            latest = date.fromisoformat(date_text)
+        except ValueError:
+            return True
+        return (date.today() - latest).days > cls._MAX_STALE_DAYS

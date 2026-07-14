@@ -87,6 +87,7 @@ from app.services.strategy_backtest import StrategyBacktestService
 from app.services.strategy_backtest_actions import StrategyBacktestActionService
 from app.services.strategy_backtest_history import StrategyBacktestHistoryService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
+from app.services.tdx_local_provider import TdxLocalHistoryProvider
 from app.services.timeline import TimelineService
 from app.services.trend import TrendService
 from app.services.tushare_provider import TushareMarketDataProvider
@@ -251,14 +252,26 @@ async def system_tushare_probe(symbol: str = Query(default="600519", min_length=
 
 def _runtime_settings() -> DataRuntimeSettings:
     ths_paths = [path.strip() for path in settings.ths_stockname_paths.split(";") if path.strip()]
+    tdx_status = TdxLocalHistoryProvider().describe()
+    tdx_configured = bool(settings.tdx_vipdoc_path.strip())
+    tdx_exists = bool(tdx_status["exists"])
+    tdx_note = None
+    if tdx_status["auto_discovered"]:
+        tdx_note = "配置路径不可用，已自动发现可读 vipdoc。"
+    elif tdx_exists:
+        tdx_note = "配置路径可用。"
+    if tdx_status.get("stale_count", 0) > 0 and tdx_status.get("usable_count", 0) <= 0:
+        tdx_note = "已发现 vipdoc，但样本日线过期，不会用于诊断或回测兜底。"
     path_settings = [
         RuntimePathSetting(
             key="tdx_vipdoc",
             label="通达信 vipdoc",
             env_var="STOCK_DOCTOR_TDX_VIPDOC_PATH",
             value=settings.tdx_vipdoc_path,
-            configured=bool(settings.tdx_vipdoc_path.strip()),
-            exists=Path(settings.tdx_vipdoc_path).exists() if settings.tdx_vipdoc_path.strip() else None,
+            configured=tdx_configured,
+            exists=tdx_exists if tdx_configured else None,
+            resolved_value=tdx_status["path"] if tdx_exists else None,
+            resolution_note=tdx_note,
         ),
         RuntimePathSetting(
             key="ths_stockname",

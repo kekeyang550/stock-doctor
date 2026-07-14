@@ -111,6 +111,8 @@ class RuntimePathSetting(BaseModel):
     value: str
     configured: bool
     exists: bool | None = None
+    resolved_value: str | None = None
+    resolution_note: str | None = None
 
 
 class RuntimeSecretSetting(BaseModel):

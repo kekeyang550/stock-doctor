@@ -68,6 +68,8 @@ export type RuntimePathSetting = {
   value: string
   configured: boolean
   exists: boolean | null
+  resolved_value?: string | null
+  resolution_note?: string | null
 }
 
 export type RuntimeSecretSetting = {

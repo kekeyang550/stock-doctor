@@ -95,12 +95,16 @@ export function SystemRuntimeConfigPanel({
           </div>
           <div className="runtime-path-list">
             {paths.map((item) => (
-              <article key={item.key} className={`runtime-path ${runtimePathStatusClass(item.exists)}`}>
+              <article key={item.key} className={`runtime-path ${runtimePathStatusClass(item)}`}>
                 <div>
                   <strong>{item.label}</strong>
-                  <em>{runtimePathStatusLabel(item.exists)}</em>
+                  <em>{runtimePathStatusLabel(item)}</em>
                 </div>
                 <p>{item.value || '未配置'}</p>
+                {item.resolved_value && item.resolved_value !== item.value ? (
+                  <p className="runtime-path-resolved">实际使用：{item.resolved_value}</p>
+                ) : null}
+                {item.resolution_note ? <small>{item.resolution_note}</small> : null}
                 <small>{item.env_var}</small>
               </article>
             ))}
@@ -203,16 +207,18 @@ function RuntimeConfigItem({ label, value, detail }: { label: string; value: str
 }
 
 
-function runtimePathStatusLabel(exists: boolean | null) {
-  if (exists === true) return '可用'
-  if (exists === false) return '未找到'
+function runtimePathStatusLabel(item: DataRuntimeSettings['paths'][number]) {
+  if (item.resolution_note?.includes('过期')) return '已过期'
+  if (item.exists === true) return '可用'
+  if (item.exists === false) return '未找到'
   return '未配置'
 }
 
 
-function runtimePathStatusClass(exists: boolean | null) {
-  if (exists === true) return 'online'
-  if (exists === false) return 'fallback'
+function runtimePathStatusClass(item: DataRuntimeSettings['paths'][number]) {
+  if (item.resolution_note?.includes('过期')) return 'fallback'
+  if (item.exists === true) return 'online'
+  if (item.exists === false) return 'fallback'
   return 'unknown'
 }
 
