@@ -98,13 +98,16 @@
    - JSON/HTML/Markdown 研究报告已加入 Tushare 预检上下文；已执行预检时导出状态、步骤和下一步，未执行时明确写“本次导出未执行只读预检”。
    - 新增 `backend/.env.example`，集中记录 eastmoney、通达信、同花顺、Tushare Token、缓存 TTL、请求超时和新鲜度阈值配置模板。
    - Tushare 预检结果已增加总耗时、步骤耗时和接口返回行数；未配置 Token 时展示包/Token 检查耗时，配置 Token 后可进一步观察各 Tushare 接口是否慢、空数据或权限不足。
+   - 本机已完成 Tushare Token 本地 `.env` 配置验证；接口不返回 token 明文，Git 不跟踪该配置文件。
+   - 当前 Tushare 真实预检为“部分通过”：包、Token、Pro API 初始化正常；未复权 `daily` 日线可返回 5960 行样本；`stock_basic`、`daily_basic` 和 `adj_factor` 受账号频控限制，`fina_indicator` 当前账号无访问权限。
+   - `pro_bar` 已补充 `set_token` 调用，并在前复权因子受限时自动降级到未复权 `daily` 日线；数据可信度面板会以 warn 展示“部分真实数据可用”，而不是误判为整体失败。
 
 ## 本机验证结果
 
-- 后端全量测试：`173 passed, 1 warning`
+- 后端全量测试：`175 passed, 1 warning`（测试时临时使用 `STOCK_DOCTOR_DATA_PROVIDER=mock`，避免本机真实 provider 网络波动影响单元测试）
 - 前端测试：`54 passed`
 - 前端生产构建：通过
-- 浏览器验证：`http://127.0.0.1:30080/` 正常渲染，无残留“加载中”，运行配置面板可见“检测 Tushare”；点击后能展示 tushare 包可导入、Tushare Token 未配置的明确提示。
+- 接口验证：`/api/v1/system/tushare-probe?symbol=600519` 返回 `warn`；Token 已配置，未复权日线可用，财务指标权限和频控限制已在步骤详情中展示。
 
 ## 本地运行配置
 
