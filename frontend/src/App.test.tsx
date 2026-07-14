@@ -2843,6 +2843,7 @@ describe('App', () => {
     expect(html).toContain('<!doctype html>')
     expect(html).toContain('stock-doctor-saved-report-v1')
     expect(html).toContain('贵州茅台')
+    expect(html).toContain('生成 2026-07-10T03:00:00Z')
     expect(html).toContain('数据可信度')
     expect(anchor.download).toBe('stock-doctor-saved-report-600519-2026-07-10.html')
 
@@ -2853,6 +2854,7 @@ describe('App', () => {
     expect(exports[1].options?.type).toBe('text/markdown')
     expect(markdown).toContain('# 贵州茅台 研究报告')
     expect(markdown).toContain('- 代码: 600519')
+    expect(markdown).toContain('- 报告生成时间: 2026-07-10T03:00:00Z')
     expect(markdown).toContain('## 数据可信度')
     expect(anchor.download).toBe('stock-doctor-saved-report-600519-2026-07-10.md')
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:stock-doctor-saved-report-readable')

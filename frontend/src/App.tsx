@@ -1339,6 +1339,9 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push('')
   lines.push(`- 代码: ${markdownText(payload.symbol)}`)
   lines.push(`- 周期: ${markdownText(payload.horizon)}`)
+  if (payload.generated_at) {
+    lines.push(`- 报告生成时间: ${markdownText(payload.generated_at)}`)
+  }
   lines.push(`- 导出时间: ${markdownText(payload.exported_at)}`)
   lines.push('')
 
@@ -1606,6 +1609,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <div class="cover-meta">
         <span>Stock Doctor</span>
         <span>${escapeHtml(payload.version)}</span>
+        ${payload.generated_at ? `<span>生成 ${escapeHtml(payload.generated_at)}</span>` : ""}
         <span>${escapeHtml(payload.exported_at)}</span>
         <span>${escapeHtml(payload.horizon ?? "-")}</span>
       </div>
