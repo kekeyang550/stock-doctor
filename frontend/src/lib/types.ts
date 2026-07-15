@@ -685,6 +685,7 @@ export type StrategyBacktestHistoryComparison = {
   max_drawdown_delta: number
   stability_score_delta: number
   sample_confidence_delta: number
+  score_weak_exit_delta?: number
   summary: string
 }
 

@@ -82,6 +82,7 @@ class StrategyBacktestHistoryService:
         sample_confidence_delta = (
             latest.sample_confidence_score - previous.sample_confidence_score if latest and previous else 0
         )
+        score_weak_exit_delta = latest.score_weak_exit_count - previous.score_weak_exit_count if latest and previous else 0
         return StrategyBacktestHistoryComparison(
             preset=preset,
             horizon=horizon,
@@ -92,6 +93,7 @@ class StrategyBacktestHistoryService:
             max_drawdown_delta=max_drawdown_delta,
             stability_score_delta=stability_score_delta,
             sample_confidence_delta=sample_confidence_delta,
+            score_weak_exit_delta=score_weak_exit_delta,
             summary=self._summary(preset, items, average_return_delta, stability_score_delta),
         )
 

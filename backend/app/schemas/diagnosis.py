@@ -966,6 +966,7 @@ class StrategyBacktestHistoryComparison(BaseModel):
     max_drawdown_delta: float = 0
     stability_score_delta: int = 0
     sample_confidence_delta: int = 0
+    score_weak_exit_delta: int = 0
     summary: str
 
 

@@ -412,6 +412,7 @@ def test_strategy_backtest_history_service_records_and_compares(tmp_path):
         comparison.latest.average_return_pct - comparison.previous.average_return_pct,
         2,
     )
+    assert comparison.score_weak_exit_delta == comparison.latest.score_weak_exit_count - comparison.previous.score_weak_exit_count
     assert "最近" in comparison.summary
 
 

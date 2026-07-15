@@ -1511,6 +1511,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push('')
   lines.push('### 历史对比')
   lines.push(markdownText(strategyBacktestHistory.summary ?? '暂无回测历史对比'))
+  lines.push(`- 诊断转弱变化: ${markdownText(formatReportSignedNumber(strategyBacktestHistory.score_weak_exit_delta ?? 0))} 笔`)
   markdownList(lines, backtestHistoryItems.slice(0, 6), (item) => `${item.holding_days} 日 ${strategyBacktestPriceSourceLabel(item.price_source)} - ${strategyBacktestParameterLabel(item)} - ${strategyBacktestHistoryExitLabel(item)} - 平均收益 ${formatReportSignedPercent(item.average_return_pct ?? 0)}, 最大回撤 ${formatReportSignedPercent(item.max_drawdown_pct ?? 0)}, 稳定 ${item.stability_score}, 可信 ${item.sample_confidence_score}`)
   lines.push('')
   lines.push('### 回测复盘动作')
@@ -1911,6 +1912,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>最大回撤变化</span><strong>${escapeHtml(formatReportSignedPercent(strategyBacktestHistory.max_drawdown_delta ?? 0))}</strong></div>
         <div class="metric"><span>稳定评分变化</span><strong>${escapeHtml(formatReportSignedNumber(strategyBacktestHistory.stability_score_delta ?? 0))} 分</strong></div>
         <div class="metric"><span>可信度变化</span><strong>${escapeHtml(formatReportSignedNumber(strategyBacktestHistory.sample_confidence_delta ?? 0))} 分</strong></div>
+        <div class="metric"><span>诊断转弱变化</span><strong>${escapeHtml(formatReportSignedNumber(strategyBacktestHistory.score_weak_exit_delta ?? 0))} 笔</strong></div>
       </div>
       <h4>最近回测</h4>
       ${backtestHistoryItems.slice(0, 6).map((item: any) => `<div class="row"><strong>${escapeHtml(item.holding_days)} 日 · ${escapeHtml(strategyBacktestPriceSourceLabel(item.price_source))}</strong><small>${escapeHtml(item.created_at ?? "-")} · ${escapeHtml(strategyBacktestParameterLabel(item))} · ${escapeHtml(strategyBacktestHistoryExitLabel(item))} · 平均收益 ${escapeHtml(formatReportSignedPercent(item.average_return_pct ?? 0))} · 最大回撤 ${escapeHtml(formatReportSignedPercent(item.max_drawdown_pct ?? 0))} · 稳定 ${escapeHtml(item.stability_score ?? 0)} · 可信 ${escapeHtml(item.sample_confidence_score ?? 0)}</small></div>`).join("") || "<p>暂无最近回测</p>"}

@@ -644,6 +644,7 @@ def test_strategy_backtest_history_records_recent_runs():
     assert "score_weak_exit_count" in payload["latest"]
     assert "lowest_diagnosis_exit_score" in payload["latest"]
     assert "average_return_delta" in payload
+    assert "score_weak_exit_delta" in payload
     assert payload["summary"]
 
 

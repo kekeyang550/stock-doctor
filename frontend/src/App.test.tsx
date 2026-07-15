@@ -985,6 +985,7 @@ const strategyBacktestHistory = {
   max_drawdown_delta: -0.2,
   stability_score_delta: 2,
   sample_confidence_delta: 1,
+  score_weak_exit_delta: 1,
   latest: {
     id: 'bt-3',
     created_at: '2026-07-11T07:50:00Z',
@@ -2199,6 +2200,8 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('历史对比')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('平均收益变化')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('稳定评分变化')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('诊断转弱变化')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('+1 笔')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('最近回测')).toBeInTheDocument()
     expect(backtestPanel).toHaveTextContent('固定持有')
     expect(backtestPanel).toHaveTextContent('诊断转弱 1 笔 / 最低 63.9')
@@ -3151,6 +3154,8 @@ describe('App', () => {
     expect(html).toContain('10 日 · 推荐')
     expect(html).toContain('交易 2 · 胜率 100%')
     expect(html).toContain('诊断转弱 1 笔 / 最低 63.9')
+    expect(html).toContain('诊断转弱变化')
+    expect(html).toContain('+1 笔')
     expect(html).toContain('策略横向对比')
     expect(html).toContain('策略推荐依据')
     expect(html).toContain('推荐 强势关注，因为收益回撤比 0.59')
@@ -3350,6 +3355,7 @@ describe('App', () => {
     expect(markdown).toContain('样例交易')
     expect(markdown).toContain('历史路径代理诊断分 82.3 未低于阈值 65。')
     expect(markdown).toContain('历史对比')
+    expect(markdown).toContain('诊断转弱变化: +1 笔')
     expect(markdown).toContain('固定持有')
     expect(markdown).toContain('诊断转弱 1 笔 / 最低 63.9')
     expect(markdown).toContain('### 回测复盘动作')

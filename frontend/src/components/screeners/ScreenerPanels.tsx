@@ -1400,6 +1400,12 @@ export function StrategyBacktestPanel({
                     {history.sample_confidence_delta >= 0 ? '+' : ''}{history.sample_confidence_delta} 分
                   </b>
                 </span>
+                <span>
+                  <small>诊断转弱变化</small>
+                  <b className={(history.score_weak_exit_delta ?? 0) <= 0 ? 'up' : 'down'}>
+                    {(history.score_weak_exit_delta ?? 0) >= 0 ? '+' : ''}{history.score_weak_exit_delta ?? 0} 笔
+                  </b>
+                </span>
               </div>
               <strong className="backtest-history-title">最近回测</strong>
               <div className="backtest-history-list">
