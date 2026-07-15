@@ -115,6 +115,17 @@ Install `tushare` in the backend environment when you are ready to connect the f
 The runtime configuration panel includes a read-only "检测 Tushare" probe. It checks package import, token presence, Pro API initialization, `stock_basic`, `daily_basic`, `fina_indicator`, and `pro_bar` without switching the active provider or returning token values.
 
 The workspace also includes a manual refresh job panel. Refresh jobs record provider, scope, status, duration, and covered stock counts so the same history can later back scheduled real-data updates.
+Backend auto refresh is available but disabled by default. Enable it only after the chosen real-data provider is stable:
+
+```powershell
+$env:STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED = "true"
+$env:STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES = "240"
+$env:STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE = "watchlist"
+$env:STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP = "false"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
+```
+
+The runtime configuration panel shows whether auto refresh is enabled, the configured scope, interval, and whether startup refresh is active. Like other runtime knobs, changes require a backend restart.
 
 The connector panel also shows data freshness: latest successful refresh time, refresh age, covered stock count, coverage rate, and the recommended next action.
 
@@ -127,6 +138,10 @@ Optional runtime knobs for real-data trials:
 $env:STOCK_DOCTOR_DATA_REQUEST_TIMEOUT_SECONDS = "8"
 $env:STOCK_DOCTOR_DATA_CACHE_TTL_SECONDS = "300"
 $env:STOCK_DOCTOR_DATA_FRESHNESS_STALE_AFTER_MINUTES = "30"
+$env:STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED = "false"
+$env:STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES = "240"
+$env:STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE = "watchlist"
+$env:STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP = "false"
 $env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "E:\new_tdx64\vipdoc"
 ```
 

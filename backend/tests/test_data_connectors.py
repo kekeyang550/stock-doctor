@@ -227,6 +227,12 @@ def test_runtime_config_endpoint_exposes_provider_and_local_paths():
     assert payload["request_timeout_seconds"] == settings.data_request_timeout_seconds
     assert payload["cache_ttl_seconds"] == settings.data_cache_ttl_seconds
     assert payload["freshness_stale_after_minutes"] == settings.data_freshness_stale_after_minutes
+    assert payload["auto_refresh"] == {
+        "enabled": settings.data_auto_refresh_enabled,
+        "interval_minutes": settings.data_auto_refresh_interval_minutes,
+        "scope": settings.data_auto_refresh_scope,
+        "run_on_startup": settings.data_auto_refresh_on_startup,
+    }
     assert payload["restart_required"] is True
     secrets = {item["key"]: item for item in payload["secrets"]}
     assert secrets["tushare_token"]["env_var"] == "STOCK_DOCTOR_TUSHARE_TOKEN"

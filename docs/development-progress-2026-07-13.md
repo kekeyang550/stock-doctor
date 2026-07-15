@@ -110,6 +110,8 @@
    - 本机当前可发现 `E:\股票\渤海证券行情加交易\new_bhzq_v6\Vipdoc`，但样本最新交易日为 2013-03-21，已判定过期；需要在通达信客户端确认最新下载位置或重新补全日线。
    - 新增 `/api/v1/system/tdx-probe` 只读检测接口和前端“检测通达信”按钮，可列出候选 `vipdoc`、是否当前使用、样本覆盖、行数、最新交易日和过期状态。
    - JSON/HTML/Markdown 研究报告已加入通达信预检上下文；已执行检测时导出候选路径、实际使用路径、最新交易日和过期状态，未执行时明确写“本次导出未执行通达信只读检测”。
+   - 2026-07-15 新增后端自动刷新调度骨架，默认关闭；可通过 `STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED`、`STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES`、`STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE` 和 `STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP` 启用。启用后 FastAPI 生命周期会按配置触发刷新任务，并继续复用现有刷新历史和数据新鲜度面板。
+   - 运行配置面板和 `/api/v1/system/runtime-config` 已显示自动刷新是否开启、刷新范围、间隔和是否启动即刷新；本机自检脚本会在后端重启后同步输出该配置。
 
 ## 本机验证结果
 
@@ -120,6 +122,7 @@
 - 接口验证：`/api/v1/system/runtime-config` 可返回通达信配置路径、自动发现路径和过期说明；`/api/v1/system/data-connectors` 对过期通达信日线返回 fallback。
 - 接口验证：`/api/v1/system/tdx-probe` 当前返回 `warn`，列出 5 个候选路径；当前解析路径最新交易日 2013-03-21，已标记过期。
 - 2026-07-15 新增本机交付自检脚本：`powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1`，可只读检查目录、Python/Node/npm、依赖、端口、健康接口、系统就绪度、运行配置和前端页面；当前自检结果为 `0 failure(s), 1 warning(s)`，警告来自运行配置仍使用 mock/本地路径类提示。
+- 2026-07-15 自动刷新调度验证：后端全量测试更新为 `186 passed, 1 warning`，前端测试仍为 `55 passed`，前端生产构建通过；当前已运行的旧后端进程需重启后才会在自检输出里显示 `auto_refresh` 新字段。
 
 ## 本地运行配置
 
@@ -130,6 +133,10 @@ STOCK_DOCTOR_DATA_PROVIDER=eastmoney
 STOCK_DOCTOR_DATA_REQUEST_TIMEOUT_SECONDS=8
 STOCK_DOCTOR_DATA_CACHE_TTL_SECONDS=300
 STOCK_DOCTOR_DATA_FRESHNESS_STALE_AFTER_MINUTES=30
+STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED=false
+STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES=240
+STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE=watchlist
+STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP=false
 STOCK_DOCTOR_TDX_VIPDOC_PATH=E:\new_tdx64\vipdoc
 STOCK_DOCTOR_THS_STOCKNAME_PATHS=D:\同花顺软件\同花顺\stockname\stockname_16_0.txt;D:\同花顺软件\同花顺\stockname\stockname_32_0.txt
 STOCK_DOCTOR_TUSHARE_TOKEN=<如需 Tushare 财务增强，填入 token>
@@ -168,6 +175,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1
 2. 真实数据质量评分
    - 已把来源覆盖率、更新时间、fallback 次数、缓存过期和缓存命中率纳入股票级质量评分。
    - 已细分“真实可用”“部分兜底”“运行需刷新”的前端展示文案，并加入质量总览筛选器。
+   - 后端已具备默认关闭的自动刷新调度；下一步可在真实 provider 稳定后开启 `watchlist` 范围定时刷新，并观察刷新失败率、覆盖率和接口频控。
 
 3. 组合风险和回测真实化
    - 组合风险已加入现金缓冲/超额权重提示、模拟市值/仓位金额估算、行业集中度阈值、真实持仓成本、浮盈亏、持仓导入、交易流水导入、更多券商中文表头适配和带千分位/引号的复杂 CSV 解析。

@@ -77,6 +77,7 @@ export function SystemRuntimeConfigPanel({
   const providerOptions = settings?.provider_options?.length ? settings.provider_options.join(' / ') : '未返回'
   const paths = settings?.paths ?? []
   const secrets = settings?.secrets ?? []
+  const autoRefresh = settings?.auto_refresh
 
   return (
     <section className="panel runtime-config-panel">
@@ -107,6 +108,15 @@ export function SystemRuntimeConfigPanel({
             <RuntimeConfigItem label="请求超时" value={`${settings.request_timeout_seconds} 秒`} detail="真实行情接口单次等待上限" />
             <RuntimeConfigItem label="缓存 TTL" value={`${settings.cache_ttl_seconds} 秒`} detail="行情缓存有效窗口" />
             <RuntimeConfigItem label="过期阈值" value={`${settings.freshness_stale_after_minutes} 分钟`} detail="超过后提示数据偏旧" />
+            <RuntimeConfigItem
+              label="自动刷新"
+              value={autoRefresh?.enabled ? '已开启' : '未开启'}
+              detail={
+                autoRefresh
+                  ? `${autoRefresh.scope === 'watchlist' ? '自选股' : '全部标的'} / ${autoRefresh.interval_minutes} 分钟${autoRefresh.run_on_startup ? ' / 启动即刷新' : ''}`
+                  : '等待后端返回配置'
+              }
+            />
           </div>
           <div className="runtime-path-list">
             {paths.map((item) => (

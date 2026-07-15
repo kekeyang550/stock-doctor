@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app.config import settings
 from app.schemas.diagnosis import (
     AlertItem,
+    AutoRefreshSettings,
     ConceptHeatItem,
     DataConnectorHealth,
     DataFreshnessStatus,
@@ -80,6 +81,7 @@ from app.services.price_alerts import PriceAlertService
 from app.services.provider_factory import create_market_data_provider
 from app.services.reports import ReportService
 from app.services.refresh_jobs import DataRefreshJobService
+from app.services.refresh_scheduler import DataRefreshScheduler
 from app.services.review_actions import ReviewActionService
 from app.services.portfolio_risk import PortfolioRiskService
 from app.services.risk_exposure import RiskExposureService
@@ -124,6 +126,7 @@ strategy_backtest_action_service = StrategyBacktestActionService()
 price_alert_service = PriceAlertService()
 data_connector_health_service = DataConnectorHealthService()
 refresh_job_service = DataRefreshJobService()
+refresh_scheduler = DataRefreshScheduler(provider=data_provider, refresh_service=refresh_job_service)
 data_quality_service = DataQualityService()
 thesis_service = ThesisService()
 review_action_service = ReviewActionService()
@@ -294,6 +297,12 @@ def _runtime_settings() -> DataRuntimeSettings:
         request_timeout_seconds=settings.data_request_timeout_seconds,
         cache_ttl_seconds=settings.data_cache_ttl_seconds,
         freshness_stale_after_minutes=settings.data_freshness_stale_after_minutes,
+        auto_refresh=AutoRefreshSettings(
+            enabled=settings.data_auto_refresh_enabled,
+            interval_minutes=settings.data_auto_refresh_interval_minutes,
+            scope=settings.data_auto_refresh_scope,
+            run_on_startup=settings.data_auto_refresh_on_startup,
+        ),
         paths=path_settings,
         secrets=[
             RuntimeSecretSetting(

@@ -1,9 +1,12 @@
+import asyncio
+
 from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.config import settings
 from app.services.market_data import MockMarketDataProvider
 from app.services.refresh_jobs import DataRefreshJobService
+from app.services.refresh_scheduler import DataRefreshScheduler
 from app.services.storage import JsonStateStore
 
 
@@ -72,6 +75,36 @@ def test_refresh_job_service_uses_configured_freshness_threshold(tmp_path, monke
     freshness = service.build_freshness(provider=provider)
 
     assert freshness.stale_after_minutes == 12
+
+
+def test_refresh_scheduler_is_disabled_by_default(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = WarmableProvider(state_store=store)
+    service = DataRefreshJobService(state_store=store)
+    scheduler = DataRefreshScheduler(provider=provider, refresh_service=service, enabled=False)
+
+    assert scheduler.start() is False
+    assert scheduler.running is False
+    assert provider.warmed_scopes == []
+
+
+def test_refresh_scheduler_can_run_configured_scope_once(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = WarmableProvider(state_store=store)
+    service = DataRefreshJobService(state_store=store)
+    scheduler = DataRefreshScheduler(
+        provider=provider,
+        refresh_service=service,
+        enabled=True,
+        interval_minutes=5,
+        scope="watchlist",
+        run_on_startup=False,
+    )
+
+    asyncio.run(scheduler.run_once())
+
+    assert provider.warmed_scopes == ["watchlist"]
+    assert service.list_jobs()[0].status == "success"
 
 
 def test_refresh_jobs_endpoint_creates_and_lists_job():

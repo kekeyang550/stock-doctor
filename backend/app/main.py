@@ -1,7 +1,18 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import router as api_router
+from app.api.routes import refresh_scheduler, router as api_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    refresh_scheduler.start()
+    try:
+        yield
+    finally:
+        await refresh_scheduler.stop()
 
 
 def create_app() -> FastAPI:
@@ -9,6 +20,7 @@ def create_app() -> FastAPI:
         title="A-Share Stock Doctor API",
         version="0.1.0",
         description="MVP API for explainable A-share stock diagnosis.",
+        lifespan=lifespan,
     )
 
     app.add_middleware(

@@ -259,6 +259,9 @@ if ($runtime) {
         $provider = $runtime.provider
     }
     Write-Check "INFO" "Runtime config" ("provider={0}, timeout={1}s, cache_ttl={2}s, freshness={3}min" -f $provider, $runtime.request_timeout_seconds, $runtime.cache_ttl_seconds, $runtime.freshness_stale_after_minutes)
+    if ($runtime.auto_refresh) {
+        Write-Check "INFO" "Auto refresh" ("enabled={0}, scope={1}, interval={2}min, run_on_startup={3}" -f $runtime.auto_refresh.enabled, $runtime.auto_refresh.scope, $runtime.auto_refresh.interval_minutes, $runtime.auto_refresh.run_on_startup)
+    }
     if ($runtime.secrets) {
         foreach ($secret in $runtime.secrets) {
             Write-Check "INFO" ("Optional integration {0}" -f $secret.label) ("configured={0}" -f $secret.configured)

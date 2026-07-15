@@ -122,12 +122,20 @@ class RuntimeSecretSetting(BaseModel):
     configured: bool
 
 
+class AutoRefreshSettings(BaseModel):
+    enabled: bool
+    interval_minutes: int
+    scope: str = Field(pattern="^(all|watchlist)$")
+    run_on_startup: bool
+
+
 class DataRuntimeSettings(BaseModel):
     active_provider: str
     provider_options: list[str]
     request_timeout_seconds: int
     cache_ttl_seconds: int
     freshness_stale_after_minutes: int
+    auto_refresh: AutoRefreshSettings
     paths: list[RuntimePathSetting]
     secrets: list[RuntimeSecretSetting] = Field(default_factory=list)
     restart_required: bool = True

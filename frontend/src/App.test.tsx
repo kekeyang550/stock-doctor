@@ -199,6 +199,12 @@ const runtimeSettings = {
   request_timeout_seconds: 8,
   cache_ttl_seconds: 300,
   freshness_stale_after_minutes: 30,
+  auto_refresh: {
+    enabled: false,
+    interval_minutes: 240,
+    scope: 'watchlist',
+    run_on_startup: false,
+  },
   paths: [
     {
       key: 'tdx_vipdoc',
@@ -1489,6 +1495,9 @@ describe('App', () => {
     const runtimePanel = screen.getByRole('heading', { name: '运行配置' }).closest('section')!
     expect(within(runtimePanel).getByText('数据源')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('mock')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('自动刷新')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('未开启')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('自选股 / 240 分钟')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('通达信 vipdoc')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('STOCK_DOCTOR_TDX_VIPDOC_PATH')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('同花顺股票名表')).toBeInTheDocument()

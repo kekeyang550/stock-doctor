@@ -85,6 +85,12 @@ export type DataRuntimeSettings = {
   request_timeout_seconds: number
   cache_ttl_seconds: number
   freshness_stale_after_minutes: number
+  auto_refresh: {
+    enabled: boolean
+    interval_minutes: number
+    scope: 'all' | 'watchlist'
+    run_on_startup: boolean
+  }
   paths: RuntimePathSetting[]
   secrets: RuntimeSecretSetting[]
   restart_required: boolean
