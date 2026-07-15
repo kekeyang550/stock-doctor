@@ -71,12 +71,6 @@ class DataConnectorStatus(BaseModel):
     next_action: str
 
 
-class DataConnectorRuntimeConfig(BaseModel):
-    request_timeout_seconds: int
-    cache_ttl_seconds: int
-    freshness_stale_after_minutes: int
-
-
 class ProviderCacheBucketStatus(BaseModel):
     key: str
     label: str
@@ -94,14 +88,6 @@ class ProviderCacheStatus(BaseModel):
     ttl_seconds: int = Field(ge=0)
     generated_at: str
     buckets: list[ProviderCacheBucketStatus]
-
-
-class DataConnectorHealth(BaseModel):
-    active_provider: str
-    fallback_provider: str
-    runtime_config: DataConnectorRuntimeConfig
-    cache_status: ProviderCacheStatus | None = None
-    connectors: list[DataConnectorStatus]
 
 
 class RuntimePathSetting(BaseModel):
@@ -135,6 +121,21 @@ class AutoRefreshSettings(BaseModel):
     last_run_status: str | None = Field(default=None, pattern="^(success|failed)$")
     last_error: str | None = None
     run_count: int = Field(default=0, ge=0)
+
+
+class DataConnectorRuntimeConfig(BaseModel):
+    request_timeout_seconds: int
+    cache_ttl_seconds: int
+    freshness_stale_after_minutes: int
+    auto_refresh: AutoRefreshSettings | None = None
+
+
+class DataConnectorHealth(BaseModel):
+    active_provider: str
+    fallback_provider: str
+    runtime_config: DataConnectorRuntimeConfig
+    cache_status: ProviderCacheStatus | None = None
+    connectors: list[DataConnectorStatus]
 
 
 class DataRuntimeSettings(BaseModel):

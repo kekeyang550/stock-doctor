@@ -3,6 +3,7 @@ from importlib.util import find_spec
 
 from app.config import settings
 from app.schemas.diagnosis import (
+    AutoRefreshSettings,
     DataConnectorHealth,
     DataConnectorRuntimeConfig,
     DataConnectorStatus,
@@ -12,7 +13,11 @@ from app.services.providers import MarketDataProvider
 
 
 class DataConnectorHealthService:
-    def build_health(self, provider: MarketDataProvider | None = None) -> DataConnectorHealth:
+    def build_health(
+        self,
+        provider: MarketDataProvider | None = None,
+        auto_refresh_status: dict[str, object] | None = None,
+    ) -> DataConnectorHealth:
         checked_at = datetime.now(timezone.utc).isoformat()
         akshare_installed = find_spec("akshare") is not None
         tushare_installed = find_spec("tushare") is not None
@@ -183,9 +188,33 @@ class DataConnectorHealthService:
                 request_timeout_seconds=settings.data_request_timeout_seconds,
                 cache_ttl_seconds=settings.data_cache_ttl_seconds,
                 freshness_stale_after_minutes=settings.data_freshness_stale_after_minutes,
+                auto_refresh=self._auto_refresh_settings(auto_refresh_status),
             ),
             cache_status=self._provider_cache_status(provider),
             connectors=connectors,
+        )
+
+    def _auto_refresh_settings(self, status: dict[str, object] | None) -> AutoRefreshSettings:
+        if status is None:
+            return AutoRefreshSettings(
+                enabled=settings.data_auto_refresh_enabled,
+                interval_minutes=settings.data_auto_refresh_interval_minutes,
+                scope=settings.data_auto_refresh_scope,
+                run_on_startup=settings.data_auto_refresh_on_startup,
+            )
+        return AutoRefreshSettings(
+            enabled=bool(status["enabled"]),
+            interval_minutes=int(status["interval_minutes"]),
+            scope=str(status["scope"]),
+            run_on_startup=bool(status["run_on_startup"]),
+            running=bool(status["running"]),
+            started_at=status["started_at"],
+            next_run_at=status["next_run_at"],
+            last_run_started_at=status["last_run_started_at"],
+            last_run_finished_at=status["last_run_finished_at"],
+            last_run_status=status["last_run_status"],
+            last_error=status["last_error"],
+            run_count=int(status["run_count"]),
         )
 
     def _provider_source_status(

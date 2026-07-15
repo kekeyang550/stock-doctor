@@ -2,6 +2,7 @@ import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Databa
 import { connectorTelemetry, humanizeConnectorMessage } from '../../lib/sourceLabels'
 import type {
   AlertItem,
+  AutoRefreshSettings,
   ChecklistItem,
   ConceptHeatItem,
   DataConnectorHealth,
@@ -288,7 +289,7 @@ function RuntimeConfigItem({ label, value, detail }: { label: string; value: str
 }
 
 
-function autoRefreshRuntimeLabel(autoRefresh: DataRuntimeSettings['auto_refresh'] | undefined) {
+function autoRefreshRuntimeLabel(autoRefresh: AutoRefreshSettings | null | undefined) {
   if (!autoRefresh) return '未知'
   if (!autoRefresh.enabled) return '未启用'
   if (autoRefresh.running) return '运行中'
@@ -296,7 +297,7 @@ function autoRefreshRuntimeLabel(autoRefresh: DataRuntimeSettings['auto_refresh'
 }
 
 
-function autoRefreshRuntimeDetail(autoRefresh: DataRuntimeSettings['auto_refresh'] | undefined) {
+function autoRefreshRuntimeDetail(autoRefresh: AutoRefreshSettings | null | undefined) {
   if (!autoRefresh) return '等待后端返回调度器状态'
   const scope = autoRefresh.scope === 'watchlist' ? '自选股' : '全部标的'
   if (!autoRefresh.enabled) return `当前关闭；启用后按 ${scope} / ${autoRefresh.interval_minutes} 分钟运行`
@@ -305,16 +306,25 @@ function autoRefreshRuntimeDetail(autoRefresh: DataRuntimeSettings['auto_refresh
 }
 
 
-function autoRefreshLastRunLabel(autoRefresh: DataRuntimeSettings['auto_refresh'] | undefined) {
+function autoRefreshLastRunLabel(autoRefresh: AutoRefreshSettings | null | undefined) {
   if (!autoRefresh?.last_run_status) return '尚未执行'
   return autoRefresh.last_run_status === 'success' ? '成功' : '失败'
 }
 
 
-function autoRefreshLastRunDetail(autoRefresh: DataRuntimeSettings['auto_refresh'] | undefined) {
+function autoRefreshLastRunDetail(autoRefresh: AutoRefreshSettings | null | undefined) {
   if (!autoRefresh) return '等待后端返回最近调度结果'
   if (!autoRefresh.last_run_finished_at) return autoRefresh.enabled ? '等待第一次自动刷新完成' : '自动刷新关闭，暂无调度记录'
   return `${formatReportTime(autoRefresh.last_run_finished_at)} 完成`
+}
+
+
+function autoRefreshStatusClass(autoRefresh: AutoRefreshSettings | null | undefined) {
+  if (!autoRefresh) return 'unknown'
+  if (!autoRefresh.enabled) return 'fallback'
+  if (!autoRefresh.running) return 'failed'
+  if (autoRefresh.last_run_status === 'failed') return 'fallback'
+  return 'online'
 }
 
 
@@ -535,6 +545,7 @@ export function DataConnectorPanel({
   const latestJob = jobs[0] ?? null
   const usingFallback = health ? health.active_provider === health.fallback_provider : false
   const runtimeConfig = health?.runtime_config
+  const autoRefresh = runtimeConfig?.auto_refresh ?? null
   const cacheBuckets = health?.cache_status?.buckets ?? []
   const totalCacheEntries = cacheBuckets.reduce((total, bucket) => total + bucket.entries, 0)
   const activeCacheEntries = cacheBuckets.reduce((total, bucket) => total + bucket.active_entries, 0)
@@ -609,6 +620,24 @@ export function DataConnectorPanel({
               value={runtimeConfig ? `${runtimeConfig.cache_ttl_seconds} 秒` : '--'}
               detail="行情缓存有效窗口，超过后应重新刷新。"
               status="unknown"
+            />
+            <TrustCard
+              label="自动刷新"
+              value={autoRefreshRuntimeLabel(autoRefresh)}
+              detail={autoRefreshRuntimeDetail(autoRefresh)}
+              status={autoRefreshStatusClass(autoRefresh)}
+            />
+            <TrustCard
+              label="下次自动刷新"
+              value={autoRefresh?.next_run_at ? formatReportTime(autoRefresh.next_run_at) : '--'}
+              detail={autoRefresh?.running ? '后端调度器会按计划触发刷新。' : '自动刷新未运行时需要手动刷新。'}
+              status={autoRefreshStatusClass(autoRefresh)}
+            />
+            <TrustCard
+              label="最近调度"
+              value={autoRefreshLastRunLabel(autoRefresh)}
+              detail={autoRefreshLastRunDetail(autoRefresh)}
+              status={autoRefresh?.last_run_status === 'failed' ? 'failed' : autoRefreshStatusClass(autoRefresh)}
             />
             <TrustCard
               label="缓存命中"

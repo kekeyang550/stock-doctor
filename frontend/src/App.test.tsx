@@ -81,6 +81,20 @@ const connectorHealth = {
     request_timeout_seconds: 8,
     cache_ttl_seconds: 300,
     freshness_stale_after_minutes: 30,
+    auto_refresh: {
+      enabled: false,
+      interval_minutes: 240,
+      scope: 'watchlist',
+      run_on_startup: false,
+      running: false,
+      started_at: null,
+      next_run_at: null,
+      last_run_started_at: null,
+      last_run_finished_at: null,
+      last_run_status: null,
+      last_error: null,
+      run_count: 0,
+    },
   },
   cache_status: {
     ttl_seconds: 300,
@@ -1476,6 +1490,10 @@ describe('App', () => {
     expect(within(trustPanel).getByText('8 秒')).toBeInTheDocument()
     expect(within(trustPanel).getByText('缓存 TTL')).toBeInTheDocument()
     expect(within(trustPanel).getByText('300 秒')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('自动刷新')).toBeInTheDocument()
+    expect(within(trustPanel).getAllByText('未启用').length).toBeGreaterThan(0)
+    expect(within(trustPanel).getByText('下次自动刷新')).toBeInTheDocument()
+    expect(within(trustPanel).getByText('最近调度')).toBeInTheDocument()
     expect(within(trustPanel).getByText('缓存命中')).toBeInTheDocument()
     expect(within(trustPanel).getByText('股票列表')).toBeInTheDocument()
     expect(within(trustPanel).getByText('1/1 有效')).toBeInTheDocument()
@@ -2949,6 +2967,8 @@ describe('App', () => {
     expect(exported.review_actions.items.map((item: { title: string }) => item.title)).toContain('验证论证假设 1')
     expect(exported.portfolio_weight_inputs['600519']).toBe('80')
     expect(exported.data_trust.connector_health.active_provider).toBe('mock')
+    expect(exported.data_trust.connector_health.runtime_config.auto_refresh.enabled).toBe(false)
+    expect(exported.data_trust.connector_health.runtime_config.auto_refresh.scope).toBe('watchlist')
     expect(exported.data_trust.runtime_config.active_provider).toBe('mock')
     expect(exported.data_trust.runtime_config.paths.map((item: { key: string }) => item.key)).toContain('tdx_vipdoc')
     expect(exported.data_trust.runtime_config.secrets[0]).toEqual({

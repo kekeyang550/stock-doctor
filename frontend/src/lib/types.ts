@@ -45,6 +45,21 @@ export type DataConnectorStatus = {
   next_action: string
 }
 
+export type AutoRefreshSettings = {
+  enabled: boolean
+  interval_minutes: number
+  scope: 'all' | 'watchlist'
+  run_on_startup: boolean
+  running?: boolean
+  started_at?: string | null
+  next_run_at?: string | null
+  last_run_started_at?: string | null
+  last_run_finished_at?: string | null
+  last_run_status?: 'success' | 'failed' | null
+  last_error?: string | null
+  run_count?: number
+}
+
 export type DataConnectorHealth = {
   active_provider: string
   fallback_provider: string
@@ -52,6 +67,7 @@ export type DataConnectorHealth = {
     request_timeout_seconds: number
     cache_ttl_seconds: number
     freshness_stale_after_minutes: number
+    auto_refresh?: AutoRefreshSettings | null
   }
   cache_status?: {
     ttl_seconds: number
@@ -85,20 +101,7 @@ export type DataRuntimeSettings = {
   request_timeout_seconds: number
   cache_ttl_seconds: number
   freshness_stale_after_minutes: number
-  auto_refresh: {
-    enabled: boolean
-    interval_minutes: number
-    scope: 'all' | 'watchlist'
-    run_on_startup: boolean
-    running?: boolean
-    started_at?: string | null
-    next_run_at?: string | null
-    last_run_started_at?: string | null
-    last_run_finished_at?: string | null
-    last_run_status?: 'success' | 'failed' | null
-    last_error?: string | null
-    run_count?: number
-  }
+  auto_refresh: AutoRefreshSettings
   paths: RuntimePathSetting[]
   secrets: RuntimeSecretSetting[]
   restart_required: boolean

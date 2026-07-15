@@ -241,7 +241,10 @@ def _data_quality_category(report: DataQualityReport) -> str:
 
 @router.get("/system/data-connectors", response_model=DataConnectorHealth)
 async def system_data_connectors() -> DataConnectorHealth:
-    return data_connector_health_service.build_health(provider=data_provider)
+    return data_connector_health_service.build_health(
+        provider=data_provider,
+        auto_refresh_status=refresh_scheduler.status(),
+    )
 
 
 @router.get("/system/runtime-config", response_model=DataRuntimeSettings)
