@@ -12,6 +12,7 @@ from app.schemas.diagnosis import (
     DiagnosisTrendInsight,
     ReportRecord,
 )
+from app.services.symbols import normalize_a_share_symbol
 
 
 class DiagnosisChangeService:
@@ -143,15 +144,15 @@ class DiagnosisChangeService:
         )
 
     def latest_for_symbol(self, reports: list[ReportRecord], symbol: str) -> ReportRecord | None:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         for report in reports:
-            if report.diagnosis.symbol.upper() == normalized:
+            if normalize_a_share_symbol(report.diagnosis.symbol) == normalized:
                 return report
         return None
 
     def recent_for_symbol(self, reports: list[ReportRecord], symbol: str, limit: int = 4) -> list[ReportRecord]:
-        normalized = symbol.strip().upper()
-        return [report for report in reports if report.diagnosis.symbol.upper() == normalized][:limit]
+        normalized = normalize_a_share_symbol(symbol)
+        return [report for report in reports if normalize_a_share_symbol(report.diagnosis.symbol) == normalized][:limit]
 
     def _score_change(self, key: str, label: str, delta: int) -> DiagnosisChangeItem:
         if delta > 0:
@@ -197,10 +198,10 @@ class DiagnosisChangeService:
         if all(record.id != previous.id for record in records):
             records.insert(0, previous)
 
-        normalized = current.symbol.upper()
+        normalized = normalize_a_share_symbol(current.symbol)
         unique: dict[str, ReportRecord] = {}
         for record in records:
-            if record.diagnosis.symbol.upper() != normalized:
+            if normalize_a_share_symbol(record.diagnosis.symbol) != normalized:
                 continue
             unique[record.id] = record
 

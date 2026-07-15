@@ -138,3 +138,20 @@ def test_change_report_builds_multi_point_trend_insight():
     assert report.trend_insight.total_low == current.score.total - 14
     assert report.trend_insight.total_high == current.score.total
     assert "最近 3 次诊断综合分持续走强" in report.trend_insight.summary
+
+
+def test_change_report_matches_common_market_code_formats():
+    current = make_diagnosis()
+    previous = ReportRecord(
+        id="previous",
+        generated_at="2026-07-09T06:00:00+00:00",
+        diagnosis=current.model_copy(update={"symbol": "SH600519"}),
+    )
+    service = DiagnosisChangeService()
+
+    assert service.latest_for_symbol([previous], "600519") == previous
+    assert service.recent_for_symbol([previous], "600519.SH") == [previous]
+
+    report = service.build_change(current=current, previous=previous, recent_reports=[previous])
+
+    assert [point.label for point in report.score_trend] == ["上次", "本次"]

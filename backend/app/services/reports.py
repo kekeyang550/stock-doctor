@@ -1,9 +1,11 @@
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 from app.schemas.diagnosis import ChecklistItem, DataQualityReport, DiagnosisResponse, ReportRecord
 from app.services.storage import StateStore, create_state_store
+from app.services.symbols import normalize_a_share_symbol
 
 
 class ReportService:
@@ -11,7 +13,11 @@ class ReportService:
         self._state_store = state_store or create_state_store()
 
     def list_reports(self, limit: int = 20) -> list[ReportRecord]:
-        reports = [ReportRecord.model_validate(self._migrate_report(item)) for item in self._state_store.load_reports()]
+        raw_reports = self._state_store.load_reports()
+        migrated_reports = [self._migrate_report(item) for item in raw_reports]
+        if migrated_reports != raw_reports:
+            self._state_store.save_reports(migrated_reports)
+        reports = [ReportRecord.model_validate(item) for item in migrated_reports]
         return sorted(reports, key=lambda item: item.generated_at, reverse=True)[:limit]
 
     def save_report(self, diagnosis: DiagnosisResponse, data_quality: DataQualityReport | None = None) -> ReportRecord:
@@ -33,7 +39,13 @@ class ReportService:
         return len(next_reports) != len(reports)
 
     def _migrate_report(self, report: dict[str, Any]) -> dict[str, Any]:
+        report = deepcopy(report)
         diagnosis = report.get("diagnosis")
+        if isinstance(diagnosis, dict):
+            self._normalize_symbol_field(diagnosis)
+        data_quality = report.get("data_quality")
+        if isinstance(data_quality, dict):
+            self._normalize_symbol_field(data_quality)
         if not isinstance(diagnosis, dict) or "checklist" in diagnosis:
             return report
 
@@ -54,6 +66,11 @@ class ReportService:
             ).model_dump(mode="json")
         ]
         return report
+
+    def _normalize_symbol_field(self, payload: dict[str, Any]) -> None:
+        normalized = normalize_a_share_symbol(str(payload.get("symbol", "")))
+        if normalized:
+            payload["symbol"] = normalized
 
     def _level(self, key_levels: dict[str, Any], name: str) -> str:
         value = key_levels.get(name)

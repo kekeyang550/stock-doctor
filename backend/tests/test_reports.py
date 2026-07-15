@@ -74,6 +74,7 @@ def test_report_limit_is_applied(tmp_path):
 def test_report_service_migrates_reports_without_checklist(tmp_path):
     store = JsonStateStore(tmp_path / "state.json")
     diagnosis = make_diagnosis().model_dump(mode="json")
+    diagnosis["symbol"] = "SH600519"
     diagnosis.pop("checklist")
     store.save_reports([
         {
@@ -85,6 +86,9 @@ def test_report_service_migrates_reports_without_checklist(tmp_path):
     service = ReportService(store)
 
     report = service.list_reports()[0]
+    stored_report = store.load_reports()[0]
 
     assert report.id == "legacy"
+    assert report.diagnosis.symbol == "600519"
     assert report.diagnosis.checklist[0].title == "观察关键价位"
+    assert stored_report["diagnosis"]["symbol"] == "600519"
