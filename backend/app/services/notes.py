@@ -12,7 +12,11 @@ class ResearchNoteService:
 
     def list_notes(self, symbol: str | None = None, limit: int = 20) -> list[ResearchNote]:
         normalized = normalize_a_share_symbol(symbol) if symbol else None
-        notes = [ResearchNote.model_validate(item) for item in self._state_store.load_notes()]
+        raw_notes = self._state_store.load_notes()
+        normalized_records, changed = self._normalize_note_records(raw_notes)
+        if changed:
+            self._state_store.save_notes(normalized_records)
+        notes = [ResearchNote.model_validate(item) for item in normalized_records]
         if normalized:
             notes = [note for note in notes if normalize_a_share_symbol(note.symbol) == normalized]
         return sorted(notes, key=lambda item: item.created_at, reverse=True)[:limit]
@@ -34,3 +38,15 @@ class ResearchNoteService:
         next_notes = [item for item in notes if item.get("id") != note_id]
         self._state_store.save_notes(next_notes)
         return len(next_notes) != len(notes)
+
+    def _normalize_note_records(self, notes: list[dict]) -> tuple[list[dict], bool]:
+        changed = False
+        normalized_notes = []
+        for item in notes:
+            record = dict(item)
+            normalized_symbol = normalize_a_share_symbol(str(record.get("symbol", "")))
+            if normalized_symbol and record.get("symbol") != normalized_symbol:
+                record["symbol"] = normalized_symbol
+                changed = True
+            normalized_notes.append(record)
+        return normalized_notes, changed

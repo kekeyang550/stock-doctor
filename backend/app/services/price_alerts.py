@@ -13,8 +13,11 @@ class PriceAlertService:
     def list_alerts(self, snapshots: dict[str, StockSnapshot], symbol: str | None = None) -> list[PriceAlert]:
         normalized = normalize_a_share_symbol(symbol) if symbol else None
         raw_alerts = self._state_store.load_price_alerts()
+        normalized_alerts, changed = self._normalize_alert_records(raw_alerts)
+        if changed:
+            self._state_store.save_price_alerts(normalized_alerts)
         alerts = []
-        for item in raw_alerts:
+        for item in normalized_alerts:
             item_symbol = normalize_a_share_symbol(str(item.get("symbol", "")))
             if normalized and item_symbol != normalized:
                 continue
@@ -43,6 +46,18 @@ class PriceAlertService:
         next_alerts = [item for item in alerts if item.get("id") != alert_id]
         self._state_store.save_price_alerts(next_alerts)
         return len(next_alerts) != len(alerts)
+
+    def _normalize_alert_records(self, alerts: list[dict]) -> tuple[list[dict], bool]:
+        changed = False
+        normalized_alerts = []
+        for item in alerts:
+            record = dict(item)
+            normalized_symbol = normalize_a_share_symbol(str(record.get("symbol", "")))
+            if normalized_symbol and record.get("symbol") != normalized_symbol:
+                record["symbol"] = normalized_symbol
+                changed = True
+            normalized_alerts.append(record)
+        return normalized_alerts, changed
 
     def _hydrate(self, item: dict, snapshot: StockSnapshot) -> PriceAlert:
         target_price = float(item["target_price"])

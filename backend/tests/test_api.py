@@ -329,8 +329,17 @@ def test_system_import_replaces_state_and_refreshes_watchlist():
     import_payload = {
         "watchlist": ["SZ000001", "bad-symbol"],
         "reports": [],
-        "notes": [{"id": "note-1", "symbol": "000001", "body": "迁移测试", "created_at": "2026-07-10T00:00:00Z"}],
-        "price_alerts": [],
+        "notes": [{"id": "note-1", "symbol": "SZ000001", "body": "迁移测试", "created_at": "2026-07-10T00:00:00Z"}],
+        "price_alerts": [
+            {
+                "id": "alert-1",
+                "symbol": "000001.SZ",
+                "target_price": 12,
+                "direction": "above",
+                "label": "迁移提醒",
+                "created_at": "2026-07-10T00:00:00Z",
+            }
+        ],
     }
 
     try:
@@ -342,10 +351,19 @@ def test_system_import_replaces_state_and_refreshes_watchlist():
         assert payload["status"] == "imported"
         assert counts["watchlist"] == 1
         assert counts["notes"] == 1
+        assert counts["price_alerts"] == 1
 
         watchlist_response = client.get("/api/v1/watchlist")
         assert watchlist_response.status_code == 200
         assert [item["symbol"] for item in watchlist_response.json()] == ["000001"]
+
+        notes_response = client.get("/api/v1/notes?symbol=000001.SZ")
+        assert notes_response.status_code == 200
+        assert notes_response.json()[0]["symbol"] == "000001"
+
+        alerts_response = client.get("/api/v1/price-alerts?symbol=SZ000001")
+        assert alerts_response.status_code == 200
+        assert alerts_response.json()[0]["symbol"] == "000001"
     finally:
         restore_payload = {
             "watchlist": original["watchlist"],
