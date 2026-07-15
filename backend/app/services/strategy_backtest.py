@@ -28,6 +28,12 @@ class PriceSeriesResult:
     fallback_reason: str | None
 
 
+@dataclass(frozen=True)
+class DiagnosisHistoryPoint:
+    generated_at: str
+    total_score: float
+
+
 class StrategyBacktestService:
     DEFAULT_PERIODS = [3, 5, 10, 20]
     DEFAULT_PRESETS = ["strong", "value", "capital-risk"]
@@ -65,6 +71,7 @@ class StrategyBacktestService:
         exit_on_ma20_break: bool = False,
         exit_volume_ratio: float = 0,
         diagnosis_exit_score: float = 0,
+        diagnosis_history: dict[str, list[DiagnosisHistoryPoint]] | None = None,
     ) -> StrategyBacktestReport:
         holding_days = max(1, min(holding_days, 20))
         limit = max(1, min(limit, 30))
@@ -107,6 +114,7 @@ class StrategyBacktestService:
                 exit_on_ma20_break,
                 exit_volume_ratio,
                 diagnosis_exit_score,
+                diagnosis_history or {},
             )
             if trade is not None:
                 trades.append(trade)
@@ -217,6 +225,7 @@ class StrategyBacktestService:
         exit_on_ma20_break: bool = False,
         exit_volume_ratio: float = 0,
         diagnosis_exit_score: float = 0,
+        diagnosis_history: dict[str, list[DiagnosisHistoryPoint]] | None = None,
     ) -> StrategyBacktestComparison:
         normalized_periods = self._normalize_periods(periods)
         reports = [
@@ -234,6 +243,7 @@ class StrategyBacktestService:
                 exit_on_ma20_break=exit_on_ma20_break,
                 exit_volume_ratio=exit_volume_ratio,
                 diagnosis_exit_score=diagnosis_exit_score,
+                diagnosis_history=diagnosis_history,
             )
             for holding_days in normalized_periods
         ]
@@ -279,6 +289,7 @@ class StrategyBacktestService:
         exit_on_ma20_break: bool = False,
         exit_volume_ratio: float = 0,
         diagnosis_exit_score: float = 0,
+        diagnosis_history: dict[str, list[DiagnosisHistoryPoint]] | None = None,
     ) -> StrategyBacktestPresetComparison:
         selected_presets = self._normalize_presets(presets)
         reports = [
@@ -296,6 +307,7 @@ class StrategyBacktestService:
                 exit_on_ma20_break=exit_on_ma20_break,
                 exit_volume_ratio=exit_volume_ratio,
                 diagnosis_exit_score=diagnosis_exit_score,
+                diagnosis_history=diagnosis_history,
             )
             for preset in selected_presets
         ]
@@ -635,6 +647,7 @@ class StrategyBacktestService:
         exit_on_ma20_break: bool,
         exit_volume_ratio: float,
         diagnosis_exit_score: float,
+        diagnosis_history: dict[str, list[DiagnosisHistoryPoint]],
     ) -> StrategyBacktestTrade | None:
         points = price_series.series.points
         if len(points) < 2:
@@ -651,6 +664,11 @@ class StrategyBacktestService:
         stop_loss_price = entry.close * (1 - stop_loss_pct / 100) if stop_loss_pct > 0 else None
         diagnosis_exit_score_at_exit: float | None = None
         diagnosis_exit_note: str | None = None
+        diagnosis_baseline = (
+            self._diagnosis_baseline(diagnosis_history.get(snapshot.symbol, []), entry.date)
+            if diagnosis_exit_score > 0
+            else None
+        )
         for index in range(entry_index + 1, exit_index + 1):
             close = points[index].close
             if stop_loss_price is not None and close <= stop_loss_price:
@@ -669,23 +687,27 @@ class StrategyBacktestService:
                 exit_index = index
                 exit_reason = "volume-fade"
                 break
-            score_at_point = self._diagnosis_proxy_score(entry, points[index]) if diagnosis_exit_score > 0 else None
+            score_at_point = (
+                self._diagnosis_path_score(entry, points[index], diagnosis_baseline)
+                if diagnosis_exit_score > 0
+                else None
+            )
             if score_at_point is not None and score_at_point < diagnosis_exit_score:
                 exit_index = index
                 exit_reason = "score-weak"
                 diagnosis_exit_score_at_exit = round(score_at_point, 1)
                 diagnosis_exit_note = (
-                    f"历史路径代理诊断分 {diagnosis_exit_score_at_exit:g} "
+                    f"{self._diagnosis_exit_score_label(diagnosis_baseline)} {diagnosis_exit_score_at_exit:g} "
                     f"低于阈值 {diagnosis_exit_score:g}，触发诊断转弱退出。"
                 )
                 break
 
         exit_point = points[exit_index]
         if diagnosis_exit_score > 0 and diagnosis_exit_score_at_exit is None:
-            final_score = self._diagnosis_proxy_score(entry, exit_point)
+            final_score = self._diagnosis_path_score(entry, exit_point, diagnosis_baseline)
             diagnosis_exit_score_at_exit = round(final_score, 1)
             diagnosis_exit_note = (
-                f"历史路径代理诊断分 {diagnosis_exit_score_at_exit:g} "
+                f"{self._diagnosis_exit_score_label(diagnosis_baseline)} {diagnosis_exit_score_at_exit:g} "
                 f"未低于阈值 {diagnosis_exit_score:g}。"
             )
 
@@ -714,9 +736,39 @@ class StrategyBacktestService:
             fallback_reason=price_series.fallback_reason,
             diagnosis_exit_score_at_exit=diagnosis_exit_score_at_exit,
             diagnosis_exit_note=diagnosis_exit_note,
+            diagnosis_exit_source="historical-snapshot" if diagnosis_baseline is not None else "proxy",
+            diagnosis_exit_baseline_score=round(diagnosis_baseline.total_score, 1) if diagnosis_baseline is not None else None,
+            diagnosis_exit_baseline_date=diagnosis_baseline.generated_at if diagnosis_baseline is not None else None,
             rule_tags=rule_tags,
             signal_reason=signal_reason,
         )
+
+    def _diagnosis_baseline(
+        self,
+        history: list[DiagnosisHistoryPoint],
+        entry_date: str,
+    ) -> DiagnosisHistoryPoint | None:
+        if not history:
+            return None
+        ordered = sorted(history, key=lambda item: item.generated_at)
+        candidates = [item for item in ordered if item.generated_at[:10] <= entry_date]
+        return candidates[-1] if candidates else ordered[-1]
+
+    def _diagnosis_path_score(
+        self,
+        entry: TrendPoint,
+        point: TrendPoint,
+        baseline: DiagnosisHistoryPoint | None,
+    ) -> float:
+        proxy = self._diagnosis_proxy_score(entry, point)
+        if baseline is None:
+            return proxy
+        return max(0.0, min(100.0, baseline.total_score + proxy - 70))
+
+    def _diagnosis_exit_score_label(self, baseline: DiagnosisHistoryPoint | None) -> str:
+        if baseline is None:
+            return "历史路径代理诊断分"
+        return f"历史诊断快照基线 {baseline.total_score:g} 校准后路径分"
 
     def _diagnosis_proxy_score(self, entry: TrendPoint, point: TrendPoint) -> float:
         price_return_pct = ((point.close - entry.close) / entry.close) * 100 if entry.close > 0 else 0

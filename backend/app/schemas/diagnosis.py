@@ -827,6 +827,9 @@ class StrategyBacktestTrade(BaseModel):
     fallback_reason: str | None = None
     diagnosis_exit_score_at_exit: float | None = None
     diagnosis_exit_note: str | None = None
+    diagnosis_exit_source: str = Field(default="proxy", pattern="^(proxy|historical-snapshot)$")
+    diagnosis_exit_baseline_score: float | None = None
+    diagnosis_exit_baseline_date: str | None = None
     rule_tags: list[str]
     signal_reason: str
 

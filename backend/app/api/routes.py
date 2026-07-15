@@ -86,7 +86,7 @@ from app.services.review_actions import ReviewActionService
 from app.services.portfolio_risk import PortfolioRiskService
 from app.services.risk_exposure import RiskExposureService
 from app.services.screener import ScreenerService
-from app.services.strategy_backtest import StrategyBacktestService
+from app.services.strategy_backtest import DiagnosisHistoryPoint, StrategyBacktestService
 from app.services.strategy_backtest_actions import StrategyBacktestActionService
 from app.services.strategy_backtest_history import StrategyBacktestHistoryService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
@@ -804,6 +804,19 @@ def _parse_backtest_presets(value: str | None) -> list[str]:
     return presets or ["strong", "value", "capital-risk"]
 
 
+def _diagnosis_history_by_symbol() -> dict[str, list[DiagnosisHistoryPoint]]:
+    history: dict[str, list[DiagnosisHistoryPoint]] = {}
+    for report in report_service.list_reports(limit=100):
+        diagnosis = report.diagnosis
+        history.setdefault(diagnosis.symbol, []).append(
+            DiagnosisHistoryPoint(
+                generated_at=report.generated_at,
+                total_score=float(diagnosis.score.total),
+            )
+        )
+    return history
+
+
 @router.get("/screeners/{preset}", response_model=list[ScreenCandidate])
 async def screener(
     preset: str,
@@ -835,6 +848,7 @@ async def strategy_backtest(
         raise HTTPException(status_code=404, detail="Screener preset not found")
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    diagnosis_history = _diagnosis_history_by_symbol()
     report = strategy_backtest_service.run(
         preset=preset,
         horizon=horizon,
@@ -849,6 +863,7 @@ async def strategy_backtest(
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
         diagnosis_exit_score=diagnosis_exit_score,
+        diagnosis_history=diagnosis_history,
     )
     strategy_backtest_history_service.record(
         report=report,
@@ -1016,6 +1031,7 @@ def _build_strategy_backtest_action_plan(
 ) -> StrategyBacktestActionPlan:
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    diagnosis_history = _diagnosis_history_by_symbol()
     report = strategy_backtest_service.run(
         preset=preset,
         horizon=horizon,
@@ -1030,6 +1046,7 @@ def _build_strategy_backtest_action_plan(
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
         diagnosis_exit_score=diagnosis_exit_score,
+        diagnosis_history=diagnosis_history,
     )
     period_comparison = strategy_backtest_service.compare_periods(
         preset=preset,
@@ -1044,6 +1061,7 @@ def _build_strategy_backtest_action_plan(
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
         diagnosis_exit_score=diagnosis_exit_score,
+        diagnosis_history=diagnosis_history,
     )
     preset_comparison = strategy_backtest_service.compare_presets(
         presets=["strong", "value", "capital-risk"],
@@ -1059,6 +1077,7 @@ def _build_strategy_backtest_action_plan(
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
         diagnosis_exit_score=diagnosis_exit_score,
+        diagnosis_history=diagnosis_history,
     )
     history = strategy_backtest_history_service.compare(
         preset=preset,
@@ -1106,6 +1125,7 @@ async def strategy_backtest_presets(
         raise HTTPException(status_code=404, detail="Screener preset not found")
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    diagnosis_history = _diagnosis_history_by_symbol()
     return strategy_backtest_service.compare_presets(
         presets=selected_presets,
         horizon=horizon,
@@ -1120,6 +1140,7 @@ async def strategy_backtest_presets(
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
         diagnosis_exit_score=diagnosis_exit_score,
+        diagnosis_history=diagnosis_history,
     )
 
 
@@ -1141,6 +1162,7 @@ async def strategy_backtest_periods(
         raise HTTPException(status_code=404, detail="Screener preset not found")
     snapshots = _all_snapshots()
     diagnoses = [diagnosis_engine.diagnose(snapshot=snapshot, horizon=horizon) for snapshot in snapshots]
+    diagnosis_history = _diagnosis_history_by_symbol()
     return strategy_backtest_service.compare_periods(
         preset=preset,
         horizon=horizon,
@@ -1155,6 +1177,7 @@ async def strategy_backtest_periods(
         exit_on_ma20_break=exit_on_ma20_break,
         exit_volume_ratio=exit_volume_ratio,
         diagnosis_exit_score=diagnosis_exit_score,
+        diagnosis_history=diagnosis_history,
     )
 
 

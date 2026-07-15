@@ -2,7 +2,7 @@ import pytest
 
 from app.services.diagnosis import DiagnosisEngine
 from app.services.market_data import MockMarketDataProvider
-from app.services.strategy_backtest import StrategyBacktestService
+from app.services.strategy_backtest import DiagnosisHistoryPoint, StrategyBacktestService
 from app.services.strategy_backtest_actions import StrategyBacktestActionService
 from app.services.strategy_backtest_history import StrategyBacktestHistoryService
 from app.services.storage import JsonStateStore
@@ -283,6 +283,34 @@ def test_strategy_backtest_keeps_diagnosis_score_context_when_threshold_not_trig
     assert report.trades[0].exit_reason == "holding-period"
     assert report.trades[0].diagnosis_exit_score_at_exit == 82.3
     assert report.trades[0].diagnosis_exit_note == "历史路径代理诊断分 82.3 未低于阈值 65。"
+
+
+def test_strategy_backtest_uses_saved_diagnosis_snapshot_baseline():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+    diagnosis_history = {
+        snapshot.symbol: [DiagnosisHistoryPoint(generated_at="2026-06-24T00:00:00+00:00", total_score=86)]
+        for snapshot in snapshots
+    }
+
+    report = StrategyBacktestService(market_data_provider=FakeHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        diagnosis_exit_score=65,
+        diagnosis_history=diagnosis_history,
+    )
+
+    assert report.trades[0].exit_reason == "holding-period"
+    assert report.trades[0].diagnosis_exit_source == "historical-snapshot"
+    assert report.trades[0].diagnosis_exit_baseline_score == 86
+    assert report.trades[0].diagnosis_exit_baseline_date == "2026-06-24T00:00:00+00:00"
+    assert report.trades[0].diagnosis_exit_score_at_exit == 98.3
+    assert report.trades[0].diagnosis_exit_note == "历史诊断快照基线 86 校准后路径分 98.3 未低于阈值 65。"
 
 
 def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails():

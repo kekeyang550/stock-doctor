@@ -540,6 +540,9 @@ export type StrategyBacktestTrade = {
   fallback_reason: string | null
   diagnosis_exit_score_at_exit?: number | null
   diagnosis_exit_note?: string | null
+  diagnosis_exit_source?: 'proxy' | 'historical-snapshot'
+  diagnosis_exit_baseline_score?: number | null
+  diagnosis_exit_baseline_date?: string | null
   rule_tags: string[]
   signal_reason: string
 }
