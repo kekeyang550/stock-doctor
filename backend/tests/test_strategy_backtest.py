@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from app.services.diagnosis import DiagnosisEngine
@@ -442,6 +444,30 @@ def test_strategy_backtest_history_service_records_and_compares(tmp_path):
     )
     assert comparison.score_weak_exit_delta == comparison.latest.score_weak_exit_count - comparison.previous.score_weak_exit_count
     assert "最近" in comparison.summary
+
+
+def test_strategy_backtest_history_keeps_records_with_same_timestamp(tmp_path):
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+    report = StrategyBacktestService().run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+    )
+    store = JsonStateStore(tmp_path / "state.json")
+    now = datetime.fromisoformat("2026-07-15T12:00:00+00:00")
+    history_service = StrategyBacktestHistoryService()
+
+    first = history_service.record(report, "breakout-volume", "swing", 5, 8, 5, 10, store, now=now)
+    second = history_service.record(report, "breakout-volume", "swing", 5, 8, 5, 10, store, now=now)
+    comparison = history_service.compare("breakout-volume", "swing", store)
+
+    assert first.id != second.id
+    assert len(comparison.items) == 2
 
 
 def test_strategy_backtest_history_records_score_weak_exit_context(tmp_path):

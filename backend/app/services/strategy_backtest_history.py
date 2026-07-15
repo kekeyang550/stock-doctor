@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from app.schemas.diagnosis import (
     StrategyBacktestHistoryComparison,
@@ -129,7 +130,7 @@ class StrategyBacktestHistoryService:
 
     def _record_id(self, preset: str, horizon: str, holding_days: int, created_at: str) -> str:
         safe_created_at = created_at.replace(":", "").replace(".", "").replace("+", "z")
-        return f"bt-{preset}-{horizon}-{holding_days}-{safe_created_at}"
+        return f"bt-{preset}-{horizon}-{holding_days}-{safe_created_at}-{uuid4().hex[:8]}"
 
     def _float_delta(self, latest: float, previous: float) -> float:
         return round(latest - previous, 2)
