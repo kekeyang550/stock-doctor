@@ -2153,7 +2153,10 @@ function reportAutoRefreshSummary(autoRefresh: any) {
   const scope = autoRefresh.scope === 'all' ? '全部标的' : '自选股'
   const interval = autoRefresh.interval_minutes ?? '-'
   const startup = autoRefresh.run_on_startup ? '启动即刷新' : '启动不立即刷新'
-  return `${enabled}；${scope}；每 ${interval} 分钟；${startup}`
+  const running = autoRefresh.enabled ? (autoRefresh.running ? '调度运行中' : '调度未运行') : '调度未启用'
+  const nextRun = autoRefresh.next_run_at ? `下次 ${autoRefresh.next_run_at}` : '暂无下次计划'
+  const lastRun = autoRefresh.last_run_status ? `最近${autoRefresh.last_run_status === 'success' ? '成功' : '失败'}` : '尚未执行'
+  return `${enabled}；${running}；${scope}；每 ${interval} 分钟；${startup}；${nextRun}；${lastRun}`
 }
 
 function reportCacheStatusLabel(status: unknown) {

@@ -262,6 +262,7 @@ async def system_tdx_probe() -> TdxProbeResult:
 def _runtime_settings() -> DataRuntimeSettings:
     ths_paths = [path.strip() for path in settings.ths_stockname_paths.split(";") if path.strip()]
     tdx_status = TdxLocalHistoryProvider().describe()
+    auto_refresh_status = refresh_scheduler.status()
     tdx_configured = bool(settings.tdx_vipdoc_path.strip())
     tdx_exists = bool(tdx_status["exists"])
     tdx_note = None
@@ -298,10 +299,18 @@ def _runtime_settings() -> DataRuntimeSettings:
         cache_ttl_seconds=settings.data_cache_ttl_seconds,
         freshness_stale_after_minutes=settings.data_freshness_stale_after_minutes,
         auto_refresh=AutoRefreshSettings(
-            enabled=settings.data_auto_refresh_enabled,
-            interval_minutes=settings.data_auto_refresh_interval_minutes,
-            scope=settings.data_auto_refresh_scope,
-            run_on_startup=settings.data_auto_refresh_on_startup,
+            enabled=bool(auto_refresh_status["enabled"]),
+            interval_minutes=int(auto_refresh_status["interval_minutes"]),
+            scope=str(auto_refresh_status["scope"]),
+            run_on_startup=bool(auto_refresh_status["run_on_startup"]),
+            running=bool(auto_refresh_status["running"]),
+            started_at=auto_refresh_status["started_at"],
+            next_run_at=auto_refresh_status["next_run_at"],
+            last_run_started_at=auto_refresh_status["last_run_started_at"],
+            last_run_finished_at=auto_refresh_status["last_run_finished_at"],
+            last_run_status=auto_refresh_status["last_run_status"],
+            last_error=auto_refresh_status["last_error"],
+            run_count=int(auto_refresh_status["run_count"]),
         ),
         paths=path_settings,
         secrets=[
@@ -1455,6 +1464,13 @@ def _build_system_readiness(
             next_action=_runtime_readiness_action(runtime),
         ),
         SystemReadinessCheck(
+            key="auto_refresh",
+            label="自动刷新调度",
+            status=_auto_refresh_readiness_status(runtime),
+            detail=_auto_refresh_readiness_detail(runtime),
+            next_action=_auto_refresh_readiness_action(runtime),
+        ),
+        SystemReadinessCheck(
             key="freshness",
             label="数据新鲜度",
             status=_freshness_readiness_status(freshness),
@@ -1508,6 +1524,40 @@ def _runtime_readiness_action(runtime: DataRuntimeSettings) -> str:
         if token is None or not token.configured:
             return "配置 STOCK_DOCTOR_TUSHARE_TOKEN 后重启后端，再验证 Tushare 财务和复权日线。"
     return "运行配置可用；修改环境变量后需要重启后端生效。"
+
+
+def _auto_refresh_readiness_status(runtime: DataRuntimeSettings) -> str:
+    auto_refresh = runtime.auto_refresh
+    if not auto_refresh.enabled:
+        return "warn"
+    if not auto_refresh.running:
+        return "fail"
+    if auto_refresh.last_run_status == "failed":
+        return "warn"
+    return "pass"
+
+
+def _auto_refresh_readiness_detail(runtime: DataRuntimeSettings) -> str:
+    auto_refresh = runtime.auto_refresh
+    scope_label = "自选股" if auto_refresh.scope == "watchlist" else "全部标的"
+    if not auto_refresh.enabled:
+        return f"自动刷新未启用；当前配置范围为{scope_label}，间隔 {auto_refresh.interval_minutes} 分钟。"
+    if not auto_refresh.running:
+        return "自动刷新已配置启用，但调度器未运行；通常需要重启后端或检查启动日志。"
+    next_run = auto_refresh.next_run_at or "待计算"
+    last_status = auto_refresh.last_run_status or "尚未执行"
+    return f"自动刷新运行中；范围{scope_label}，间隔 {auto_refresh.interval_minutes} 分钟，下次计划 {next_run}，上次状态 {last_status}。"
+
+
+def _auto_refresh_readiness_action(runtime: DataRuntimeSettings) -> str:
+    auto_refresh = runtime.auto_refresh
+    if not auto_refresh.enabled:
+        return "真实 provider 稳定后，可在 .env 启用 STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED=true 并重启后端。"
+    if not auto_refresh.running:
+        return "确认后端已重启并进入 FastAPI lifespan；若仍未运行，查看 uvicorn 错误日志。"
+    if auto_refresh.last_run_status == "failed":
+        return f"查看最近调度错误：{auto_refresh.last_error or '刷新任务失败'}"
+    return "继续观察刷新历史、数据新鲜度和接口频控；必要时调大刷新间隔。"
 
 
 def _connector_readiness_status(active_connector) -> str:

@@ -127,6 +127,14 @@ class AutoRefreshSettings(BaseModel):
     interval_minutes: int
     scope: str = Field(pattern="^(all|watchlist)$")
     run_on_startup: bool
+    running: bool = False
+    started_at: str | None = None
+    next_run_at: str | None = None
+    last_run_started_at: str | None = None
+    last_run_finished_at: str | None = None
+    last_run_status: str | None = Field(default=None, pattern="^(success|failed)$")
+    last_error: str | None = None
+    run_count: int = Field(default=0, ge=0)
 
 
 class DataRuntimeSettings(BaseModel):

@@ -204,6 +204,14 @@ const runtimeSettings = {
     interval_minutes: 240,
     scope: 'watchlist',
     run_on_startup: false,
+    running: false,
+    started_at: null,
+    next_run_at: null,
+    last_run_started_at: null,
+    last_run_finished_at: null,
+    last_run_status: null,
+    last_error: null,
+    run_count: 0,
   },
   paths: [
     {
@@ -1501,6 +1509,11 @@ describe('App', () => {
     expect(within(runtimePanel).getByText('自动刷新')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('未开启')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('自选股 / 240 分钟')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('调度状态')).toBeInTheDocument()
+    expect(within(runtimePanel).getAllByText('未启用').length).toBeGreaterThan(0)
+    expect(within(runtimePanel).getByText('下次刷新')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('最近调度')).toBeInTheDocument()
+    expect(within(runtimePanel).getByText('自动刷新关闭，暂无调度记录')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('通达信 vipdoc')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('STOCK_DOCTOR_TDX_VIPDOC_PATH')).toBeInTheDocument()
     expect(within(runtimePanel).getByText('同花顺股票名表')).toBeInTheDocument()
@@ -3221,7 +3234,7 @@ describe('App', () => {
     expect(html).toContain('可选数据源')
     expect(html).toContain('mock / eastmoney / akshare')
     expect(html).toContain('自动刷新')
-    expect(html).toContain('未开启；自选股；每 240 分钟；启动不立即刷新')
+    expect(html).toContain('未开启；调度未启用；自选股；每 240 分钟；启动不立即刷新；暂无下次计划；尚未执行')
     expect(html).toContain('请求超时')
     expect(html).toContain('过期阈值')
     expect(html).toContain('通达信 vipdoc · 未找到')
@@ -3383,7 +3396,7 @@ describe('App', () => {
     expect(markdown).toContain('来源覆盖 - 需核验')
     expect(markdown).toContain('### 运行配置')
     expect(markdown).toContain('通达信 vipdoc - 未找到 - STOCK_DOCTOR_TDX_VIPDOC_PATH')
-    expect(markdown).toContain('自动刷新 - 未开启；自选股；每 240 分钟；启动不立即刷新')
+    expect(markdown).toContain('自动刷新 - 未开启；调度未启用；自选股；每 240 分钟；启动不立即刷新；暂无下次计划；尚未执行')
     expect(markdown).toContain('### 密钥配置')
     expect(markdown).toContain('Tushare Pro Token - 未配置 - STOCK_DOCTOR_TUSHARE_TOKEN')
     expect(markdown).toContain('### Tushare 预检')

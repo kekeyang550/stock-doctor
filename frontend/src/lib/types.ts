@@ -90,6 +90,14 @@ export type DataRuntimeSettings = {
     interval_minutes: number
     scope: 'all' | 'watchlist'
     run_on_startup: boolean
+    running?: boolean
+    started_at?: string | null
+    next_run_at?: string | null
+    last_run_started_at?: string | null
+    last_run_finished_at?: string | null
+    last_run_status?: 'success' | 'failed' | null
+    last_error?: string | null
+    run_count?: number
   }
   paths: RuntimePathSetting[]
   secrets: RuntimeSecretSetting[]

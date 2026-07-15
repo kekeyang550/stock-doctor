@@ -114,17 +114,19 @@
    - 2026-07-15 新增后端自动刷新调度骨架，默认关闭；可通过 `STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED`、`STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES`、`STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE` 和 `STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP` 启用。启用后 FastAPI 生命周期会按配置触发刷新任务，并继续复用现有刷新历史和数据新鲜度面板。
    - 运行配置面板和 `/api/v1/system/runtime-config` 已显示自动刷新是否开启、刷新范围、间隔和是否启动即刷新；本机自检脚本会在后端重启后同步输出该配置。
    - HTML/Markdown 研究报告的数据可信度章节已显示自动刷新配置，离线报告可审计当前是否启用、刷新范围、间隔和启动刷新策略。
+   - 2026-07-15 继续增强自动刷新运行态：调度器会记录是否正在运行、启动时间、下次计划刷新时间、最近一次调度开始/结束时间、成功/失败状态、失败原因和调度次数。
+   - `/api/v1/system/runtime-config`、运行配置面板、本机自检脚本、系统就绪度和 HTML/Markdown 报告均已纳入上述运行态，避免只看到“已开启配置”却不知道后端调度器是否真正启动。
 
 ## 本机验证结果
 
-- 后端全量测试：`184 passed, 1 warning`（测试时临时使用 `STOCK_DOCTOR_DATA_PROVIDER=mock`，避免本机真实 provider 网络波动影响单元测试）
+- 后端全量测试：`188 passed, 1 warning`（测试时临时使用 `STOCK_DOCTOR_DATA_PROVIDER=mock`，避免本机真实 provider 网络波动影响单元测试）
 - 前端测试：`55 passed`
 - 前端生产构建：通过
 - 接口验证：`/api/v1/system/tushare-probe?symbol=600519` 返回 `warn`；Token 已配置，未复权日线可用，财务指标权限和频控限制已在步骤详情中展示。
 - 接口验证：`/api/v1/system/runtime-config` 可返回通达信配置路径、自动发现路径和过期说明；`/api/v1/system/data-connectors` 对过期通达信日线返回 fallback。
 - 接口验证：`/api/v1/system/tdx-probe` 当前返回 `warn`，列出 5 个候选路径；当前解析路径最新交易日 2013-03-21，已标记过期。
 - 2026-07-15 新增本机交付自检脚本：`powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1`，可只读检查目录、Python/Node/npm、依赖、端口、健康接口、系统就绪度、运行配置和前端页面；当前自检结果为 `0 failure(s), 1 warning(s)`，警告来自运行配置仍使用 mock/本地路径类提示。
-- 2026-07-15 自动刷新调度验证：后端全量测试更新为 `186 passed, 1 warning`，前端测试仍为 `55 passed`，前端生产构建通过；当前已运行的旧后端进程需重启后才会在自检输出里显示 `auto_refresh` 新字段。
+- 2026-07-15 自动刷新调度验证：后端全量测试更新为 `188 passed, 1 warning`，前端测试仍为 `55 passed`，前端生产构建通过；当前已运行的旧后端进程需重启后才会在自检输出里显示 `auto_refresh` 新字段和调度运行态。
 - 2026-07-15 报告导出补充验证：HTML/Markdown 报告已纳入自动刷新配置；前端测试 `55 passed`。
 - 2026-07-15 历史诊断快照基线回测验证：后端回测/API 定向测试 `19 passed, 1 warning`，前端测试 `55 passed`。
 

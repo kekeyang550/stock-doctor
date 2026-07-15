@@ -117,6 +117,21 @@ export function SystemRuntimeConfigPanel({
                   : '等待后端返回配置'
               }
             />
+            <RuntimeConfigItem
+              label="调度状态"
+              value={autoRefreshRuntimeLabel(autoRefresh)}
+              detail={autoRefreshRuntimeDetail(autoRefresh)}
+            />
+            <RuntimeConfigItem
+              label="下次刷新"
+              value={autoRefresh?.next_run_at ? formatReportTime(autoRefresh.next_run_at) : '--'}
+              detail={autoRefresh?.running ? '由后端调度器按计划触发' : '调度器未运行时不会自动触发'}
+            />
+            <RuntimeConfigItem
+              label="最近调度"
+              value={autoRefreshLastRunLabel(autoRefresh)}
+              detail={autoRefreshLastRunDetail(autoRefresh)}
+            />
           </div>
           <div className="runtime-path-list">
             {paths.map((item) => (
@@ -149,6 +164,12 @@ export function SystemRuntimeConfigPanel({
           <p className="runtime-config-note">
             修改这些配置需要更新后端环境变量并重启服务后生效。
           </p>
+          {autoRefresh?.last_error ? (
+            <div className="runtime-probe error">
+              <strong>自动刷新最近失败</strong>
+              <p>{autoRefresh.last_error}</p>
+            </div>
+          ) : null}
           {probeError ? (
             <div className="runtime-probe error">
               <strong>Tushare 预检失败</strong>
@@ -264,6 +285,36 @@ function RuntimeConfigItem({ label, value, detail }: { label: string; value: str
       <em>{detail}</em>
     </span>
   )
+}
+
+
+function autoRefreshRuntimeLabel(autoRefresh: DataRuntimeSettings['auto_refresh'] | undefined) {
+  if (!autoRefresh) return '未知'
+  if (!autoRefresh.enabled) return '未启用'
+  if (autoRefresh.running) return '运行中'
+  return '未运行'
+}
+
+
+function autoRefreshRuntimeDetail(autoRefresh: DataRuntimeSettings['auto_refresh'] | undefined) {
+  if (!autoRefresh) return '等待后端返回调度器状态'
+  const scope = autoRefresh.scope === 'watchlist' ? '自选股' : '全部标的'
+  if (!autoRefresh.enabled) return `当前关闭；启用后按 ${scope} / ${autoRefresh.interval_minutes} 分钟运行`
+  if (!autoRefresh.running) return '配置已开启，但后端调度器未运行；请重启后端或查看日志'
+  return `已启动 ${autoRefresh.run_count ?? 0} 次调度刷新；范围 ${scope}`
+}
+
+
+function autoRefreshLastRunLabel(autoRefresh: DataRuntimeSettings['auto_refresh'] | undefined) {
+  if (!autoRefresh?.last_run_status) return '尚未执行'
+  return autoRefresh.last_run_status === 'success' ? '成功' : '失败'
+}
+
+
+function autoRefreshLastRunDetail(autoRefresh: DataRuntimeSettings['auto_refresh'] | undefined) {
+  if (!autoRefresh) return '等待后端返回最近调度结果'
+  if (!autoRefresh.last_run_finished_at) return autoRefresh.enabled ? '等待第一次自动刷新完成' : '自动刷新关闭，暂无调度记录'
+  return `${formatReportTime(autoRefresh.last_run_finished_at)} 完成`
 }
 
 

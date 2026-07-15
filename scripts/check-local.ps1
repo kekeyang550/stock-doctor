@@ -260,7 +260,7 @@ if ($runtime) {
     }
     Write-Check "INFO" "Runtime config" ("provider={0}, timeout={1}s, cache_ttl={2}s, freshness={3}min" -f $provider, $runtime.request_timeout_seconds, $runtime.cache_ttl_seconds, $runtime.freshness_stale_after_minutes)
     if ($runtime.auto_refresh) {
-        Write-Check "INFO" "Auto refresh" ("enabled={0}, scope={1}, interval={2}min, run_on_startup={3}" -f $runtime.auto_refresh.enabled, $runtime.auto_refresh.scope, $runtime.auto_refresh.interval_minutes, $runtime.auto_refresh.run_on_startup)
+        Write-Check "INFO" "Auto refresh" ("enabled={0}, running={1}, scope={2}, interval={3}min, run_on_startup={4}, next_run_at={5}, last_status={6}" -f $runtime.auto_refresh.enabled, $runtime.auto_refresh.running, $runtime.auto_refresh.scope, $runtime.auto_refresh.interval_minutes, $runtime.auto_refresh.run_on_startup, $runtime.auto_refresh.next_run_at, $runtime.auto_refresh.last_run_status)
     }
     if ($runtime.secrets) {
         foreach ($secret in $runtime.secrets) {

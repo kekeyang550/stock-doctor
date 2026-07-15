@@ -86,6 +86,8 @@ def test_refresh_scheduler_is_disabled_by_default(tmp_path):
     assert scheduler.start() is False
     assert scheduler.running is False
     assert provider.warmed_scopes == []
+    assert scheduler.status()["running"] is False
+    assert scheduler.status()["next_run_at"] is None
 
 
 def test_refresh_scheduler_can_run_configured_scope_once(tmp_path):
@@ -105,6 +107,38 @@ def test_refresh_scheduler_can_run_configured_scope_once(tmp_path):
 
     assert provider.warmed_scopes == ["watchlist"]
     assert service.list_jobs()[0].status == "success"
+    status = scheduler.status()
+    assert status["last_run_status"] == "success"
+    assert status["last_run_started_at"] is not None
+    assert status["last_run_finished_at"] is not None
+    assert status["run_count"] == 1
+
+
+def test_refresh_scheduler_reports_running_status_inside_event_loop(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = WarmableProvider(state_store=store)
+    service = DataRefreshJobService(state_store=store)
+    scheduler = DataRefreshScheduler(
+        provider=provider,
+        refresh_service=service,
+        enabled=True,
+        interval_minutes=5,
+        scope="watchlist",
+        run_on_startup=False,
+    )
+
+    async def exercise() -> None:
+        assert scheduler.start() is True
+        status = scheduler.status()
+        assert status["enabled"] is True
+        assert status["running"] is True
+        assert status["started_at"] is not None
+        assert status["next_run_at"] is not None
+        await scheduler.stop()
+        assert scheduler.status()["running"] is False
+        assert scheduler.status()["next_run_at"] is None
+
+    asyncio.run(exercise())
 
 
 def test_refresh_jobs_endpoint_creates_and_lists_job():
