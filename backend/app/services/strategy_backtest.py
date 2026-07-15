@@ -649,6 +649,8 @@ class StrategyBacktestService:
         exit_reason = "holding-period"
         take_profit_price = entry.close * (1 + take_profit_pct / 100) if take_profit_pct > 0 else None
         stop_loss_price = entry.close * (1 - stop_loss_pct / 100) if stop_loss_pct > 0 else None
+        diagnosis_exit_score_at_exit: float | None = None
+        diagnosis_exit_note: str | None = None
         for index in range(entry_index + 1, exit_index + 1):
             close = points[index].close
             if stop_loss_price is not None and close <= stop_loss_price:
@@ -667,12 +669,25 @@ class StrategyBacktestService:
                 exit_index = index
                 exit_reason = "volume-fade"
                 break
-            if diagnosis_exit_score > 0 and self._diagnosis_proxy_score(entry, points[index]) < diagnosis_exit_score:
+            score_at_point = self._diagnosis_proxy_score(entry, points[index]) if diagnosis_exit_score > 0 else None
+            if score_at_point is not None and score_at_point < diagnosis_exit_score:
                 exit_index = index
                 exit_reason = "score-weak"
+                diagnosis_exit_score_at_exit = round(score_at_point, 1)
+                diagnosis_exit_note = (
+                    f"历史路径代理诊断分 {diagnosis_exit_score_at_exit:g} "
+                    f"低于阈值 {diagnosis_exit_score:g}，触发诊断转弱退出。"
+                )
                 break
 
         exit_point = points[exit_index]
+        if diagnosis_exit_score > 0 and diagnosis_exit_score_at_exit is None:
+            final_score = self._diagnosis_proxy_score(entry, exit_point)
+            diagnosis_exit_score_at_exit = round(final_score, 1)
+            diagnosis_exit_note = (
+                f"历史路径代理诊断分 {diagnosis_exit_score_at_exit:g} "
+                f"未低于阈值 {diagnosis_exit_score:g}。"
+            )
 
         window = points[entry_index:exit_index + 1]
         gross_return_pct = ((exit_point.close - entry.close) / entry.close) * 100
@@ -697,6 +712,8 @@ class StrategyBacktestService:
             history_bar_count=price_series.history_bar_count,
             history_last_date=price_series.history_last_date,
             fallback_reason=price_series.fallback_reason,
+            diagnosis_exit_score_at_exit=diagnosis_exit_score_at_exit,
+            diagnosis_exit_note=diagnosis_exit_note,
             rule_tags=rule_tags,
             signal_reason=signal_reason,
         )

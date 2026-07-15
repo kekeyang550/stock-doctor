@@ -897,6 +897,8 @@ const strategyBacktest = {
       history_bar_count: 30,
       history_last_date: '2026-06-30',
       fallback_reason: null,
+      diagnosis_exit_score_at_exit: 82.3,
+      diagnosis_exit_note: '历史路径代理诊断分 82.3 未低于阈值 65。',
       rule_tags: ['综合高分', '技术强势'],
       signal_reason: '综合 86，技术 90，趋势结构较强。',
     },
@@ -2222,6 +2224,7 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('600519 · 白酒 · 5 日 · 持有到期')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('净收益 +3.40%')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('毛收益 +3.40% · 成本 0.30% · 历史K线')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('诊断分说明：历史路径代理诊断分 82.3 未低于阈值 65。')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('综合高分')).toBeInTheDocument()
   })
 
@@ -3144,6 +3147,7 @@ describe('App', () => {
     expect(html).toContain('收益分布')
     expect(html).toContain('退出分布')
     expect(html).toContain('持有到期 1 笔')
+    expect(html).toContain('历史路径代理诊断分 82.3 未低于阈值 65。')
     expect(html).toContain('胜 1 / 负 1 / 平 0')
     expect(html).toContain('<span>中位</span><strong>+1.25%</strong>')
     expect(html).toContain('P25 -0.90% · P75 +3.40%')
@@ -3328,6 +3332,8 @@ describe('App', () => {
     expect(markdown).toContain('## 策略回测')
     expect(markdown).toContain('退出规则: 止盈 0% / 止损 0% / MA20 跌破 关闭 / 量比低于 0 / 诊断低于 0')
     expect(markdown).toContain('退出分布: 持有到期 1 笔')
+    expect(markdown).toContain('样例交易')
+    expect(markdown).toContain('历史路径代理诊断分 82.3 未低于阈值 65。')
     expect(markdown).toContain('历史对比')
     expect(markdown).toContain('固定持有')
     expect(markdown).toContain('### 回测复盘动作')

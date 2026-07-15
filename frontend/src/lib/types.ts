@@ -532,6 +532,8 @@ export type StrategyBacktestTrade = {
   history_bar_count: number
   history_last_date: string | null
   fallback_reason: string | null
+  diagnosis_exit_score_at_exit?: number | null
+  diagnosis_exit_note?: string | null
   rule_tags: string[]
   signal_reason: string
 }

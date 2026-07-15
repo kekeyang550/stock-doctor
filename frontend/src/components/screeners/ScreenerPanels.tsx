@@ -1433,6 +1433,9 @@ export function StrategyBacktestPanel({
                 <em className={trade.return_pct >= 0 ? 'up' : 'down'}>净收益 {formatSignedPercent(trade.return_pct)}</em>
                 <small>{trade.entry_price.toFixed(2)} → {trade.exit_price.toFixed(2)} · 回撤 {formatSignedPercent(trade.max_drawdown_pct)}</small>
                 <small>毛收益 {formatSignedPercent(trade.gross_return_pct)} · 成本 {formatPlainPercent(trade.cost_pct)} · {backtestPriceSourceLabel(trade.price_source)}</small>
+                {trade.diagnosis_exit_note ? (
+                  <small>诊断分说明：{trade.diagnosis_exit_note}</small>
+                ) : null}
                 {trade.rule_tags.length ? (
                   <div className="screener-tags">
                     {trade.rule_tags.map((tag) => (

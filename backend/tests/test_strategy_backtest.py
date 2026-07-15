@@ -260,6 +260,29 @@ def test_strategy_backtest_exits_early_on_diagnosis_score_weakening():
     assert report.exit_reason_counts["score-weak"] >= 1
     assert report.trades[0].holding_days == 1
     assert report.trades[0].exit_price == 119
+    assert report.trades[0].diagnosis_exit_score_at_exit is not None
+    assert report.trades[0].diagnosis_exit_score_at_exit < 65
+    assert report.trades[0].diagnosis_exit_note == "历史路径代理诊断分 63.9 低于阈值 65，触发诊断转弱退出。"
+
+
+def test_strategy_backtest_keeps_diagnosis_score_context_when_threshold_not_triggered():
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+
+    report = StrategyBacktestService(market_data_provider=FakeHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        diagnosis_exit_score=65,
+    )
+
+    assert report.trades[0].exit_reason == "holding-period"
+    assert report.trades[0].diagnosis_exit_score_at_exit == 82.3
+    assert report.trades[0].diagnosis_exit_note == "历史路径代理诊断分 82.3 未低于阈值 65。"
 
 
 def test_strategy_backtest_reports_fallback_reason_when_history_provider_fails():

@@ -1422,6 +1422,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const rebalanceActions = Array.isArray(portfolioRisk.rebalance_actions) ? portfolioRisk.rebalance_actions : []
   const backtestHistoryItems = Array.isArray(strategyBacktestHistory.items) ? strategyBacktestHistory.items : []
   const backtestActionItems = Array.isArray(strategyBacktestActions.actions) ? strategyBacktestActions.actions : []
+  const trades = Array.isArray(strategyBacktest.trades) ? strategyBacktest.trades : []
   const cacheBuckets = Array.isArray(cacheStatus.buckets) ? cacheStatus.buckets : []
   const reviewActionItems = Array.isArray(reviewActions.items) ? reviewActions.items : []
   const lines: string[] = []
@@ -1515,6 +1516,12 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push('### 回测复盘动作')
   lines.push(`- 状态统计: 待处理 ${markdownText(strategyBacktestActions.pending_count ?? 0)} / 观察中 ${markdownText(strategyBacktestActions.watching_count ?? 0)} / 已完成 ${markdownText(strategyBacktestActions.done_count ?? 0)}`)
   markdownList(lines, backtestActionItems.slice(0, 8), (item) => `${item.category} - ${reviewActionPriorityLabel(item.priority)} - ${reviewActionStatusLabel(item.status)} - ${item.title} - ${item.metric} - ${item.detail}`)
+  lines.push('')
+  lines.push('### 样例交易')
+  markdownList(lines, trades.slice(0, 6), (trade) => {
+    const diagnosisNote = reportBacktestDiagnosisExitNote(trade)
+    return `${trade.name} (${trade.symbol}) - ${trade.holding_days} 日 - ${strategyBacktestExitReasonLabel(trade.exit_reason)} - 净收益 ${formatReportSignedPercent(trade.return_pct ?? 0)}${diagnosisNote ? ` - ${diagnosisNote}` : ''}`
+  })
   lines.push('')
 
   lines.push('## 数据可信度')
@@ -1925,7 +1932,10 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <p>${escapeHtml(strategyPresetComparison.summary ?? "")}</p>
       ${strategyPresetComparison.recommendation_reason ? `<p><strong>策略推荐依据：</strong>${escapeHtml(strategyPresetComparison.recommendation_reason)}</p>` : ""}
       ${presetSummaries.slice(0, 6).map((preset: any) => `<div class="row"><strong>${escapeHtml(preset.label ?? preset.preset)}</strong><small>${escapeHtml(preset.preset)} · 命中 ${escapeHtml(preset.match_count ?? 0)} · 交易 ${escapeHtml(preset.trade_count ?? 0)} · 胜率 ${escapeHtml(preset.win_rate ?? 0)}% · 平均收益 ${escapeHtml(preset.average_return_pct ?? 0)}% · 最大回撤 ${escapeHtml(preset.max_drawdown_pct ?? 0)}% · 收益回撤比 ${escapeHtml(preset.return_drawdown_ratio ?? 0)}${preset.preset === strategyPresetComparison.recommended_preset ? " · 推荐" : ""}</small></div>`).join("") || "<p>暂无策略对比</p>"}
-      ${trades.slice(0, 6).map((trade: any) => `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · ${escapeHtml(strategyBacktestExitReasonLabel(trade.exit_reason))} · 净收益 ${escapeHtml(trade.return_pct)}% · 毛收益 ${escapeHtml(trade.gross_return_pct ?? trade.return_pct)}% · 成本 ${escapeHtml(trade.cost_pct ?? 0)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%</small></div>`).join("") || "<p>暂无样例交易</p>"}
+      ${trades.slice(0, 6).map((trade: any) => {
+        const diagnosisNote = reportBacktestDiagnosisExitNote(trade)
+        return `<div class="row"><strong>${escapeHtml(trade.name)}</strong><small>${escapeHtml(trade.symbol)} · ${escapeHtml(trade.holding_days)} 日 · ${escapeHtml(strategyBacktestExitReasonLabel(trade.exit_reason))} · 净收益 ${escapeHtml(trade.return_pct)}% · 毛收益 ${escapeHtml(trade.gross_return_pct ?? trade.return_pct)}% · 成本 ${escapeHtml(trade.cost_pct ?? 0)}% · 回撤 ${escapeHtml(trade.max_drawdown_pct)}%${diagnosisNote ? ` · ${escapeHtml(diagnosisNote)}` : ""}</small></div>`
+      }).join("") || "<p>暂无样例交易</p>"}
     </section>
 
     <section>
@@ -2031,6 +2041,16 @@ function strategyBacktestExitReasonLabel(reason: unknown) {
   if (reason === 'volume-fade') return '缩量退出'
   if (reason === 'score-weak') return '诊断转弱'
   return '持有到期'
+}
+
+function reportBacktestDiagnosisExitNote(trade: Record<string, unknown>) {
+  if (typeof trade.diagnosis_exit_note === 'string' && trade.diagnosis_exit_note.trim()) {
+    return trade.diagnosis_exit_note
+  }
+  if (typeof trade.diagnosis_exit_score_at_exit === 'number' && Number.isFinite(trade.diagnosis_exit_score_at_exit)) {
+    return `代理诊断分 ${trade.diagnosis_exit_score_at_exit}`
+  }
+  return ''
 }
 
 function strategyBacktestExitDistribution(report: Record<string, unknown>) {

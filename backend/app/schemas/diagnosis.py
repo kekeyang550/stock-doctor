@@ -813,6 +813,8 @@ class StrategyBacktestTrade(BaseModel):
     history_bar_count: int = 0
     history_last_date: str | None = None
     fallback_reason: str | None = None
+    diagnosis_exit_score_at_exit: float | None = None
+    diagnosis_exit_note: str | None = None
     rule_tags: list[str]
     signal_reason: str
 
