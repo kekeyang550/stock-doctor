@@ -261,7 +261,7 @@ async def system_runtime_config() -> DataRuntimeSettings:
 
 
 @router.get("/system/tushare-probe", response_model=TushareProbeResult)
-async def system_tushare_probe(symbol: str = Query(default="600519", min_length=6, max_length=6)) -> TushareProbeResult:
+async def system_tushare_probe(symbol: str = Query(default="600519", min_length=1, max_length=12)) -> TushareProbeResult:
     return TushareMarketDataProvider().probe_connectivity(symbol=symbol)
 
 
@@ -771,7 +771,7 @@ def _parse_position_weights(value: str | None) -> dict[str, float] | None:
         if ":" not in chunk:
             continue
         symbol, raw_weight = chunk.split(":", 1)
-        symbol = symbol.strip().upper()
+        symbol = normalize_a_share_symbol(symbol)
         if not symbol:
             continue
         try:
@@ -791,7 +791,7 @@ def _parse_position_lots(value: str | None) -> dict[str, dict[str, float]] | Non
         parts = [part.strip() for part in chunk.split(":")]
         if len(parts) < 2:
             continue
-        symbol = parts[0].upper()
+        symbol = normalize_a_share_symbol(parts[0])
         if not symbol:
             continue
         try:

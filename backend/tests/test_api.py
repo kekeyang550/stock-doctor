@@ -15,7 +15,7 @@ def test_health_endpoint():
 
 
 def test_tushare_probe_endpoint_reports_safe_status():
-    response = client.get("/api/v1/system/tushare-probe?symbol=600519")
+    response = client.get("/api/v1/system/tushare-probe?symbol=SH600519")
 
     assert response.status_code == 200
     payload = response.json()
@@ -511,7 +511,7 @@ def test_portfolio_risk_endpoint_returns_report():
 
 
 def test_portfolio_risk_endpoint_accepts_position_weights():
-    response = client.get("/api/v1/risk/portfolio?scope=watchlist&horizon=swing&weights=600519:80,300750:20")
+    response = client.get("/api/v1/risk/portfolio?scope=watchlist&horizon=swing&weights=SH600519:80,300750.SZ:20")
 
     assert response.status_code == 200
     payload = response.json()
@@ -542,7 +542,7 @@ def test_portfolio_risk_endpoint_accepts_portfolio_value():
 
 def test_portfolio_risk_endpoint_accepts_real_position_lots():
     response = client.get(
-        "/api/v1/risk/portfolio?scope=watchlist&horizon=swing&holdings=600519:10:1200&portfolio_value=20000"
+        "/api/v1/risk/portfolio?scope=watchlist&horizon=swing&holdings=600519.SH:10:1200&portfolio_value=20000"
     )
 
     assert response.status_code == 200
