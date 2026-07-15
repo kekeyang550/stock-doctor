@@ -2856,6 +2856,8 @@ describe('App', () => {
     const runtimePanel = await waitFor(() => screen.getByRole('heading', { name: '运行配置' }).closest('section')!)
     fireEvent.click(within(runtimePanel).getByRole('button', { name: '检测 Tushare' }))
     await waitFor(() => expect(within(runtimePanel).getByText('Tushare 预检')).toBeInTheDocument())
+    fireEvent.click(within(runtimePanel).getByRole('button', { name: '检测通达信' }))
+    await waitFor(() => expect(within(runtimePanel).getByText('通达信检测')).toBeInTheDocument())
 
     const weightInput = await screen.findByLabelText('模拟仓位 贵州茅台')
     fireEvent.change(weightInput, { target: { value: '80' } })
@@ -2915,6 +2917,10 @@ describe('App', () => {
     expect(exported.data_trust.tushare_probe.next_action).toContain('STOCK_DOCTOR_TUSHARE_TOKEN')
     expect(exported.data_trust.tushare_probe.steps[1].row_count).toBe(0)
     expect(exported.data_trust.tushare_probe.steps.map((item: { key: string }) => item.key)).toEqual(['package', 'token'])
+    expect(exported.data_trust.tdx_probe.status).toBe('warn')
+    expect(exported.data_trust.tdx_probe.resolved_path).toContain('Vipdoc')
+    expect(exported.data_trust.tdx_probe.candidates[0].stale).toBe(true)
+    expect(exported.data_trust.tdx_probe.candidates[0].latest_date).toBe('2013-03-21')
     expect(exported.data_trust.freshness.status).toBe('fresh')
     expect(anchor.download).toBe(`stock-doctor-report-600519-${new Date().toISOString().slice(0, 10)}.json`)
     expect(click).toHaveBeenCalled()
@@ -3187,6 +3193,8 @@ describe('App', () => {
     expect(html).toContain('STOCK_DOCTOR_TUSHARE_TOKEN')
     expect(html).toContain('Tushare 预检')
     expect(html).toContain('本次导出未执行只读预检。')
+    expect(html).toContain('通达信预检')
+    expect(html).toContain('本次导出未执行通达信只读检测。')
     expect(html).toContain('连接器明细')
     expect(html).toContain('东方财富')
     expect(html).toContain('东方财富估值详情')
@@ -3291,6 +3299,8 @@ describe('App', () => {
     const runtimePanel = await waitFor(() => screen.getByRole('heading', { name: '运行配置' }).closest('section')!)
     fireEvent.click(within(runtimePanel).getByRole('button', { name: '检测 Tushare' }))
     await waitFor(() => expect(within(runtimePanel).getByText('Tushare 预检')).toBeInTheDocument())
+    fireEvent.click(within(runtimePanel).getByRole('button', { name: '检测通达信' }))
+    await waitFor(() => expect(within(runtimePanel).getByText('通达信检测')).toBeInTheDocument())
 
     const toolbar = await waitFor(() => {
       const node = document.querySelector('.topbar .toolbar') as HTMLElement | null
@@ -3336,6 +3346,9 @@ describe('App', () => {
     expect(markdown).toContain('### Tushare 预检')
     expect(markdown).toContain('总耗时: 12 ms')
     expect(markdown).toContain('Tushare Token - 提示 - 未配置 STOCK_DOCTOR_TUSHARE_TOKEN。 - 耗时 0 ms · 返回 0 行')
+    expect(markdown).toContain('### 通达信预检')
+    expect(markdown).toContain('实际使用: E:\\股票\\渤海证券行情加交易\\new_bhzq_v6\\Vipdoc')
+    expect(markdown).toContain('最新 2013-03-21 - 已过期')
     expect(markdown).toContain('### 连接器明细')
     expect(markdown).toContain('东方财富估值详情')
     expect(markdown).toContain('新浪资金流兜底')

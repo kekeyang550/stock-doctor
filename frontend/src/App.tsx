@@ -723,11 +723,12 @@ export default function App() {
           connector_health: connectorHealth,
           runtime_config: runtimeSettings,
           tushare_probe: tushareProbe,
+          tdx_probe: tdxProbe,
           freshness,
           refresh_jobs: refreshJobs,
         },
       }
-  }, [backtestDiagnosisExitScore, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison, tushareProbe])
+  }, [backtestDiagnosisExitScore, backtestExitOnMa20Break, backtestExitVolumeRatio, backtestFeeBps, backtestHoldingDays, backtestLimit, backtestSlippageBps, backtestStopLossPct, backtestTakeProfitPct, connectorHealth, dataQuality, dataSources, diagnosis, diagnosisChange, freshness, horizon, portfolioImportMessage, portfolioLots, portfolioRisk, portfolioValue, portfolioWeights, refreshJobs, reviewActions, runtimeSettings, selectedSymbol, strategyBacktest, strategyBacktestActions, strategyBacktestComparison, strategyBacktestHistory, strategyBacktestPresetComparison, tdxProbe, tushareProbe])
 
   const exportCurrentResearchReport = useCallback(() => {
     const payload = buildCurrentResearchReportPayload()
@@ -1406,6 +1407,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const cacheStatus = connectorHealth.cache_status ?? {}
   const runtimeConfig = dataTrust.runtime_config ?? connectorHealth.runtime_config ?? {}
   const tushareProbe = dataTrust.tushare_probe ?? null
+  const tdxProbe = dataTrust.tdx_probe ?? null
   const freshness = dataTrust.freshness ?? {}
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
@@ -1563,6 +1565,23 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
     lines.push('- 本次导出未执行只读预检。')
   }
   lines.push('')
+  lines.push('### 通达信预检')
+  if (tdxProbe) {
+    lines.push(`- 状态: ${markdownText(reportProbeStatusLabel(tdxProbe.status))}`)
+    lines.push(`- 配置路径: ${markdownText(tdxProbe.configured_path ?? '未配置')}`)
+    lines.push(`- 实际使用: ${markdownText(tdxProbe.resolved_path ?? '未解析')}`)
+    lines.push(`- 生成时间: ${markdownText(tdxProbe.generated_at ?? '-')}`)
+    lines.push(`- 结论: ${markdownText(tdxProbe.message ?? '-')}`)
+    lines.push(`- 下一步: ${markdownText(tdxProbe.next_action ?? '-')}`)
+    markdownList(
+      lines,
+      Array.isArray(tdxProbe.candidates) ? tdxProbe.candidates : [],
+      (candidate) => reportTdxCandidateSummary(candidate),
+    )
+  } else {
+    lines.push('- 本次导出未执行通达信只读检测。')
+  }
+  lines.push('')
   lines.push('### 连接器明细')
   markdownList(
     lines,
@@ -1659,6 +1678,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const cacheStatus = connectorHealth.cache_status ?? {}
   const runtimeConfig = dataTrust.runtime_config ?? connectorHealth.runtime_config ?? {}
   const tushareProbe = dataTrust.tushare_probe ?? null
+  const tdxProbe = dataTrust.tdx_probe ?? null
   const freshness = dataTrust.freshness ?? {}
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
@@ -1939,6 +1959,11 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="row"><strong>${escapeHtml(reportProbeStatusLabel(tushareProbe.status))} · ${escapeHtml(tushareProbe.symbol ?? "-")}</strong><small>${escapeHtml(tushareProbe.message ?? "-")} · 总耗时 ${escapeHtml(reportProbeDuration(tushareProbe.duration_ms))} · 下一步：${escapeHtml(tushareProbe.next_action ?? "-")}</small></div>
         ${(Array.isArray(tushareProbe.steps) ? tushareProbe.steps : []).map((step: any) => `<div class="row"><strong>${escapeHtml(step.label)} · ${escapeHtml(reportProbeStepStatusLabel(step.status))}</strong><small>${escapeHtml(step.detail ?? "")} · ${escapeHtml(reportProbeStepMetrics(step))}</small></div>`).join("")}
       ` : "<p>本次导出未执行只读预检。</p>"}
+      <h3>通达信预检</h3>
+      ${tdxProbe ? `
+        <div class="row"><strong>${escapeHtml(reportProbeStatusLabel(tdxProbe.status))} · ${escapeHtml(tdxProbe.resolved_path ?? "未解析")}</strong><small>${escapeHtml(tdxProbe.message ?? "-")} · 配置 ${escapeHtml(tdxProbe.configured_path ?? "未配置")} · 下一步：${escapeHtml(tdxProbe.next_action ?? "-")}</small></div>
+        ${(Array.isArray(tdxProbe.candidates) ? tdxProbe.candidates : []).map((candidate: any) => `<div class="row"><strong>${escapeHtml(candidate.path ?? "-")}</strong><small>${escapeHtml(reportTdxCandidateSummary(candidate))}</small></div>`).join("")}
+      ` : "<p>本次导出未执行通达信只读检测。</p>"}
       <h3>连接器明细</h3>
       ${connectors.slice(0, 10).map((connector: any) => `<div class="row"><strong>${escapeHtml(connector.name)}${connector.active ? " · 当前启用" : ""}</strong><small>${escapeHtml(reportConnectorStatusLabel(connector.status))} · ${escapeHtml(humanizeConnectorMessage(connector.message ?? connector.role ?? ""))} · 下一步：${escapeHtml(humanizeConnectorMessage(connector.next_action ?? "-"))}</small></div>`).join("") || "<p>暂无连接器明细</p>"}
       <h3>缓存桶</h3>
@@ -2119,6 +2144,15 @@ function reportProbeStepMetrics(step: Record<string, unknown>) {
     parts.push(`返回 ${Math.max(0, Math.round(step.row_count))} 行`)
   }
   return parts.join(' · ')
+}
+
+function reportTdxCandidateSummary(candidate: Record<string, unknown>) {
+  const selected = candidate.selected ? '当前使用' : '候选'
+  const exists = candidate.exists ? '存在' : '未找到'
+  const stale = candidate.stale ? '已过期' : '未过期'
+  const sampleCount = typeof candidate.sample_count === 'number' && Number.isFinite(candidate.sample_count) ? Math.max(0, Math.round(candidate.sample_count)) : 0
+  const rowCount = typeof candidate.row_count === 'number' && Number.isFinite(candidate.row_count) ? Math.max(0, Math.round(candidate.row_count)) : 0
+  return `${candidate.path ?? '-'} - ${selected} - ${exists} - 样本 ${sampleCount} - 行数 ${rowCount} - 最新 ${candidate.latest_date ?? '-'} - ${stale} - ${candidate.note ?? '-'}`
 }
 
 function reportProbeDuration(value: unknown) {
