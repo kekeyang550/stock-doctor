@@ -2324,13 +2324,20 @@ function writeStoredPortfolioInputs(inputs: PortfolioInputs) {
   }
 }
 
+function normalizeAShareSymbol(value: unknown) {
+  const text = String(value ?? '').trim().toUpperCase()
+  const compact = text.replace(/\s+/g, '')
+  const match = compact.match(/^(?:(SH|SZ|BJ)[.\-_\s]*)?(\d{6})(?:[.\-_\s]*(SH|SZ|BJ))?$/i)
+  return match ? match[2] : text
+}
+
 function normalizePortfolioInputs(inputs: Partial<PortfolioInputs>): PortfolioInputs {
   const weights: Record<string, string> = {}
   const lots: Record<string, { shares: string; cost_price: string }> = {}
   const rawWeights = inputs.weights
   if (rawWeights && typeof rawWeights === 'object' && !Array.isArray(rawWeights)) {
     Object.entries(rawWeights).forEach(([symbol, value]) => {
-      const normalizedSymbol = symbol.trim()
+      const normalizedSymbol = normalizeAShareSymbol(symbol)
       const normalizedValue = normalizePortfolioInputNumber(value, 0, 100)
       if (normalizedSymbol && normalizedSymbol.length <= 12 && normalizedValue !== '') {
         weights[normalizedSymbol] = normalizedValue
@@ -2340,7 +2347,7 @@ function normalizePortfolioInputs(inputs: Partial<PortfolioInputs>): PortfolioIn
   const rawLots = inputs.lots
   if (rawLots && typeof rawLots === 'object' && !Array.isArray(rawLots)) {
     Object.entries(rawLots).forEach(([symbol, value]) => {
-      const normalizedSymbol = symbol.trim()
+      const normalizedSymbol = normalizeAShareSymbol(symbol)
       if (!normalizedSymbol || normalizedSymbol.length > 12 || !value || typeof value !== 'object' || Array.isArray(value)) {
         return
       }
@@ -2371,7 +2378,7 @@ function parsePortfolioLotsText(text: string): Record<string, { shares: string; 
     if (parts.length < 2) {
       return
     }
-    const symbol = portfolioImportValue(parts, header?.symbol ?? 0).toUpperCase()
+    const symbol = normalizeAShareSymbol(portfolioImportValue(parts, header?.symbol ?? 0))
     const shares = normalizePortfolioInputNumber(portfolioImportValue(parts, header?.shares ?? 1), 0, 1_000_000_000)
     const costPrice = normalizePortfolioInputNumber(portfolioImportValue(parts, header?.costPrice ?? 2), 0, 1_000_000)
     if (symbol && symbol.length <= 12 && shares !== '') {
@@ -2392,7 +2399,7 @@ function parsePortfolioTradesText(text: string): Record<string, { shares: string
     if (parts.length < 4) {
       return
     }
-    const symbol = portfolioImportValue(parts, header?.symbol ?? 0).toUpperCase()
+    const symbol = normalizeAShareSymbol(portfolioImportValue(parts, header?.symbol ?? 0))
     const side = portfolioImportValue(parts, header?.side ?? 1)
     const shares = portfolioImportNumber(portfolioImportValue(parts, header?.shares ?? 2))
     const price = portfolioImportNumber(portfolioImportValue(parts, header?.price ?? 3))

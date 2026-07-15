@@ -1958,7 +1958,8 @@ describe('App', () => {
 
   it('restores stored portfolio simulation inputs', async () => {
     window.localStorage.setItem('stock-doctor-portfolio-inputs-v1', JSON.stringify({
-      weights: { '600519': '65', BAD: 'not-a-number' },
+      weights: { 'SH600519': '65', BAD: 'not-a-number' },
+      lots: { '000001.SZ': { shares: '100', cost_price: '9.5' } },
       portfolio_value: '120000',
     }))
 
@@ -1974,7 +1975,13 @@ describe('App', () => {
         .map((call) => decodeURIComponent(String(call[0])))
         .filter((url) => url.includes('/risk/portfolio'))
       expect(portfolioCalls.some((url) => url.includes('weights=600519:65'))).toBe(true)
+      expect(portfolioCalls.some((url) => url.includes('holdings=000001:100:9.5'))).toBe(true)
       expect(portfolioCalls.some((url) => url.includes('portfolio_value=120000'))).toBe(true)
+    })
+    expect(JSON.parse(window.localStorage.getItem('stock-doctor-portfolio-inputs-v1') ?? '{}')).toEqual({
+      weights: { '600519': '65' },
+      lots: { '000001': { shares: '100', cost_price: '9.5' } },
+      portfolio_value: '120000',
     })
   })
 
@@ -2041,7 +2048,7 @@ describe('App', () => {
     render(<App />)
 
     const input = await screen.findByLabelText('导入持仓文件')
-    const file = new File(['symbol,shares,cost_price\n600519,12,1100\nbad,row\n'], 'positions.csv', {
+    const file = new File(['symbol,shares,cost_price\nSH600519,12,1100\nbad,row\n'], 'positions.csv', {
       type: 'text/csv',
     })
     fireEvent.change(input, { target: { files: [file] } })
@@ -2122,8 +2129,8 @@ describe('App', () => {
     const input = await screen.findByLabelText('导入交易流水文件')
     const file = new File([
       'symbol,side,shares,price\n',
-      '600519,buy,10,1000\n',
-      '600519,buy,10,1200\n',
+      '600519.SH,buy,10,1000\n',
+      'SH600519,buy,10,1200\n',
       '600519,sell,5,1300\n',
     ], 'trades.csv', { type: 'text/csv' })
     fireEvent.change(input, { target: { files: [file] } })
