@@ -47,6 +47,7 @@ import type {
   TushareProbeResult,
   WatchlistSummary,
 } from './types'
+import { normalizeAShareSymbol } from './symbols'
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url)
@@ -130,7 +131,8 @@ export function fetchDataRuntimeSettings(): Promise<DataRuntimeSettings> {
 }
 
 export function fetchTushareProbe(symbol = '600519'): Promise<TushareProbeResult> {
-  return getJson<TushareProbeResult>(`/api/v1/system/tushare-probe?symbol=${encodeURIComponent(symbol)}`)
+  const normalizedSymbol = normalizeAShareSymbol(symbol) || '600519'
+  return getJson<TushareProbeResult>(`/api/v1/system/tushare-probe?symbol=${encodeURIComponent(normalizedSymbol)}`)
 }
 
 export function fetchTdxProbe(): Promise<TdxProbeResult> {
@@ -447,15 +449,15 @@ export function fetchPortfolioRisk(
 ): Promise<PortfolioRiskReport> {
   const params = new URLSearchParams({ horizon, scope })
   const weightPairs = Object.entries(weights ?? {})
-    .map(([symbol, value]) => [symbol, Number(value)] as const)
-    .filter(([, value]) => Number.isFinite(value) && value > 0)
+    .map(([symbol, value]) => [normalizeAShareSymbol(symbol), Number(value)] as const)
+    .filter(([symbol, value]) => Boolean(symbol) && Number.isFinite(value) && value > 0)
     .map(([symbol, value]) => `${symbol}:${value}`)
   if (weightPairs.length) {
     params.set('weights', weightPairs.join(','))
   }
   const lotPairs = Object.entries(lots ?? {})
-    .map(([symbol, lot]) => [symbol, Number(lot.shares), Number(lot.cost_price ?? 0)] as const)
-    .filter(([, shares]) => Number.isFinite(shares) && shares > 0)
+    .map(([symbol, lot]) => [normalizeAShareSymbol(symbol), Number(lot.shares), Number(lot.cost_price ?? 0)] as const)
+    .filter(([symbol, shares]) => Boolean(symbol) && Number.isFinite(shares) && shares > 0)
     .map(([symbol, shares, costPrice]) => `${symbol}:${shares}:${Number.isFinite(costPrice) && costPrice > 0 ? costPrice : 0}`)
   if (lotPairs.length) {
     params.set('holdings', lotPairs.join(','))

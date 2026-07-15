@@ -2,6 +2,7 @@ import { AlertTriangle, BarChart3, BellRing, CalendarClock, CheckCircle2, Databa
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { StockList } from './components/StockList'
 import { humanizeConnectorMessage } from './lib/sourceLabels'
+import { normalizeAShareSymbol } from './lib/symbols'
 import { DiagnosisWorkspace } from './components/diagnosis/DiagnosisPanels'
 import {
   ConceptHeatPanel,
@@ -2322,13 +2323,6 @@ function writeStoredPortfolioInputs(inputs: PortfolioInputs) {
   } catch {
     // localStorage can be unavailable in restricted browser modes; keep the in-memory state.
   }
-}
-
-function normalizeAShareSymbol(value: unknown) {
-  const text = String(value ?? '').trim().toUpperCase()
-  const compact = text.replace(/\s+/g, '')
-  const match = compact.match(/^(?:(SH|SZ|BJ)[.\-_\s]*)?(\d{6})(?:[.\-_\s]*(SH|SZ|BJ))?$/i)
-  return match ? match[2] : text
 }
 
 function normalizePortfolioInputs(inputs: Partial<PortfolioInputs>): PortfolioInputs {
