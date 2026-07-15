@@ -119,6 +119,7 @@
 - 接口验证：`/api/v1/system/tushare-probe?symbol=600519` 返回 `warn`；Token 已配置，未复权日线可用，财务指标权限和频控限制已在步骤详情中展示。
 - 接口验证：`/api/v1/system/runtime-config` 可返回通达信配置路径、自动发现路径和过期说明；`/api/v1/system/data-connectors` 对过期通达信日线返回 fallback。
 - 接口验证：`/api/v1/system/tdx-probe` 当前返回 `warn`，列出 5 个候选路径；当前解析路径最新交易日 2013-03-21，已标记过期。
+- 2026-07-15 新增本机交付自检脚本：`powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1`，可只读检查目录、Python/Node/npm、依赖、端口、健康接口、系统就绪度、运行配置和前端页面；当前自检结果为 `0 failure(s), 1 warning(s)`，警告来自运行配置仍使用 mock/本地路径类提示。
 
 ## 本地运行配置
 
@@ -148,6 +149,12 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```powershell
 cd frontend
 npm run dev -- --host 127.0.0.1 --port 30080
+```
+
+交付或换电脑前建议先执行本机自检：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1
 ```
 
 这些值会通过 `/api/v1/system/data-connectors` 和 `/api/v1/system/runtime-config` 返回，并显示在数据可信度/运行配置面板中。报告导出的 JSON、HTML、Markdown 也会保留这些运行假设，便于离线复盘。

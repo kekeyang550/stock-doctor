@@ -31,6 +31,22 @@ npm run dev -- --host 127.0.0.1 --port 30080
 
 Open `http://127.0.0.1:30080/`.
 
+## Local Delivery Check
+
+Before handoff or after switching machines, run the read-only local check:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1
+```
+
+The check verifies repository layout, Python/Node/npm availability, installed backend/frontend dependencies, the expected backend/frontend ports, `/api/v1/health`, `/api/v1/system/readiness`, `/api/v1/system/runtime-config`, and the Vite page. It only reports whether optional secret-backed integrations are configured; it never prints token values.
+
+Use strict mode when CI or a release checklist should fail on warnings:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1 -Strict
+```
+
 ## Local State
 
 Runtime state is intentionally ignored by Git:
