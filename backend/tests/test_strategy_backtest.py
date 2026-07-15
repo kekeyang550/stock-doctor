@@ -507,4 +507,9 @@ def test_strategy_backtest_actions_include_score_weak_exit_followup(tmp_path):
     )
 
     assert any(action.id == "backtest-score-weak-exit" for action in plan.actions)
-    assert any(action.category == "诊断转弱" and "触发 1 笔" in action.metric for action in plan.actions)
+    assert any(
+        action.category == "诊断转弱"
+        and "最低代理分 63.9" in action.metric
+        and "触发 1 笔" in action.metric
+        for action in plan.actions
+    )
