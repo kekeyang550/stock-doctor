@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from app.schemas.diagnosis import PriceAlert, StockSnapshot
 from app.services.storage import StateStore, create_state_store
+from app.services.symbols import normalize_a_share_symbol
 
 
 class PriceAlertService:
@@ -10,11 +11,11 @@ class PriceAlertService:
         self._state_store = state_store or create_state_store()
 
     def list_alerts(self, snapshots: dict[str, StockSnapshot], symbol: str | None = None) -> list[PriceAlert]:
-        normalized = symbol.strip().upper() if symbol else None
+        normalized = normalize_a_share_symbol(symbol) if symbol else None
         raw_alerts = self._state_store.load_price_alerts()
         alerts = []
         for item in raw_alerts:
-            item_symbol = str(item.get("symbol", "")).upper()
+            item_symbol = normalize_a_share_symbol(str(item.get("symbol", "")))
             if normalized and item_symbol != normalized:
                 continue
             snapshot = snapshots.get(item_symbol)

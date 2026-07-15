@@ -400,13 +400,13 @@ def test_report_create_list_and_delete():
 
 
 def test_note_create_list_and_delete():
-    create_response = client.post("/api/v1/notes", json={"symbol": "600519", "body": "观察量能是否继续温和放大"})
+    create_response = client.post("/api/v1/notes", json={"symbol": "SH600519", "body": "观察量能是否继续温和放大"})
 
     assert create_response.status_code == 201
     note = create_response.json()
     assert note["symbol"] == "600519"
 
-    list_response = client.get("/api/v1/notes?symbol=600519")
+    list_response = client.get("/api/v1/notes?symbol=600519.SH")
 
     assert list_response.status_code == 200
     assert any(item["id"] == note["id"] for item in list_response.json())
@@ -419,7 +419,7 @@ def test_note_create_list_and_delete():
 def test_price_alert_create_list_and_delete():
     create_response = client.post(
         "/api/v1/price-alerts",
-        json={"symbol": "600519", "target_price": 1500, "direction": "above", "label": "突破观察"},
+        json={"symbol": "600519.SH", "target_price": 1500, "direction": "above", "label": "突破观察"},
     )
 
     assert create_response.status_code == 201
@@ -427,7 +427,7 @@ def test_price_alert_create_list_and_delete():
     assert alert["symbol"] == "600519"
     assert alert["status"] in {"triggered", "watching"}
 
-    list_response = client.get("/api/v1/price-alerts?symbol=600519")
+    list_response = client.get("/api/v1/price-alerts?symbol=SH600519")
 
     assert list_response.status_code == 200
     assert any(item["id"] == alert["id"] for item in list_response.json())

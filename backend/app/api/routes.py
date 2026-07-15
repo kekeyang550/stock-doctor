@@ -516,9 +516,10 @@ async def list_notes(
 
 @router.post("/notes", response_model=ResearchNote, status_code=status.HTTP_201_CREATED)
 async def add_note(request: ResearchNoteRequest) -> ResearchNote:
-    if data_provider.get_snapshot(request.symbol) is None:
+    snapshot = data_provider.get_snapshot(request.symbol)
+    if snapshot is None:
         raise HTTPException(status_code=404, detail="Stock symbol not found")
-    return note_service.add_note(symbol=request.symbol, body=request.body)
+    return note_service.add_note(symbol=snapshot.symbol, body=request.body)
 
 
 @router.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)

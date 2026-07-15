@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from app.schemas.diagnosis import ResearchNote
 from app.services.storage import StateStore, create_state_store
+from app.services.symbols import normalize_a_share_symbol
 
 
 class ResearchNoteService:
@@ -10,16 +11,16 @@ class ResearchNoteService:
         self._state_store = state_store or create_state_store()
 
     def list_notes(self, symbol: str | None = None, limit: int = 20) -> list[ResearchNote]:
-        normalized = symbol.strip().upper() if symbol else None
+        normalized = normalize_a_share_symbol(symbol) if symbol else None
         notes = [ResearchNote.model_validate(item) for item in self._state_store.load_notes()]
         if normalized:
-            notes = [note for note in notes if note.symbol == normalized]
+            notes = [note for note in notes if normalize_a_share_symbol(note.symbol) == normalized]
         return sorted(notes, key=lambda item: item.created_at, reverse=True)[:limit]
 
     def add_note(self, symbol: str, body: str) -> ResearchNote:
         note = ResearchNote(
             id=uuid4().hex,
-            symbol=symbol.strip().upper(),
+            symbol=normalize_a_share_symbol(symbol),
             body=body.strip(),
             created_at=datetime.now(timezone.utc).isoformat(),
         )
