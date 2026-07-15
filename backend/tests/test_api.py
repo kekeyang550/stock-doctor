@@ -53,6 +53,17 @@ def test_stock_search_endpoint_returns_match_context():
     assert isinstance(payload[0]["quality_score"], int)
 
 
+def test_stock_search_accepts_common_market_code_formats():
+    response = client.get("/api/v1/stocks/search?q=SH600519")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert payload[0]["symbol"] == "600519"
+    assert payload[0]["match_reason"] == "代码匹配"
+    assert payload[0]["diagnosable"] is True
+
+
 def test_diagnosis_change_endpoint_returns_baseline_or_change():
     response = client.get("/api/v1/diagnosis-change/600519?horizon=swing")
 

@@ -16,6 +16,7 @@ from app.schemas.diagnosis import (
 )
 from app.services.market_data import MockMarketDataProvider
 from app.services.storage import StateStore
+from app.services.symbols import normalize_a_share_symbol
 
 
 class TushareMarketDataProvider:
@@ -74,11 +75,12 @@ class TushareMarketDataProvider:
         return self._fallback.replace_watchlist(symbols)
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
-        snapshot = self._fallback.get_snapshot(symbol)
+        normalized = normalize_a_share_symbol(symbol)
+        snapshot = self._fallback.get_snapshot(normalized)
         if snapshot is None or not self._is_ready():
             return snapshot
-        fundamental = self._fundamental_from_tushare(symbol)
-        basic_info = self._basic_info_from_tushare(symbol)
+        fundamental = self._fundamental_from_tushare(normalized)
+        basic_info = self._basic_info_from_tushare(normalized)
         if fundamental is None and basic_info is None:
             return snapshot
         update = {}
@@ -102,11 +104,12 @@ class TushareMarketDataProvider:
         return snapshot.model_copy(update=update)
 
     def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
+        normalized = normalize_a_share_symbol(symbol)
         if not self._is_ready():
-            return self._fallback.get_price_history(symbol, days=days)
-        bars = self._history_from_tushare(symbol, days=days)
+            return self._fallback.get_price_history(normalized, days=days)
+        bars = self._history_from_tushare(normalized, days=days)
         if not bars:
-            return self._fallback.get_price_history(symbol, days=days)
+            return self._fallback.get_price_history(normalized, days=days)
         self._last_history_enriched = True
         return bars
 
@@ -118,7 +121,7 @@ class TushareMarketDataProvider:
 
     def probe_connectivity(self, symbol: str = "600519") -> TushareProbeResult:
         started_at = monotonic()
-        normalized = symbol.strip().upper() or "600519"
+        normalized = normalize_a_share_symbol(symbol) or "600519"
         package_available = self._package_available()
         token_configured = bool(settings.tushare_token.strip())
         steps = [
@@ -643,6 +646,6 @@ class TushareMarketDataProvider:
         return value
 
     def _ts_code(self, symbol: str) -> str:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         suffix = "SH" if normalized.startswith("6") else "SZ"
         return f"{normalized}.{suffix}"

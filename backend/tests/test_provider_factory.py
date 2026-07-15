@@ -469,15 +469,16 @@ class FakeEastmoneySession:
     def get(self, url, params=None, timeout=None, headers=None):
         self.urls.append(url)
         if "qt.gtimg.cn" in url:
+            requested_symbol = "600519" if "600519" in url else "600036"
             fields = ["0"] * 90
-            fields[1] = "CMB Bank"
-            fields[2] = "600036"
-            fields[3] = "42.18"
-            fields[32] = "0.85"
+            fields[1] = "贵州茅台" if requested_symbol == "600519" else "CMB Bank"
+            fields[2] = requested_symbol
+            fields[3] = "1288.8" if requested_symbol == "600519" else "42.18"
+            fields[32] = "1.2" if requested_symbol == "600519" else "0.85"
             fields[38] = "0.38"
             fields[46] = "0.84"
             fields[52] = "6.14"
-            return FakeTextResponse(f'v_sh600036="{"~".join(fields)}";')
+            return FakeTextResponse(f'v_sh{requested_symbol}="{"~".join(fields)}";')
         if "stock/fflow/daykline/get" in url:
             return FakeResponse(
                 {
@@ -711,6 +712,17 @@ def test_mock_provider_returns_deterministic_price_history():
     assert bars[-1].date == snapshot.as_of
     assert bars[-1].close == snapshot.last_price
     assert all(bar.close > 0 for bar in bars)
+
+
+def test_mock_provider_accepts_common_market_code_formats():
+    provider = MockMarketDataProvider()
+
+    snapshot = provider.get_snapshot("600519.SH")
+    watchlist = provider.replace_watchlist(["SH600519", "sz000001"])
+
+    assert snapshot is not None
+    assert snapshot.symbol == "600519"
+    assert [stock.symbol for stock in watchlist] == ["600519", "000001"]
 
 
 def test_mock_provider_reports_cache_status_for_default_data():
@@ -981,6 +993,20 @@ def test_eastmoney_provider_exposes_real_price_history_rows():
     assert bars[-1].date == "2026-05-30"
     assert bars[-1].close == 15.9
     assert bars[-1].volume == 1590
+
+
+def test_eastmoney_provider_accepts_common_market_code_formats():
+    provider = EastmoneyMarketDataProvider(session=FakeEastmoneySession())
+
+    snapshot = provider.get_snapshot("SH600519")
+    bars = provider.get_price_history("600519.SH", days=2)
+    results = provider.search_stocks("sh600519")
+
+    assert snapshot is not None
+    assert snapshot.symbol == "600519"
+    assert len(bars) == 2
+    assert bars[-1].close == 15.9
+    assert results[0].symbol == "600519"
 
 
 def test_eastmoney_provider_builds_market_overview():

@@ -18,6 +18,7 @@ from app.schemas.diagnosis import (
 from app.services.local_stock_directory import LocalStockDirectoryProvider
 from app.services.market_data import MockMarketDataProvider
 from app.services.storage import StateStore
+from app.services.symbols import looks_like_a_share_symbol, normalize_a_share_symbol
 from app.services.tdx_local_provider import TdxLocalHistoryProvider
 
 
@@ -88,7 +89,7 @@ class EastmoneyMarketDataProvider:
         return self._with_direct_quotes(stocks)
 
     def search_stocks(self, query: str, limit: int = 12) -> list[StockSummary]:
-        normalized_query = query.strip().upper()
+        normalized_query = normalize_a_share_symbol(query)
         lower_query = normalized_query.lower()
         candidates = self.list_stocks()
         matches = [
@@ -180,6 +181,14 @@ class EastmoneyMarketDataProvider:
         ]
 
     def get_watchlist(self) -> list[StockSummary]:
+        normalized_symbols = []
+        for symbol in self._watchlist_symbols:
+            normalized = normalize_a_share_symbol(symbol)
+            if normalized not in normalized_symbols:
+                normalized_symbols.append(normalized)
+        if normalized_symbols != self._watchlist_symbols:
+            self._watchlist_symbols = normalized_symbols
+            self._state_store.save_watchlist(self._watchlist_symbols)
         summaries = {stock.symbol: stock for stock in self.list_stocks()}
         for symbol in self._watchlist_symbols:
             if symbol not in summaries and self._looks_like_a_share_symbol(symbol):
@@ -189,7 +198,7 @@ class EastmoneyMarketDataProvider:
         return [summaries[symbol] for symbol in self._watchlist_symbols if symbol in summaries]
 
     def add_to_watchlist(self, symbol: str) -> bool:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         if self.get_snapshot(normalized) is None:
             return False
         if normalized not in self._watchlist_symbols:
@@ -198,14 +207,14 @@ class EastmoneyMarketDataProvider:
         return True
 
     def remove_from_watchlist(self, symbol: str) -> None:
-        normalized = symbol.strip().upper()
-        self._watchlist_symbols = [item for item in self._watchlist_symbols if item != normalized]
+        normalized = normalize_a_share_symbol(symbol)
+        self._watchlist_symbols = [item for item in self._watchlist_symbols if normalize_a_share_symbol(item) != normalized]
         self._state_store.save_watchlist(self._watchlist_symbols)
 
     def replace_watchlist(self, symbols: list[str]) -> list[StockSummary]:
         next_symbols = []
         for symbol in symbols:
-            normalized = symbol.strip().upper()
+            normalized = normalize_a_share_symbol(symbol)
             if normalized not in next_symbols and self.get_snapshot(normalized) is not None:
                 next_symbols.append(normalized)
         self._watchlist_symbols = next_symbols
@@ -213,7 +222,7 @@ class EastmoneyMarketDataProvider:
         return self.get_watchlist()
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         cached = self._snapshot_cache.get(normalized)
         if cached is not None and self._is_cache_fresh(cached[0]):
             self._record_cache_hit("snapshots")
@@ -232,7 +241,7 @@ class EastmoneyMarketDataProvider:
         return snapshot
 
     def get_price_history(self, symbol: str, days: int = 60) -> list[HistoricalPriceBar]:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         rows = self._call_history_rows(normalized)
         bars: list[HistoricalPriceBar] = []
         for row in rows:
@@ -304,6 +313,7 @@ class EastmoneyMarketDataProvider:
         return [row for row in rows if isinstance(row, dict)]
 
     def _call_history_rows(self, symbol: str) -> list[dict[str, Any]]:
+        symbol = normalize_a_share_symbol(symbol)
         cached = self._history_rows_cache.get(symbol)
         if cached is not None and self._is_cache_fresh(cached[0]):
             self._record_cache_hit("history")
@@ -404,6 +414,7 @@ class EastmoneyMarketDataProvider:
         return summaries
 
     def _quote_summary(self, symbol: str) -> StockSummary | None:
+        symbol = normalize_a_share_symbol(symbol)
         cached = self._direct_quote_cache.get(symbol)
         if cached is not None:
             return cached
@@ -776,19 +787,22 @@ class EastmoneyMarketDataProvider:
         }
 
     def _secid(self, symbol: str) -> str:
+        symbol = normalize_a_share_symbol(symbol)
         market = "1" if symbol.startswith(("5", "6", "9")) else "0"
         return f"{market}.{symbol}"
 
     def _tencent_symbol(self, symbol: str) -> str:
+        symbol = normalize_a_share_symbol(symbol)
         market = "sh" if symbol.startswith(("5", "6", "9")) or symbol == "000300" else "sz"
         return f"{market}{symbol}"
 
     def _sina_symbol(self, symbol: str) -> str:
+        symbol = normalize_a_share_symbol(symbol)
         market = "sh" if symbol.startswith(("5", "6", "9")) else "sz"
         return f"{market}{symbol}"
 
     def _looks_like_a_share_symbol(self, symbol: str) -> bool:
-        return len(symbol) == 6 and symbol.isdigit()
+        return looks_like_a_share_symbol(symbol)
 
     def _is_st_stock(self, name: str) -> bool:
         normalized = name.strip().upper()

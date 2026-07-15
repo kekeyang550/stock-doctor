@@ -90,6 +90,7 @@ from app.services.strategy_backtest import DiagnosisHistoryPoint, StrategyBackte
 from app.services.strategy_backtest_actions import StrategyBacktestActionService
 from app.services.strategy_backtest_history import StrategyBacktestHistoryService
 from app.services.storage import SQLiteStateStore, StateStore, create_state_store
+from app.services.symbols import normalize_a_share_symbol
 from app.services.tdx_local_provider import TdxLocalHistoryProvider
 from app.services.timeline import TimelineService
 from app.services.trend import TrendService
@@ -149,18 +150,25 @@ async def search_stocks(
     q: str = Query(default="", max_length=40),
     limit: int = Query(default=12, ge=1, le=30),
 ) -> list[StockSearchResult]:
-    query = q.strip().lower()
+    raw_query = q.strip()
+    normalized_query = normalize_a_share_symbol(raw_query)
+    query_terms = {raw_query.lower(), normalized_query.lower()}
+    query_terms = {term for term in query_terms if term}
+    match_query = normalized_query if normalized_query != raw_query.upper() else raw_query
     watchlist_symbols = {stock.symbol for stock in data_provider.get_watchlist()}
     provider_search = getattr(data_provider, "search_stocks", None)
     if callable(provider_search):
-        candidates = provider_search(q.strip(), limit=max(limit * 2, limit))
+        candidates = provider_search(raw_query, limit=max(limit * 2, limit))
     else:
         candidates = data_provider.list_stocks()
-        if query:
+        if query_terms:
             candidates = [
                 stock
                 for stock in candidates
-                if query in stock.symbol.lower() or query in stock.name.lower() or query in stock.industry.lower()
+                if any(
+                    term in stock.symbol.lower() or term in stock.name.lower() or term in stock.industry.lower()
+                    for term in query_terms
+                )
             ]
     candidates = sorted(candidates, key=lambda stock: (stock.symbol not in watchlist_symbols, stock.symbol))
     results = []
@@ -175,7 +183,7 @@ async def search_stocks(
                 diagnosable=snapshot is not None,
                 quality_status=quality.status if quality is not None else "unknown",
                 quality_score=quality.score if quality is not None else None,
-                match_reason=_stock_match_reason(stock, query),
+                match_reason=_stock_match_reason(stock, match_query),
             )
         )
     return results
@@ -1406,11 +1414,14 @@ def _ranked_diagnoses(horizon: str) -> list[RankedDiagnosis]:
 
 
 def _stock_match_reason(stock: StockSummary, query: str) -> str:
-    if not query:
+    normalized_query = normalize_a_share_symbol(query).lower()
+    raw_query = query.strip().lower()
+    terms = [term for term in (normalized_query, raw_query) if term]
+    if not terms:
         return "默认候选"
-    if query in stock.symbol.lower():
+    if any(term in stock.symbol.lower() for term in terms):
         return "代码匹配"
-    if query in stock.name.lower():
+    if any(term in stock.name.lower() for term in terms):
         return "名称匹配"
     return "行业匹配"
 

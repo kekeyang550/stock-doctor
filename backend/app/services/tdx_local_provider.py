@@ -5,6 +5,7 @@ from typing import Any
 
 from app.config import settings
 from app.schemas.diagnosis import HistoricalPriceBar, TdxProbeCandidate, TdxProbeResult
+from app.services.symbols import normalize_a_share_symbol
 
 
 class TdxLocalHistoryProvider:
@@ -252,7 +253,7 @@ class TdxLocalHistoryProvider:
         return candidates
 
     def _day_file(self, symbol: str) -> Path:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         market = "sh" if normalized.startswith(("5", "6", "9")) or normalized == "000300" else "sz"
         folder = self._vipdoc_path / market / "lday"
         lower = folder / f"{market}{normalized}.day"

@@ -12,6 +12,7 @@ from app.schemas.diagnosis import (
     TechnicalSnapshot,
 )
 from app.services.storage import StateStore, create_state_store
+from app.services.symbols import normalize_a_share_symbol
 
 
 class MockMarketDataProvider:
@@ -142,11 +143,19 @@ class MockMarketDataProvider:
         ]
 
     def get_watchlist(self) -> list[StockSummary]:
+        normalized_symbols = []
+        for symbol in self._watchlist_symbols:
+            normalized = normalize_a_share_symbol(symbol)
+            if normalized not in normalized_symbols:
+                normalized_symbols.append(normalized)
+        if normalized_symbols != self._watchlist_symbols:
+            self._watchlist_symbols = normalized_symbols
+            self._state_store.save_watchlist(self._watchlist_symbols)
         summaries = {stock.symbol: stock for stock in self.list_stocks()}
         return [summaries[symbol] for symbol in self._watchlist_symbols if symbol in summaries]
 
     def add_to_watchlist(self, symbol: str) -> bool:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         if normalized not in self._snapshots:
             return False
         if normalized not in self._watchlist_symbols:
@@ -155,14 +164,14 @@ class MockMarketDataProvider:
         return True
 
     def remove_from_watchlist(self, symbol: str) -> None:
-        normalized = symbol.strip().upper()
-        self._watchlist_symbols = [item for item in self._watchlist_symbols if item != normalized]
+        normalized = normalize_a_share_symbol(symbol)
+        self._watchlist_symbols = [item for item in self._watchlist_symbols if normalize_a_share_symbol(item) != normalized]
         self._state_store.save_watchlist(self._watchlist_symbols)
 
     def replace_watchlist(self, symbols: list[str]) -> list[StockSummary]:
         next_symbols = []
         for symbol in symbols:
-            normalized = symbol.strip().upper()
+            normalized = normalize_a_share_symbol(symbol)
             if normalized in self._snapshots and normalized not in next_symbols:
                 next_symbols.append(normalized)
         self._watchlist_symbols = next_symbols
@@ -170,7 +179,7 @@ class MockMarketDataProvider:
         return self.get_watchlist()
 
     def get_snapshot(self, symbol: str) -> StockSnapshot | None:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         snapshot = self._snapshots.get(normalized)
         if snapshot is None:
             self._record_cache_miss("snapshots")
