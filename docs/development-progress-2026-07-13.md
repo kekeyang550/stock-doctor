@@ -108,8 +108,8 @@
 
 ## 本机验证结果
 
-- 后端全量测试：`178 passed, 1 warning`（测试时临时使用 `STOCK_DOCTOR_DATA_PROVIDER=mock`，避免本机真实 provider 网络波动影响单元测试）
-- 前端测试：`54 passed`
+- 后端全量测试：`180 passed, 1 warning`（测试时临时使用 `STOCK_DOCTOR_DATA_PROVIDER=mock`，避免本机真实 provider 网络波动影响单元测试）
+- 前端测试：`55 passed`
 - 前端生产构建：通过
 - 接口验证：`/api/v1/system/tushare-probe?symbol=600519` 返回 `warn`；Token 已配置，未复权日线可用，财务指标权限和频控限制已在步骤详情中展示。
 - 接口验证：`/api/v1/system/runtime-config` 可返回通达信配置路径、自动发现路径和过期说明；`/api/v1/system/data-connectors` 对过期通达信日线返回 fallback。
