@@ -1412,6 +1412,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
   const runtimeSecrets = Array.isArray(runtimeConfig.secrets) ? runtimeConfig.secrets : []
+  const runtimeAutoRefresh = runtimeConfig.auto_refresh ?? null
   const dataQualityChecks = Array.isArray(dataQuality.checks) ? dataQuality.checks : []
   const positions = Array.isArray(portfolioRisk.positions) ? portfolioRisk.positions : []
   const weightInputs = payload.portfolio_weight_inputs ?? {}
@@ -1534,6 +1535,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`- 数据质量: ${markdownText(dataQuality.score ?? '-')} 分 / ${markdownText(reportQualityStatusLabel(dataQuality.status))} / 覆盖 ${markdownText(dataQuality.coverage_pct ?? '-')}%`)
   lines.push(`- 质量摘要: ${markdownText(dataQuality.summary ?? '暂无数据质量摘要')}`)
   lines.push(`- 运行配置: ${markdownText(runtimeConfig.active_provider ?? connectorHealth.active_provider ?? '-')} / 超时 ${markdownText(runtimeConfig.request_timeout_seconds ?? connectorHealth.runtime_config?.request_timeout_seconds ?? '-')} 秒 / 缓存 ${markdownText(runtimeConfig.cache_ttl_seconds ?? connectorHealth.runtime_config?.cache_ttl_seconds ?? '-')} 秒`)
+  lines.push(`- 自动刷新: ${markdownText(reportAutoRefreshSummary(runtimeAutoRefresh))}`)
   lines.push('')
   lines.push('### 数据质量检查')
   markdownList(
@@ -1548,6 +1550,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
     runtimePaths,
     (item) => `${item.label} - ${reportRuntimePathStatusLabel(item.exists, item.resolution_note)} - ${item.env_var} - ${reportRuntimePathDetail(item)}`,
   )
+  lines.push(`- 自动刷新 - ${markdownText(reportAutoRefreshSummary(runtimeAutoRefresh))}`)
   lines.push('')
   lines.push('### 密钥配置')
   markdownList(
@@ -1691,6 +1694,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
   const connectors = Array.isArray(connectorHealth.connectors) ? connectorHealth.connectors : []
   const runtimePaths = Array.isArray(runtimeConfig.paths) ? runtimeConfig.paths : []
   const runtimeSecrets = Array.isArray(runtimeConfig.secrets) ? runtimeConfig.secrets : []
+  const runtimeAutoRefresh = runtimeConfig.auto_refresh ?? null
   const dataQualityChecks = Array.isArray(dataQuality.checks) ? dataQuality.checks : []
   const weightInputs = payload.portfolio_weight_inputs ?? {}
   const lotInputs = payload.portfolio_lot_inputs ?? {}
@@ -1953,6 +1957,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>缓存 TTL</span><strong>${escapeHtml(cacheStatus.ttl_seconds ?? connectorHealth.runtime_config?.cache_ttl_seconds ?? "-")} 秒</strong></div>
         <div class="metric"><span>请求超时</span><strong>${escapeHtml(runtimeConfig.request_timeout_seconds ?? connectorHealth.runtime_config?.request_timeout_seconds ?? "-")} 秒</strong></div>
         <div class="metric"><span>过期阈值</span><strong>${escapeHtml(runtimeConfig.freshness_stale_after_minutes ?? connectorHealth.runtime_config?.freshness_stale_after_minutes ?? "-")} 分钟</strong></div>
+        <div class="metric"><span>自动刷新</span><strong>${escapeHtml(reportAutoRefreshSummary(runtimeAutoRefresh))}</strong></div>
       </div>
       <p>${escapeHtml(freshness.message ?? "")}</p>
       <p>${escapeHtml(dataQuality.summary ?? "暂无数据质量摘要")}</p>
@@ -1962,6 +1967,7 @@ function buildResearchReportHtml(payload: Record<string, any>) {
       <div class="grid">
         <div class="metric"><span>当前数据源</span><strong>${escapeHtml(runtimeConfig.active_provider ?? connectorHealth.active_provider ?? "-")}</strong></div>
         <div class="metric"><span>可选数据源</span><strong>${escapeHtml(Array.isArray(runtimeConfig.provider_options) ? runtimeConfig.provider_options.join(" / ") : "-")}</strong></div>
+        <div class="metric"><span>自动刷新</span><strong>${escapeHtml(reportAutoRefreshSummary(runtimeAutoRefresh))}</strong></div>
       </div>
       ${runtimePaths.map((item: any) => `<div class="row"><strong>${escapeHtml(item.label)} · ${escapeHtml(reportRuntimePathStatusLabel(item.exists, item.resolution_note))}</strong><small>${escapeHtml(item.env_var)} · ${escapeHtml(reportRuntimePathDetail(item))}</small></div>`).join("") || "<p>暂无本地路径配置</p>"}
       <h3>密钥配置</h3>
@@ -2139,6 +2145,15 @@ function reportRuntimePathDetail(item: any) {
     parts.push(item.resolution_note)
   }
   return parts.join('；')
+}
+
+function reportAutoRefreshSummary(autoRefresh: any) {
+  if (!autoRefresh) return '未返回配置'
+  const enabled = autoRefresh.enabled ? '已开启' : '未开启'
+  const scope = autoRefresh.scope === 'all' ? '全部标的' : '自选股'
+  const interval = autoRefresh.interval_minutes ?? '-'
+  const startup = autoRefresh.run_on_startup ? '启动即刷新' : '启动不立即刷新'
+  return `${enabled}；${scope}；每 ${interval} 分钟；${startup}`
 }
 
 function reportCacheStatusLabel(status: unknown) {

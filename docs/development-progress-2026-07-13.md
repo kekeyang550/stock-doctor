@@ -112,6 +112,7 @@
    - JSON/HTML/Markdown 研究报告已加入通达信预检上下文；已执行检测时导出候选路径、实际使用路径、最新交易日和过期状态，未执行时明确写“本次导出未执行通达信只读检测”。
    - 2026-07-15 新增后端自动刷新调度骨架，默认关闭；可通过 `STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED`、`STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES`、`STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE` 和 `STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP` 启用。启用后 FastAPI 生命周期会按配置触发刷新任务，并继续复用现有刷新历史和数据新鲜度面板。
    - 运行配置面板和 `/api/v1/system/runtime-config` 已显示自动刷新是否开启、刷新范围、间隔和是否启动即刷新；本机自检脚本会在后端重启后同步输出该配置。
+   - HTML/Markdown 研究报告的数据可信度章节已显示自动刷新配置，离线报告可审计当前是否启用、刷新范围、间隔和启动刷新策略。
 
 ## 本机验证结果
 
@@ -123,6 +124,7 @@
 - 接口验证：`/api/v1/system/tdx-probe` 当前返回 `warn`，列出 5 个候选路径；当前解析路径最新交易日 2013-03-21，已标记过期。
 - 2026-07-15 新增本机交付自检脚本：`powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1`，可只读检查目录、Python/Node/npm、依赖、端口、健康接口、系统就绪度、运行配置和前端页面；当前自检结果为 `0 failure(s), 1 warning(s)`，警告来自运行配置仍使用 mock/本地路径类提示。
 - 2026-07-15 自动刷新调度验证：后端全量测试更新为 `186 passed, 1 warning`，前端测试仍为 `55 passed`，前端生产构建通过；当前已运行的旧后端进程需重启后才会在自检输出里显示 `auto_refresh` 新字段。
+- 2026-07-15 报告导出补充验证：HTML/Markdown 报告已纳入自动刷新配置；前端测试 `55 passed`。
 
 ## 本地运行配置
 
