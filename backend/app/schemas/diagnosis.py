@@ -279,6 +279,10 @@ class FundamentalSnapshot(BaseModel):
     quick_ratio: float | None = None
     net_margin: float | None = None
     asset_turnover: float | None = None
+    selling_expense_ratio: float | None = None
+    admin_expense_ratio: float | None = None
+    financial_expense_ratio: float | None = None
+    equity_multiplier: float | None = None
 
 
 class CapitalSnapshot(BaseModel):

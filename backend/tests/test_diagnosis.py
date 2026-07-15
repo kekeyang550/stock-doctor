@@ -54,6 +54,10 @@ def test_optional_financial_fields_surface_in_evidence():
             quick_ratio=1.1,
             net_margin=18.5,
             asset_turnover=0.72,
+            selling_expense_ratio=7.5,
+            admin_expense_ratio=6.8,
+            financial_expense_ratio=2.1,
+            equity_multiplier=1.8,
         )
     )
 
@@ -66,6 +70,33 @@ def test_optional_financial_fields_surface_in_evidence():
     assert any(item.label == "流动比率" and item.polarity == "positive" for item in result.evidence)
     assert any(item.label == "净利率" and item.polarity == "positive" for item in result.evidence)
     assert any(item.label == "总资产周转率" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "销售费用率" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "管理费用率" and item.polarity == "positive" for item in result.evidence)
+    assert any(item.label == "权益乘数" and item.polarity == "positive" for item in result.evidence)
+
+
+def test_optional_financial_expense_and_leverage_pressure_surface_in_evidence():
+    snapshot = make_snapshot(
+        fundamental=FundamentalSnapshot(
+            pe_ttm=28,
+            pb=3.8,
+            roe=9,
+            revenue_growth=3,
+            profit_growth=2,
+            industry_pe_percentile=72,
+            selling_expense_ratio=28,
+            admin_expense_ratio=21,
+            financial_expense_ratio=9,
+            equity_multiplier=4.3,
+        )
+    )
+
+    result = DiagnosisEngine().diagnose(snapshot, horizon="swing")
+
+    assert any(item.label == "销售费用率" and item.polarity == "negative" for item in result.evidence)
+    assert any(item.label == "管理费用率" and item.polarity == "negative" for item in result.evidence)
+    assert any(item.label == "财务费用率" and item.polarity == "negative" for item in result.evidence)
+    assert any(item.label == "权益乘数" and item.polarity == "negative" for item in result.evidence)
 
 
 def test_risk_events_reduce_score_and_surface_warning():

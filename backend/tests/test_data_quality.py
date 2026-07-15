@@ -85,6 +85,10 @@ def test_data_quality_report_flags_invalid_optional_financial_ratios():
                 quick_ratio=24,
                 net_margin=130,
                 asset_turnover=28,
+                selling_expense_ratio=128,
+                admin_expense_ratio=130,
+                financial_expense_ratio=180,
+                equity_multiplier=28,
             ),
         }
     )
@@ -100,6 +104,10 @@ def test_data_quality_report_flags_invalid_optional_financial_ratios():
     assert "速动比率超出常规区间" in fundamental_check.detail
     assert "净利率超出常规区间" in fundamental_check.detail
     assert "总资产周转率超出常规区间" in fundamental_check.detail
+    assert "销售费用率超出 0-100" in fundamental_check.detail
+    assert "管理费用率超出 0-100" in fundamental_check.detail
+    assert "财务费用率超出常规区间" in fundamental_check.detail
+    assert "权益乘数超出常规区间" in fundamental_check.detail
 
 
 def test_data_quality_report_warns_for_conservative_real_data_fields():

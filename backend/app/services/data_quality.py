@@ -154,6 +154,14 @@ class DataQualityService:
             problems.append("流动比率超出常规区间")
         if base.quick_ratio is not None and not 0 <= base.quick_ratio <= 20:
             problems.append("速动比率超出常规区间")
+        if base.selling_expense_ratio is not None and not 0 <= base.selling_expense_ratio <= 100:
+            problems.append("销售费用率超出 0-100")
+        if base.admin_expense_ratio is not None and not 0 <= base.admin_expense_ratio <= 100:
+            problems.append("管理费用率超出 0-100")
+        if base.financial_expense_ratio is not None and not -100 <= base.financial_expense_ratio <= 100:
+            problems.append("财务费用率超出常规区间")
+        if base.equity_multiplier is not None and not 0 <= base.equity_multiplier <= 20:
+            problems.append("权益乘数超出常规区间")
         return self._check(
             key="fundamental",
             label="估值财务",

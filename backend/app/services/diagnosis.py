@@ -167,6 +167,30 @@ class DiagnosisEngine:
         if base.quick_ratio is not None and base.quick_ratio < 0.8:
             score -= 3
             evidence.append(EvidenceItem(label="速动比率", value=f"{base.quick_ratio:.2f}", interpretation="速动资产覆盖偏弱", polarity="negative"))
+        if base.selling_expense_ratio is not None:
+            if base.selling_expense_ratio <= 8:
+                score += 2
+                evidence.append(EvidenceItem(label="销售费用率", value=f"{base.selling_expense_ratio:.1f}%", interpretation="销售费用负担较轻", polarity="positive"))
+            elif base.selling_expense_ratio >= 25:
+                score -= 3
+                evidence.append(EvidenceItem(label="销售费用率", value=f"{base.selling_expense_ratio:.1f}%", interpretation="销售费用吞噬利润空间", polarity="negative"))
+        if base.admin_expense_ratio is not None:
+            if base.admin_expense_ratio <= 8:
+                score += 2
+                evidence.append(EvidenceItem(label="管理费用率", value=f"{base.admin_expense_ratio:.1f}%", interpretation="管理费用控制较好", polarity="positive"))
+            elif base.admin_expense_ratio >= 18:
+                score -= 3
+                evidence.append(EvidenceItem(label="管理费用率", value=f"{base.admin_expense_ratio:.1f}%", interpretation="管理费用压力偏高", polarity="negative"))
+        if base.financial_expense_ratio is not None and base.financial_expense_ratio >= 8:
+            score -= 3
+            evidence.append(EvidenceItem(label="财务费用率", value=f"{base.financial_expense_ratio:.1f}%", interpretation="财务费用压力需要关注", polarity="negative"))
+        if base.equity_multiplier is not None:
+            if base.equity_multiplier <= 2:
+                score += 2
+                evidence.append(EvidenceItem(label="权益乘数", value=f"{base.equity_multiplier:.2f}", interpretation="杠杆放大程度较低", polarity="positive"))
+            elif base.equity_multiplier >= 4:
+                score -= 4
+                evidence.append(EvidenceItem(label="权益乘数", value=f"{base.equity_multiplier:.2f}", interpretation="权益杠杆偏高，需复核负债结构", polarity="negative"))
 
         return self._clamp(score), evidence
 

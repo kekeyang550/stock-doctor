@@ -392,7 +392,8 @@ class TushareMarketDataProvider:
                         "ts_code,end_date,roe_dt,roe,q_roe,revenue_yoy,netprofit_yoy,"
                         "eps,basic_eps,grossprofit_margin,gross_margin,debt_to_assets,"
                         "ocfps,ocf_to_profit,cashflow_ratio,current_ratio,quick_ratio,"
-                        "netprofit_margin,assets_turn"
+                        "netprofit_margin,assets_turn,saleexp_to_gr,adminexp_of_gr,"
+                        "finaexp_of_gr,assets_to_eqt"
                     ),
                 )
             )
@@ -415,6 +416,10 @@ class TushareMarketDataProvider:
         quick_ratio = self._first_optional_float(fina, "quick_ratio")
         net_margin = self._first_optional_float(fina, "netprofit_margin", "net_profit_margin")
         asset_turnover = self._first_optional_float(fina, "assets_turn", "asset_turnover", "total_assets_turnover")
+        selling_expense_ratio = self._first_optional_float(fina, "saleexp_to_gr", "selling_expense_ratio")
+        admin_expense_ratio = self._first_optional_float(fina, "adminexp_of_gr", "admin_expense_ratio")
+        financial_expense_ratio = self._first_optional_float(fina, "finaexp_of_gr", "financial_expense_ratio")
+        equity_multiplier = self._first_optional_float(fina, "assets_to_eqt", "equity_multiplier")
         if pe_ttm <= 0 and pb <= 0 and roe == 0 and revenue_growth == 0 and profit_growth == 0:
             self._last_error = self._last_error or "财务指标返回空数据"
             return None
@@ -435,6 +440,10 @@ class TushareMarketDataProvider:
             quick_ratio=quick_ratio,
             net_margin=net_margin,
             asset_turnover=asset_turnover,
+            selling_expense_ratio=selling_expense_ratio,
+            admin_expense_ratio=admin_expense_ratio,
+            financial_expense_ratio=financial_expense_ratio,
+            equity_multiplier=equity_multiplier,
         )
 
     def _basic_info_from_tushare(self, symbol: str) -> dict[str, str] | None:
