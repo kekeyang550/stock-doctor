@@ -1687,7 +1687,7 @@ def _valid_watchlist_symbols(symbols: list[str]) -> tuple[list[str], list[str]]:
     valid = []
     unknown = []
     for symbol in symbols:
-        normalized = symbol.strip().upper()
+        normalized = normalize_a_share_symbol(symbol)
         if not normalized:
             continue
         if data_provider.get_snapshot(normalized) is None:

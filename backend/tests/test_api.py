@@ -307,7 +307,7 @@ def test_system_import_preview_summarizes_valid_records():
     response = client.post(
         "/api/v1/system/import/preview",
         json={
-            "watchlist": ["600519", "unknown", "600519"],
+            "watchlist": ["SH600519", "unknown", "600519.SH"],
             "reports": [{"id": "r1"}],
             "notes": [{"id": "n1"}],
             "price_alerts": [{"id": "p1"}],
@@ -327,7 +327,7 @@ def test_system_import_preview_summarizes_valid_records():
 def test_system_import_replaces_state_and_refreshes_watchlist():
     original = client.get("/api/v1/system/export").json()
     import_payload = {
-        "watchlist": ["000001", "bad-symbol"],
+        "watchlist": ["SZ000001", "bad-symbol"],
         "reports": [],
         "notes": [{"id": "note-1", "symbol": "000001", "body": "迁移测试", "created_at": "2026-07-10T00:00:00Z"}],
         "price_alerts": [],
