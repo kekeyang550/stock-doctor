@@ -541,3 +541,62 @@ def test_strategy_backtest_actions_include_score_weak_exit_followup(tmp_path):
         and "触发 1 笔" in action.metric
         for action in plan.actions
     )
+
+
+def test_strategy_backtest_actions_include_history_score_weak_increase(tmp_path):
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+    first_report = StrategyBacktestService(market_data_provider=FakeHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        diagnosis_exit_score=65,
+    )
+    second_report = StrategyBacktestService(market_data_provider=FallingHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        diagnosis_exit_score=65,
+    )
+    store = JsonStateStore(tmp_path / "state.json")
+    history_service = StrategyBacktestHistoryService()
+    history_service.record(first_report, "breakout-volume", "swing", 5, 8, 5, 10, store, diagnosis_exit_score=65)
+    history_service.record(second_report, "breakout-volume", "swing", 5, 8, 5, 10, store, diagnosis_exit_score=65)
+    history = history_service.compare("breakout-volume", "swing", store)
+    period_comparison = StrategyBacktestService().compare_periods(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        periods=[3, 5, 10],
+        limit=1,
+    )
+    preset_comparison = StrategyBacktestService().compare_presets(
+        presets=["strong", "value", "capital-risk"],
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=1,
+    )
+
+    plan = StrategyBacktestActionService().build_plan(
+        report=second_report,
+        period_comparison=period_comparison,
+        preset_comparison=preset_comparison,
+        history=history,
+    )
+
+    assert history.score_weak_exit_delta > 0
+    assert any(
+        action.id == "backtest-history-score-weak-increased"
+        and action.metric == f"诊断转弱 +{history.score_weak_exit_delta} 笔"
+        for action in plan.actions
+    )

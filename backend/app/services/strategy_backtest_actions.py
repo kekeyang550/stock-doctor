@@ -269,6 +269,18 @@ class StrategyBacktestActionService:
                     metric=f"稳定 {history.stability_score_delta:+d} / 可信 {history.sample_confidence_delta:+d}",
                 )
             )
+        if history.latest is not None and history.previous is not None and history.score_weak_exit_delta > 0:
+            actions.append(
+                self._action(
+                    raw_id="history-score-weak-increased",
+                    priority="medium",
+                    category="历史对比",
+                    title="复核诊断转弱增加",
+                    detail="最近回测的诊断转弱退出多于上一轮，建议检查新参数是否过紧，或标的池是否出现更多技术/资金弱化样本。",
+                    trigger=history.summary,
+                    metric=f"诊断转弱 {history.score_weak_exit_delta:+d} 笔",
+                )
+            )
         return actions
 
     def _action(
