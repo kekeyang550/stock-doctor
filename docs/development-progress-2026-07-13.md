@@ -139,7 +139,7 @@
 - 接口验证：`/api/v1/system/tushare-probe?symbol=600519` 返回 `warn`；Token 已配置，未复权日线可用，财务指标权限和频控限制已在步骤详情中展示。
 - 接口验证：`/api/v1/system/runtime-config` 可返回通达信配置路径、自动发现路径和过期说明；`/api/v1/system/data-connectors` 对过期通达信日线返回 fallback。
 - 接口验证：`/api/v1/system/tdx-probe` 当前返回 `warn`，列出 5 个候选路径；当前解析路径最新交易日 2013-03-21，已标记过期。
-- 2026-07-15 新增本机交付自检脚本：`powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1`，可只读检查目录、Python/Node/npm、依赖、端口、健康接口、系统就绪度、运行配置和前端页面；当前自检结果为 `0 failure(s), 1 warning(s)`，警告来自运行配置仍使用 mock/本地路径类提示。
+- 2026-07-15 新增本机交付自检脚本：`powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1`，可只读检查目录、Python/Node/npm、依赖、端口、健康接口、系统就绪度、运行配置和前端页面；当前自检结果为 `0 failure(s), 1 warning(s)`，警告来自自动刷新按当前配置关闭。
 - 2026-07-15 自动刷新调度验证：后端全量测试更新为 `188 passed, 1 warning`，前端测试仍为 `55 passed`，前端生产构建通过；当前已运行的旧后端进程需重启后才会在自检输出里显示 `auto_refresh` 新字段和调度运行态；数据可信度面板已同步展示自动刷新运行态。
 - 2026-07-15 报告导出补充验证：HTML/Markdown 报告已纳入自动刷新配置；前端测试 `55 passed`。
 - 2026-07-15 历史诊断快照基线回测验证：后端回测/API 定向测试 `19 passed, 1 warning`，前端测试 `55 passed`。
