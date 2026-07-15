@@ -1009,6 +1009,9 @@ const strategyBacktestHistory = {
     average_return_pct: 1.23,
     max_drawdown_pct: -2.1,
     return_drawdown_ratio: 0.59,
+    exit_reason_counts: { 'holding-period': 1, 'take-profit': 0, 'stop-loss': 0, 'ma20-break': 0, 'volume-fade': 0, 'score-weak': 1 },
+    score_weak_exit_count: 1,
+    lowest_diagnosis_exit_score: 63.9,
   },
   previous: {
     id: 'bt-2',
@@ -1034,6 +1037,9 @@ const strategyBacktestHistory = {
     average_return_pct: 0.78,
     max_drawdown_pct: -1.9,
     return_drawdown_ratio: 0.41,
+    exit_reason_counts: { 'holding-period': 2, 'take-profit': 0, 'stop-loss': 0, 'ma20-break': 0, 'volume-fade': 0, 'score-weak': 0 },
+    score_weak_exit_count: 0,
+    lowest_diagnosis_exit_score: null,
   },
   items: [
     {
@@ -1060,6 +1066,9 @@ const strategyBacktestHistory = {
       average_return_pct: 1.23,
       max_drawdown_pct: -2.1,
       return_drawdown_ratio: 0.59,
+      exit_reason_counts: { 'holding-period': 1, 'take-profit': 0, 'stop-loss': 0, 'ma20-break': 0, 'volume-fade': 0, 'score-weak': 1 },
+      score_weak_exit_count: 1,
+      lowest_diagnosis_exit_score: 63.9,
     },
     {
       id: 'bt-2',
@@ -1085,6 +1094,9 @@ const strategyBacktestHistory = {
       average_return_pct: 0.78,
       max_drawdown_pct: -1.9,
       return_drawdown_ratio: 0.41,
+      exit_reason_counts: { 'holding-period': 2, 'take-profit': 0, 'stop-loss': 0, 'ma20-break': 0, 'volume-fade': 0, 'score-weak': 0 },
+      score_weak_exit_count: 0,
+      lowest_diagnosis_exit_score: null,
     },
   ],
 }
@@ -2189,6 +2201,8 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('稳定评分变化')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('最近回测')).toBeInTheDocument()
     expect(backtestPanel).toHaveTextContent('固定持有')
+    expect(backtestPanel).toHaveTextContent('诊断转弱 1 笔 / 最低 63.9')
+    expect(backtestPanel).toHaveTextContent('无诊断转弱')
     expect(within(backtestPanel).getByText('回测复盘动作')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('切换推荐持有周期复测')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('当前 5 日 / 推荐 10 日')).toBeInTheDocument()
@@ -3136,6 +3150,7 @@ describe('App', () => {
     expect(html).toContain('推荐 10 日，因为收益回撤比 1.86')
     expect(html).toContain('10 日 · 推荐')
     expect(html).toContain('交易 2 · 胜率 100%')
+    expect(html).toContain('诊断转弱 1 笔 / 最低 63.9')
     expect(html).toContain('策略横向对比')
     expect(html).toContain('策略推荐依据')
     expect(html).toContain('推荐 强势关注，因为收益回撤比 0.59')
@@ -3336,6 +3351,7 @@ describe('App', () => {
     expect(markdown).toContain('历史路径代理诊断分 82.3 未低于阈值 65。')
     expect(markdown).toContain('历史对比')
     expect(markdown).toContain('固定持有')
+    expect(markdown).toContain('诊断转弱 1 笔 / 最低 63.9')
     expect(markdown).toContain('### 回测复盘动作')
     expect(markdown).toContain('状态统计: 待处理 2 / 观察中 0 / 已完成 0')
     expect(markdown).toContain('切换推荐持有周期复测')

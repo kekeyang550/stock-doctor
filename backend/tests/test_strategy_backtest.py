@@ -406,11 +406,38 @@ def test_strategy_backtest_history_service_records_and_compares(tmp_path):
     assert comparison.previous.holding_days == 5
     assert comparison.latest.stability_score >= 0
     assert comparison.latest.sample_confidence_score >= 0
+    assert comparison.latest.exit_reason_counts
+    assert comparison.latest.score_weak_exit_count >= 0
     assert comparison.average_return_delta == round(
         comparison.latest.average_return_pct - comparison.previous.average_return_pct,
         2,
     )
     assert "最近" in comparison.summary
+
+
+def test_strategy_backtest_history_records_score_weak_exit_context(tmp_path):
+    provider = MockMarketDataProvider()
+    snapshots = [snapshot for stock in provider.list_stocks() if (snapshot := provider.get_snapshot(stock.symbol))]
+    diagnoses = [DiagnosisEngine().diagnose(snapshot, horizon="swing") for snapshot in snapshots]
+    report = StrategyBacktestService(market_data_provider=FallingHistoricalProvider()).run(
+        preset="breakout-volume",
+        horizon="swing",
+        snapshots=snapshots,
+        diagnoses=diagnoses,
+        holding_days=5,
+        limit=8,
+        diagnosis_exit_score=65,
+    )
+    store = JsonStateStore(tmp_path / "state.json")
+
+    item = StrategyBacktestHistoryService().record(report, "breakout-volume", "swing", 5, 8, 5, 10, store, diagnosis_exit_score=65)
+    comparison = StrategyBacktestHistoryService().compare("breakout-volume", "swing", store)
+
+    assert item.exit_reason_counts["score-weak"] >= 1
+    assert item.score_weak_exit_count >= 1
+    assert item.lowest_diagnosis_exit_score == 63.9
+    assert comparison.latest is not None
+    assert comparison.latest.lowest_diagnosis_exit_score == 63.9
 
 
 def test_strategy_backtest_actions_turn_metrics_into_followups(tmp_path):

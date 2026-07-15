@@ -53,6 +53,9 @@ class StrategyBacktestHistoryService:
             average_return_pct=report.average_return_pct,
             max_drawdown_pct=report.max_drawdown_pct,
             return_drawdown_ratio=report.return_drawdown_ratio,
+            exit_reason_counts=report.exit_reason_counts,
+            score_weak_exit_count=report.exit_reason_counts.get("score-weak", 0),
+            lowest_diagnosis_exit_score=self._lowest_diagnosis_exit_score(report),
         )
         records = [item.model_dump()]
         records.extend(record for record in state_store.load_strategy_backtests() if record.get("id") != item.id)
@@ -128,3 +131,11 @@ class StrategyBacktestHistoryService:
 
     def _float_delta(self, latest: float, previous: float) -> float:
         return round(latest - previous, 2)
+
+    def _lowest_diagnosis_exit_score(self, report: StrategyBacktestReport) -> float | None:
+        scores = [
+            trade.diagnosis_exit_score_at_exit
+            for trade in report.trades
+            if trade.exit_reason == "score-weak" and trade.diagnosis_exit_score_at_exit is not None
+        ]
+        return min(scores) if scores else None

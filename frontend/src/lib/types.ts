@@ -670,6 +670,9 @@ export type StrategyBacktestHistoryItem = {
   average_return_pct: number
   max_drawdown_pct: number
   return_drawdown_ratio: number
+  exit_reason_counts?: Record<StrategyBacktestTrade['exit_reason'], number>
+  score_weak_exit_count?: number
+  lowest_diagnosis_exit_score?: number | null
 }
 
 export type StrategyBacktestHistoryComparison = {

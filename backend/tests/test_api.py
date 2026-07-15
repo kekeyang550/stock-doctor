@@ -640,6 +640,9 @@ def test_strategy_backtest_history_records_recent_runs():
     assert len(payload["items"]) >= 2
     assert payload["latest"]["stability_score"] >= 0
     assert payload["latest"]["sample_confidence_score"] >= 0
+    assert "exit_reason_counts" in payload["latest"]
+    assert "score_weak_exit_count" in payload["latest"]
+    assert "lowest_diagnosis_exit_score" in payload["latest"]
     assert "average_return_delta" in payload
     assert payload["summary"]
 

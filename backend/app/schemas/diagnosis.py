@@ -951,6 +951,9 @@ class StrategyBacktestHistoryItem(BaseModel):
     average_return_pct: float
     max_drawdown_pct: float
     return_drawdown_ratio: float = 0
+    exit_reason_counts: dict[str, int] = Field(default_factory=dict)
+    score_weak_exit_count: int = 0
+    lowest_diagnosis_exit_score: float | None = None
 
 
 class StrategyBacktestHistoryComparison(BaseModel):

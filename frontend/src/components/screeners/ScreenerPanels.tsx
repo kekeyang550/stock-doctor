@@ -1407,7 +1407,7 @@ export function StrategyBacktestPanel({
                   <span key={item.id}>
                     <small>{formatShortDate(item.created_at)} · {item.holding_days} 日 · {backtestPriceSourceLabel(item.price_source)}</small>
                     <b>
-                      平均 {formatSignedPercent(item.average_return_pct)} · 回撤 {formatSignedPercent(item.max_drawdown_pct)} · 稳定 {item.stability_score} · 可信 {item.sample_confidence_score} · {backtestHistoryParameterLabel(item)}
+                      平均 {formatSignedPercent(item.average_return_pct)} · 回撤 {formatSignedPercent(item.max_drawdown_pct)} · 稳定 {item.stability_score} · 可信 {item.sample_confidence_score} · {backtestHistoryExitLabel(item)} · {backtestHistoryParameterLabel(item)}
                     </b>
                   </span>
                 ))}
@@ -1487,6 +1487,15 @@ function backtestHistoryParameterLabel(item: StrategyBacktestHistoryComparison['
   if (item.exit_volume_ratio > 0) exits.push(`量比 ${Number(item.exit_volume_ratio.toFixed(2))}`)
   if (item.diagnosis_exit_score > 0) exits.push(`诊断 ${Number(item.diagnosis_exit_score.toFixed(0))}`)
   return exits.length ? exits.join(' / ') : '固定持有'
+}
+
+function backtestHistoryExitLabel(item: StrategyBacktestHistoryComparison['items'][number]) {
+  const count = item.score_weak_exit_count ?? item.exit_reason_counts?.['score-weak'] ?? 0
+  if (count <= 0) return '无诊断转弱'
+  const score = item.lowest_diagnosis_exit_score
+  return typeof score === 'number' && Number.isFinite(score)
+    ? `诊断转弱 ${count} 笔 / 最低 ${score}`
+    : `诊断转弱 ${count} 笔`
 }
 
 function formatBacktestHistoryCount(value: number) {
