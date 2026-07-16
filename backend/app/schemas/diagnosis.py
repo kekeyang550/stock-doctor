@@ -868,6 +868,9 @@ class StrategyBacktestReport(BaseModel):
     exit_on_ma20_break: bool = False
     exit_volume_ratio: float = 0
     diagnosis_exit_score: float = 0
+    diagnosis_exit_snapshot_count: int = 0
+    diagnosis_exit_proxy_count: int = 0
+    diagnosis_exit_snapshot_coverage_pct: float = 0
     round_trip_cost_pct: float = 0.3
     sample_size: int
     match_count: int

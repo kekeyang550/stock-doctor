@@ -1506,6 +1506,7 @@ function buildResearchReportMarkdown(payload: Record<string, any>) {
   lines.push(`- 价格来源: ${markdownText(strategyBacktestPriceSourceLabel(strategyBacktest.price_source))}`)
   lines.push(`- 持有周期: ${markdownText(strategyBacktest.holding_days ?? '-')} 日`)
   lines.push(`- 退出规则: 止盈 ${markdownText(strategyBacktest.take_profit_pct ?? 0)}% / 止损 ${markdownText(strategyBacktest.stop_loss_pct ?? 0)}% / MA20 跌破 ${strategyBacktest.exit_on_ma20_break ? '启用' : '关闭'} / 量比低于 ${markdownText(strategyBacktest.exit_volume_ratio ?? 0)} / 诊断低于 ${markdownText(strategyBacktest.diagnosis_exit_score ?? 0)}`)
+  lines.push(`- 诊断快照覆盖: ${markdownText(formatReportPercent(strategyBacktest.diagnosis_exit_snapshot_coverage_pct ?? 0))}（快照 ${markdownText(strategyBacktest.diagnosis_exit_snapshot_count ?? 0)} / 代理 ${markdownText(strategyBacktest.diagnosis_exit_proxy_count ?? 0)}）`)
   lines.push(`- 交易数/胜率: ${markdownText(strategyBacktest.trade_count ?? 0)} / ${markdownText(strategyBacktest.win_rate ?? 0)}%`)
   lines.push(`- 平均收益/最大回撤: ${markdownText(formatReportSignedPercent(strategyBacktest.average_return_pct ?? 0))} / ${markdownText(formatReportSignedPercent(strategyBacktest.max_drawdown_pct ?? 0))}`)
   lines.push(`- 退出分布: ${markdownText(strategyBacktestExitDistribution(strategyBacktest))}`)
@@ -1876,6 +1877,8 @@ function buildResearchReportHtml(payload: Record<string, any>) {
         <div class="metric"><span>MA20 跌破</span><strong>${strategyBacktest.exit_on_ma20_break ? "启用" : "关闭"}</strong></div>
         <div class="metric"><span>量比退出</span><strong>${escapeHtml(strategyBacktest.exit_volume_ratio ?? strategyBacktestParameters.exit_volume_ratio ?? 0)}</strong></div>
         <div class="metric"><span>诊断退出</span><strong>${escapeHtml(strategyBacktest.diagnosis_exit_score ?? strategyBacktestParameters.diagnosis_exit_score ?? 0)}</strong></div>
+        <div class="metric"><span>快照覆盖</span><strong>${escapeHtml(formatReportPercent(strategyBacktest.diagnosis_exit_snapshot_coverage_pct ?? 0))}</strong></div>
+        <div class="metric"><span>诊断口径</span><strong>快照 ${escapeHtml(strategyBacktest.diagnosis_exit_snapshot_count ?? 0)} / 代理 ${escapeHtml(strategyBacktest.diagnosis_exit_proxy_count ?? 0)}</strong></div>
         <div class="metric"><span>单笔成本</span><strong>${escapeHtml(strategyBacktest.round_trip_cost_pct ?? 0)}%</strong></div>
         <div class="metric"><span>样例交易</span><strong>${escapeHtml(strategyBacktest.trade_count ?? 0)}</strong></div>
         <div class="metric"><span>胜率</span><strong>${escapeHtml(strategyBacktest.win_rate ?? 0)}%</strong></div>

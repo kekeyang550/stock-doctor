@@ -864,7 +864,10 @@ const strategyBacktest = {
   stop_loss_pct: 0,
   exit_on_ma20_break: false,
   exit_volume_ratio: 0,
-  diagnosis_exit_score: 0,
+  diagnosis_exit_score: 65,
+  diagnosis_exit_snapshot_count: 1,
+  diagnosis_exit_proxy_count: 1,
+  diagnosis_exit_snapshot_coverage_pct: 50,
   round_trip_cost_pct: 0.3,
   sample_size: 4,
   match_count: 2,
@@ -2284,6 +2287,9 @@ describe('App', () => {
     expect(within(backtestPanel).getByText('MA20 跌破')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('量比退出')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('诊断退出')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('快照覆盖')).toBeInTheDocument()
+    expect(within(backtestPanel).getByText('诊断口径')).toBeInTheDocument()
+    expect(within(backtestPanel).getAllByText('快照 1 / 代理 1').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getAllByText('关闭').length).toBeGreaterThan(0)
     expect(within(backtestPanel).getByText('单笔成本')).toBeInTheDocument()
     expect(within(backtestPanel).getByText('0.30%')).toBeInTheDocument()
@@ -3194,6 +3200,9 @@ describe('App', () => {
     expect(html).toContain('MA20 跌破')
     expect(html).toContain('量比退出')
     expect(html).toContain('诊断退出')
+    expect(html).toContain('快照覆盖')
+    expect(html).toContain('诊断口径')
+    expect(html).toContain('快照 1 / 代理 1')
     expect(html).toContain('关闭')
     expect(html).toContain('单笔成本')
     expect(html).toContain('0.3%')
@@ -3404,7 +3413,8 @@ describe('App', () => {
     expect(markdown).toContain('symbol,side,shares,price')
     expect(markdown).toContain('再平衡建议')
     expect(markdown).toContain('## 策略回测')
-    expect(markdown).toContain('退出规则: 止盈 0% / 止损 0% / MA20 跌破 关闭 / 量比低于 0 / 诊断低于 0')
+    expect(markdown).toContain('退出规则: 止盈 0% / 止损 0% / MA20 跌破 关闭 / 量比低于 0 / 诊断低于 65')
+    expect(markdown).toContain('诊断快照覆盖: 50.0%（快照 1 / 代理 1）')
     expect(markdown).toContain('退出分布: 持有到期 1 笔')
     expect(markdown).toContain('样例交易')
     expect(markdown).toContain('历史诊断快照基线 86 校准后路径分 82.3 未低于阈值 65。')

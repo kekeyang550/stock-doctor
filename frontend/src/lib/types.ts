@@ -583,6 +583,9 @@ export type StrategyBacktestReport = {
   exit_on_ma20_break: boolean
   exit_volume_ratio: number
   diagnosis_exit_score: number
+  diagnosis_exit_snapshot_count?: number
+  diagnosis_exit_proxy_count?: number
+  diagnosis_exit_snapshot_coverage_pct?: number
   round_trip_cost_pct: number
   sample_size: number
   match_count: number

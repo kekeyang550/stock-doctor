@@ -128,6 +128,9 @@ class StrategyBacktestService:
         negative_trade_count = len([value for value in returns if value < 0])
         flat_trade_count = len([value for value in returns if value == 0])
         exit_reason_counts = self._exit_reason_counts(trades)
+        diagnosis_exit_snapshot_count, diagnosis_exit_proxy_count, diagnosis_exit_snapshot_coverage_pct = (
+            self._diagnosis_exit_source_stats(trades, diagnosis_exit_score)
+        )
         max_drawdown = min((trade.max_drawdown_pct for trade in trades), default=0.0)
         return_drawdown_ratio = self._return_drawdown_ratio(average_return, max_drawdown)
         chronological_trades = self._chronological_trades(trades)
@@ -167,6 +170,9 @@ class StrategyBacktestService:
             exit_on_ma20_break=exit_on_ma20_break,
             exit_volume_ratio=exit_volume_ratio,
             diagnosis_exit_score=diagnosis_exit_score,
+            diagnosis_exit_snapshot_count=diagnosis_exit_snapshot_count,
+            diagnosis_exit_proxy_count=diagnosis_exit_proxy_count,
+            diagnosis_exit_snapshot_coverage_pct=diagnosis_exit_snapshot_coverage_pct,
             round_trip_cost_pct=round(round_trip_cost_pct, 2),
             sample_size=len(snapshots),
             match_count=len(candidates),
@@ -472,6 +478,18 @@ class StrategyBacktestService:
         for trade in trades:
             counts[trade.exit_reason] = counts.get(trade.exit_reason, 0) + 1
         return counts
+
+    def _diagnosis_exit_source_stats(
+        self,
+        trades: list[StrategyBacktestTrade],
+        diagnosis_exit_score: float,
+    ) -> tuple[int, int, float]:
+        if diagnosis_exit_score <= 0 or not trades:
+            return 0, 0, 0
+        snapshot_count = sum(1 for trade in trades if trade.diagnosis_exit_source == "historical-snapshot")
+        proxy_count = len(trades) - snapshot_count
+        coverage_pct = round(snapshot_count / len(trades) * 100, 1)
+        return snapshot_count, proxy_count, coverage_pct
 
     def _max_consecutive_loss_count(self, trades: list[StrategyBacktestTrade]) -> int:
         longest = 0

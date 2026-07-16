@@ -1186,6 +1186,14 @@ export function StrategyBacktestPanel({
               <small>诊断退出</small>
               <b>{report.diagnosis_exit_score > 0 ? report.diagnosis_exit_score : '关闭'}</b>
             </span>
+            <span>
+              <small>快照覆盖</small>
+              <b>{report.diagnosis_exit_score > 0 ? `${(report.diagnosis_exit_snapshot_coverage_pct ?? 0).toFixed(1)}%` : '关闭'}</b>
+            </span>
+            <span>
+              <small>诊断口径</small>
+              <b>{report.diagnosis_exit_score > 0 ? `快照 ${report.diagnosis_exit_snapshot_count ?? 0} / 代理 ${report.diagnosis_exit_proxy_count ?? 0}` : '未启用'}</b>
+            </span>
           </div>
           <div className="backtest-parameter-card">
             <strong>参数</strong>

@@ -283,6 +283,9 @@ def test_strategy_backtest_keeps_diagnosis_score_context_when_threshold_not_trig
     )
 
     assert report.trades[0].exit_reason == "holding-period"
+    assert report.diagnosis_exit_snapshot_count == 0
+    assert report.diagnosis_exit_proxy_count == report.trade_count
+    assert report.diagnosis_exit_snapshot_coverage_pct == 0
     assert report.trades[0].diagnosis_exit_score_at_exit == 82.3
     assert report.trades[0].diagnosis_exit_note == "历史路径代理诊断分 82.3 未低于阈值 65。"
 
@@ -308,6 +311,9 @@ def test_strategy_backtest_uses_saved_diagnosis_snapshot_baseline():
     )
 
     assert report.trades[0].exit_reason == "holding-period"
+    assert report.diagnosis_exit_snapshot_count == report.trade_count
+    assert report.diagnosis_exit_proxy_count == 0
+    assert report.diagnosis_exit_snapshot_coverage_pct == 100
     assert report.trades[0].diagnosis_exit_source == "historical-snapshot"
     assert report.trades[0].diagnosis_exit_baseline_score == 86
     assert report.trades[0].diagnosis_exit_baseline_date == "2026-06-24T00:00:00+00:00"
