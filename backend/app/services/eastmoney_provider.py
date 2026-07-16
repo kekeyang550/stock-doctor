@@ -555,7 +555,8 @@ class EastmoneyMarketDataProvider:
             )
         except Exception:
             return self._sina_fund_flow_row(symbol)
-        klines = payload.get("data", {}).get("klines", [])
+        data = payload.get("data") if isinstance(payload, dict) else None
+        klines = data.get("klines", []) if isinstance(data, dict) else []
         row = self._parse_fund_flow(klines[-1]) if klines else None
         if row is None:
             return self._sina_fund_flow_row(symbol)

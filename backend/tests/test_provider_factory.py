@@ -561,6 +561,13 @@ class FailingEastmoneyFundFlowSession(FakeEastmoneySession):
         return super().get(url, params=params, timeout=timeout, headers=headers)
 
 
+class EmptyEastmoneyFundFlowSession(FakeEastmoneySession):
+    def get(self, url, params=None, timeout=None, headers=None):
+        if "stock/fflow/daykline/get" in url:
+            return FakeResponse({"data": None})
+        return super().get(url, params=params, timeout=timeout, headers=headers)
+
+
 class EmptyEastmoneyKlineSession(FakeEastmoneySession):
     def get(self, url, params=None, timeout=None, headers=None):
         if url == EastmoneyMarketDataProvider._KLINE_URL:
@@ -1108,6 +1115,22 @@ def test_eastmoney_provider_uses_sina_fund_flow_fallback(tmp_path):
     assert snapshot.capital.turnover_rate == 1.5
     assert "sina-capital-flow" in sources[0]["role"]
     assert "capital-flow" in sources[0]["role"]
+
+
+def test_eastmoney_provider_handles_null_fund_flow_payload(tmp_path):
+    store = JsonStateStore(tmp_path / "state.json")
+    provider = EastmoneyMarketDataProvider(
+        session=EmptyEastmoneyFundFlowSession(),
+        state_store=store,
+        stock_directory=LocalStockDirectoryProvider(stockname_paths=[]),
+    )
+
+    snapshot = provider.get_snapshot("600036")
+    sources = provider.get_data_sources()
+
+    assert snapshot is not None
+    assert snapshot.capital.main_inflow_million == 3.7
+    assert "sina-capital-flow" in sources[0]["role"]
 
 
 def test_eastmoney_provider_uses_tencent_quote_detail_fallback(tmp_path):
