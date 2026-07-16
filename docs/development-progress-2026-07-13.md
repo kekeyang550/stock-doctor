@@ -16,7 +16,7 @@
    - 本机验证 `600036` 招商银行可通过真实链路生成诊断，主力资金流可显示到证据链。
 
 2. 本地行情参考源
-   - 新增通达信本地日线读取器，默认读取 `E:\new_tdx64\vipdoc`。
+   - 新增通达信本地日线读取器，默认读取 `D:\new_tdx\vipdoc`。
    - 主行情源可用时做最近收盘价交叉校验；网络 K 线失败时可作为本地兜底。
    - 新增同花顺本地股票名表读取器，默认读取 `D:\同花顺软件\同花顺\stockname\stockname_16_0.txt` 和 `stockname_32_0.txt`。
    - 搜索股票名时可通过同花顺本地名表解析代码，例如“招商银行”解析到 `600036`。
@@ -120,9 +120,9 @@
    - 本机已完成 Tushare Token 本地 `.env` 配置验证；接口不返回 token 明文，Git 不跟踪该配置文件。
    - 当前 Tushare 真实预检为“部分通过”：包、Token、Pro API 初始化正常；未复权 `daily` 日线可返回 5960 行样本；`stock_basic`、`daily_basic` 和 `adj_factor` 受账号频控限制，`fina_indicator` 当前账号无访问权限。
    - `pro_bar` 已补充 `set_token` 调用，并在前复权因子受限时自动降级到未复权 `daily` 日线；数据可信度面板会以 warn 展示“部分真实数据可用”，而不是误判为整体失败。
-   - 通达信本地日线适配器已支持自动发现常见目录下的 `vipdoc`，兼容 `sh600519.day` 和 `SH600519.day` 文件名。
+   - 通达信本地日线适配器已支持自动发现常见目录下的 `vipdoc`，兼容 `sh600519.day` 和 `SH600519.day` 文件名；配置到安装目录时也会尝试直接使用其子目录 `vipdoc`。
    - 若配置路径不存在但发现其他 `vipdoc`，运行配置会显示“实际使用”路径；若样本日线过期，会标记为 fallback/已过期，并禁止用旧 K 线参与诊断或回测兜底。
-   - 本机当前可发现 `E:\股票\渤海证券行情加交易\new_bhzq_v6\Vipdoc`，但样本最新交易日为 2013-03-21，已判定过期；需要在通达信客户端确认最新下载位置或重新补全日线。
+   - 2026-07-16 已确认本机通达信目录为 `D:\new_tdx`，实际使用 `D:\new_tdx\vipdoc`；样本最新交易日为 2026-07-15，可用于本地 K 线参考与兜底。
    - 新增 `/api/v1/system/tdx-probe` 只读检测接口和前端“检测通达信”按钮，可列出候选 `vipdoc`、是否当前使用、样本覆盖、行数、最新交易日和过期状态。
    - JSON/HTML/Markdown 研究报告已加入通达信预检上下文；已执行检测时导出候选路径、实际使用路径、最新交易日和过期状态，未执行时明确写“本次导出未执行通达信只读检测”。
    - 2026-07-15 新增后端自动刷新调度骨架，默认关闭；可通过 `STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED`、`STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES`、`STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE` 和 `STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP` 启用。启用后 FastAPI 生命周期会按配置触发刷新任务，并继续复用现有刷新历史和数据新鲜度面板。
@@ -138,8 +138,8 @@
 - 前端测试：`57 passed`
 - 前端生产构建：通过
 - 接口验证：`/api/v1/system/tushare-probe?symbol=600519` 返回 `warn`；Token 已配置，未复权日线可用，财务指标权限和频控限制已在步骤详情中展示。
-- 接口验证：`/api/v1/system/runtime-config` 可返回通达信配置路径、自动发现路径和过期说明；`/api/v1/system/data-connectors` 对过期通达信日线返回 fallback。
-- 接口验证：`/api/v1/system/tdx-probe` 当前返回 `warn`，列出 5 个候选路径；当前解析路径最新交易日 2013-03-21，已标记过期。
+- 接口验证：`/api/v1/system/runtime-config` 可返回通达信配置路径、实际使用路径、自动发现状态和过期说明；`/api/v1/system/data-connectors` 对过期通达信日线返回 fallback。
+- 接口验证：`/api/v1/system/tdx-probe` 当前返回 `pass`，实际使用 `D:\new_tdx\vipdoc`；样本最新交易日 2026-07-15，未过期。
 - 2026-07-15 新增本机交付自检脚本：`powershell -ExecutionPolicy Bypass -File .\scripts\check-local.ps1`，可只读检查目录、Python/Node/npm、依赖、端口、健康接口、系统就绪度、运行配置和前端页面；当前自检结果为 `0 failure(s), 1 warning(s)`，警告来自自动刷新按当前配置关闭。
 - 2026-07-15 自动刷新调度验证：后端全量测试更新为 `188 passed, 1 warning`，前端测试仍为 `55 passed`，前端生产构建通过；当前已运行的旧后端进程需重启后才会在自检输出里显示 `auto_refresh` 新字段和调度运行态；数据可信度面板已同步展示自动刷新运行态。
 - 2026-07-15 报告导出补充验证：HTML/Markdown 报告已纳入自动刷新配置；前端测试 `55 passed`。
@@ -160,7 +160,7 @@ STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED=false
 STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES=240
 STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE=watchlist
 STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP=false
-STOCK_DOCTOR_TDX_VIPDOC_PATH=E:\new_tdx64\vipdoc
+STOCK_DOCTOR_TDX_VIPDOC_PATH=D:\new_tdx\vipdoc
 STOCK_DOCTOR_THS_STOCKNAME_PATHS=D:\同花顺软件\同花顺\stockname\stockname_16_0.txt;D:\同花顺软件\同花顺\stockname\stockname_32_0.txt
 STOCK_DOCTOR_TUSHARE_TOKEN=<如需 Tushare 财务增强，填入 token>
 ```

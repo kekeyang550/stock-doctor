@@ -232,7 +232,7 @@ const runtimeSettings = {
       key: 'tdx_vipdoc',
       label: '通达信 vipdoc',
       env_var: 'STOCK_DOCTOR_TDX_VIPDOC_PATH',
-      value: 'E:\\new_tdx64\\vipdoc',
+      value: 'D:\\new_tdx\\vipdoc',
       configured: true,
       exists: false,
     },
@@ -272,7 +272,7 @@ const tushareProbe = {
 }
 
 const tdxProbe = {
-  configured_path: 'E:\\new_tdx64\\vipdoc',
+  configured_path: 'D:\\new_tdx\\vipdoc',
   resolved_path: 'E:\\股票\\渤海证券行情加交易\\new_bhzq_v6\\Vipdoc',
   generated_at: '2026-07-13T06:00:00Z',
   status: 'warn',

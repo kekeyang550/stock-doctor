@@ -1229,6 +1229,29 @@ def test_tdx_local_history_provider_auto_discovers_vipdoc_when_configured_path_i
     assert "已自动使用" in source["role"]
 
 
+def test_tdx_local_history_provider_accepts_install_directory_with_vipdoc_child(tmp_path):
+    install_dir = tmp_path / "new_tdx"
+    vipdoc = install_dir / "vipdoc"
+    write_tdx_day_file(
+        vipdoc,
+        "600519",
+        [
+            (20260709, 1191.00, 1191.99, 1178.00, 1182.19, 4_035_216_896.0, 3_409_634),
+            (20260710, 1182.20, 1204.98, 1170.28, 1204.98, 6_223_343_616.0, 5_221_255),
+        ],
+    )
+
+    provider = TdxLocalHistoryProvider(vipdoc_path=install_dir)
+    bars = provider.get_price_history("600519", days=1)
+    status = provider.describe(["600519"])
+
+    assert bars[-1].date == "2026-07-10"
+    assert status["configured_path"] == str(install_dir)
+    assert status["path"] == str(vipdoc)
+    assert status["auto_discovered"] is True
+    assert provider.probe_vipdoc().resolved_path == str(vipdoc)
+
+
 def test_tdx_local_history_provider_reads_uppercase_day_filename(tmp_path):
     path = write_tdx_day_file(
         tmp_path,

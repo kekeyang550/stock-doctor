@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     data_auto_refresh_interval_minutes: int = Field(default=240, ge=5, le=24 * 60)
     data_auto_refresh_scope: str = Field(default="watchlist", pattern="^(all|watchlist)$")
     data_auto_refresh_on_startup: bool = False
-    tdx_vipdoc_path: str = "E:\\new_tdx64\\vipdoc"
+    tdx_vipdoc_path: str = "D:\\new_tdx\\vipdoc"
     ths_stockname_paths: str = (
         "D:\\同花顺软件\\同花顺\\stockname\\stockname_16_0.txt;"
         "D:\\同花顺软件\\同花顺\\stockname\\stockname_32_0.txt"

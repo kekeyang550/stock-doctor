@@ -86,10 +86,10 @@ If a local TongHuaShun stock-name table is available, the search API also uses i
 $env:STOCK_DOCTOR_THS_STOCKNAME_PATHS = "D:\同花顺软件\同花顺\stockname\stockname_16_0.txt;D:\同花顺软件\同花顺\stockname\stockname_32_0.txt"
 ```
 
-If a local TongDaXin `vipdoc` directory is available, it is used as a local daily K-line reference and fallback source:
+If a local TongDaXin `vipdoc` directory is available, it is used as a local daily K-line reference and fallback source. The value can point directly at `vipdoc`; when it points at the TongDaXin install directory, the backend will also try its direct `vipdoc` child.
 
 ```powershell
-$env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "E:\new_tdx64\vipdoc"
+$env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "D:\new_tdx\vipdoc"
 ```
 
 The data trust panel reports TongDaXin availability, latest local trading day, and the latest cross-check against the active historical K-line source.
@@ -142,7 +142,7 @@ $env:STOCK_DOCTOR_DATA_AUTO_REFRESH_ENABLED = "false"
 $env:STOCK_DOCTOR_DATA_AUTO_REFRESH_INTERVAL_MINUTES = "240"
 $env:STOCK_DOCTOR_DATA_AUTO_REFRESH_SCOPE = "watchlist"
 $env:STOCK_DOCTOR_DATA_AUTO_REFRESH_ON_STARTUP = "false"
-$env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "E:\new_tdx64\vipdoc"
+$env:STOCK_DOCTOR_TDX_VIPDOC_PATH = "D:\new_tdx\vipdoc"
 ```
 
 These values are returned by `/api/v1/system/data-connectors` and `/api/v1/system/runtime-config`, then displayed in the data trust/runtime panels so the current real-data operating assumptions are visible before diagnosis or backtest decisions.

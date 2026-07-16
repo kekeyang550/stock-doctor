@@ -184,6 +184,9 @@ class TdxLocalHistoryProvider:
         configured = Path(configured_path or settings.tdx_vipdoc_path)
         if cls._is_usable_vipdoc(configured):
             return configured
+        direct_child = cls._best_direct_vipdoc_child(configured)
+        if direct_child is not None:
+            return direct_child
         discovered = cls.discover_vipdoc_path()
         return discovered or configured
 
@@ -209,6 +212,7 @@ class TdxLocalHistoryProvider:
 
     def _probe_candidates(self) -> list[TdxProbeCandidate]:
         paths = [self._configured_vipdoc_path]
+        paths.extend(self._direct_vipdoc_candidates(self._configured_vipdoc_path))
         paths.extend(self._discover_candidate_paths())
         candidates = []
         for path in self._dedupe_paths(paths):
@@ -286,6 +290,15 @@ class TdxLocalHistoryProvider:
     def _direct_vipdoc_candidates(cls, root: Path) -> list[Path]:
         names = ("vipdoc", "Vipdoc", "VIPDOC")
         return [root / name for name in names if (root / name).is_dir()]
+
+    @classmethod
+    def _best_direct_vipdoc_child(cls, root: Path) -> Path | None:
+        candidates = cls._direct_vipdoc_candidates(root)
+        usable = [(cls._candidate_score(candidate), candidate) for candidate in candidates if cls._is_vipdoc_shape(candidate)]
+        if not usable:
+            return None
+        usable.sort(key=lambda item: item[0], reverse=True)
+        return usable[0][1]
 
     @classmethod
     def _is_vipdoc_shape(cls, path: Path) -> bool:
